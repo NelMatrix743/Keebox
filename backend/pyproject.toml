@@ -1,0 +1,11 @@
+[project]
+name = "keebox-backend"
+version = "0.1.0"
+description = "Backend application for Keebox."
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "django>=6.1",
+    "django-ninja>=1.6.3",
+    "django-ninja-jwt>=5.4.5",
+]
