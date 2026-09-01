@@ -1,4 +1,4 @@
-package dev.nelmatrix.keebox.keebox
+package dev.nelmatrix.keebox
 
 import io.flutter.embedding.android.FlutterActivity
 
