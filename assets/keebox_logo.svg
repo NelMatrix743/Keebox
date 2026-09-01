@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="40 30 650 1040" role="img" aria-labelledby="title desc">
+  <title id="title">Talori rounded comb logo</title>
+  <desc id="desc">A solid black vector recreation of the supplied hand-drawn logo, with three fully rounded left-facing prongs and a transparent background.</desc>
+
+  <!-- Solid upper enclosure with a transparent rounded slot. -->
+  <path
+    fill="#000000"
+    fill-rule="evenodd"
+    d="M 75 60
+       H 635
+       Q 660 60 660 85
+       V 415
+       Q 660 440 635 440
+       H 75
+       Q 50 440 50 415
+       V 85
+       Q 50 60 75 60
+       Z
+
+       M 120 100
+       H 255
+       Q 275 100 275 120
+       V 375
+       Q 275 395 255 395
+       H 120
+       Q 100 395 100 375
+       V 120
+       Q 100 100 120 100
+       Z"/>
+
+  <!-- Solid right spine. -->
+  <path
+    fill="#000000"
+    d="M 440 410
+       H 550
+       V 945
+       Q 550 975 520 975
+       H 470
+       Q 440 975 440 945
+       Z"/>
+
+  <!-- Top prong: semicircular left cap. -->
+  <path
+    fill="#000000"
+    d="M 310 480
+       H 475
+       V 550
+       H 310
+       Q 275 550 275 515
+       Q 275 480 310 480
+       Z"/>
+
+  <!-- Longest prong: semicircular left cap. -->
+  <path
+    fill="#000000"
+    d="M 135 595
+       H 475
+       V 725
+       H 135
+       C 99 725 70 696 70 660
+       C 70 624 99 595 135 595
+       Z"/>
+
+  <!-- Bottom prong: semicircular left cap. -->
+  <path
+    fill="#000000"
+    d="M 235 770
+       H 475
+       V 850
+       H 235
+       C 213 850 195 832 195 810
+       C 195 788 213 770 235 770
+       Z"/>
+</svg>
