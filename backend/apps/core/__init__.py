@@ -1,0 +1,1 @@
+APP_DESCRIPTION: str = "Provides shared logic, resources, and general routes used across the project."
