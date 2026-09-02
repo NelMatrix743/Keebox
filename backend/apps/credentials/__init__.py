@@ -1,0 +1,1 @@
+APP_DESCRIPTION: str = "Handles user-specific credential boxes management."
