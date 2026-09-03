@@ -81,3 +81,21 @@ class UserModelTests(TestCase):
         self.assertNotEqual(user.password, "correct horse battery staple")
         self.assertTrue(user.check_password("correct horse battery staple"))
 
+    def test_user_manager_validates_required_credentials(self: Self) -> None:
+        """
+        Verify the user manager rejects missing account credentials.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when incomplete credentials are accepted.
+        """
+        with self.assertRaisesMessage(ValueError, "email address is required"):
+            User.objects.create_user(email="", password="valid-password")
+
+        with self.assertRaisesMessage(ValueError, "password is required"):
+            User.objects.create_user(email="nelson@example.com", password="")
