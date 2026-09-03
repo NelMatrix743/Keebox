@@ -7,6 +7,13 @@
 - When a change contains multiple independently meaningful concerns, provide separate commit messages.
 - Do not create a Git commit unless the user explicitly requests it.
 
+## Pull Request Messages
+
+- Use `.github/PULL_REQUEST_TEMPLATE.md` for every pull request message.
+- Provide the pull request title separately from the message body.
+- Preserve the template's section names and order exactly.
+- Populate every section from the verified branch changes and test results.
+
 ## Test-Driven Development
 
 - Follow test-driven development for all product behavior.
