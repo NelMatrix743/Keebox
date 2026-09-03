@@ -11,4 +11,5 @@ dependencies = [
     "django-mongodb-backend>=6.1.0",
     "django-ninja>=1.6.3",
     "django-ninja-jwt>=5.4.5",
+    "email-validator>=2.3.0",
 ]
