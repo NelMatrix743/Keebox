@@ -54,3 +54,30 @@ class UserModelTests(TestCase):
 
         with self.assertRaises(FieldDoesNotExist):
             User._meta.get_field("username")
+
+    def test_user_manager_normalizes_email_and_hashes_password(
+        self: Self,
+    ) -> None:
+        """
+        Verify user creation normalizes email and never stores a raw password.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when user creation handles credentials incorrectly.
+        """
+        user: User = User.objects.create_user(
+            email="  Nelson@Example.COM  ",
+            password="correct horse battery staple",
+            first_name="Nelson",
+            last_name="Matrix",
+        )
+
+        self.assertEqual(user.email, "nelson@example.com")
+        self.assertNotEqual(user.password, "correct horse battery staple")
+        self.assertTrue(user.check_password("correct horse battery staple"))
+
