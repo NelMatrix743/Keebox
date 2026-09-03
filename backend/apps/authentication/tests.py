@@ -99,3 +99,33 @@ class UserModelTests(TestCase):
 
         with self.assertRaisesMessage(ValueError, "password is required"):
             User.objects.create_user(email="nelson@example.com", password="")
+
+    def test_user_manager_creates_privileged_superuser(self: Self) -> None:
+        """
+        Verify superuser creation applies and validates administrative flags.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when superuser privileges are configured incorrectly.
+        """
+        user: User = User.objects.create_superuser(
+            email="admin@example.com",
+            password="valid-password",
+            first_name="Keebox",
+            last_name="Admin",
+        )
+
+        self.assertTrue(user.is_staff)
+        self.assertTrue(user.is_superuser)
+
+        with self.assertRaisesMessage(ValueError, "is_staff=True"):
+            User.objects.create_superuser(
+                email="invalid@example.com",
+                password="valid-password",
+                is_staff=False,
+            )
