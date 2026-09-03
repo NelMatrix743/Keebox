@@ -5,6 +5,8 @@ description = "Backend application for Keebox."
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "argon2-cffi>=25.1.0",
+    "cryptography>=50.0.1",
     "django>=6.1",
     "django-mongodb-backend>=6.1.0",
     "django-ninja>=1.6.3",
