@@ -1,9 +1,112 @@
 import uuid
 from typing import Any, ClassVar, Self
 
+from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
 from django.db import models as md
 
+
+
+class UserManager(BaseUserManager):
+    """Create Keebox users whose email address is their login identifier."""
+
+    use_in_migrations: bool = True
+
+    def _create_user(
+        self: Self,
+        email: str,
+        password: str,
+        **extra_fields: Any,
+    ) -> User:
+        """
+        Create and persist a Keebox user with normalized credentials.
+
+        Args:
+            email:
+                Email address used as the account login identifier.
+            password:
+                Raw account password to hash before persistence.
+            **extra_fields:
+                Additional custom user model field values.
+
+        Returns:
+            The newly persisted Keebox user.
+
+        Raises:
+            ValueError: Raised when the email address or password is 
+            missing.
+        """
+        if not email:
+            raise ValueError("The email address is required.")
+        if not password:
+            raise ValueError("The password is required.")
+
+        normalized_email: str = self.normalize_email(email.strip()).casefold()
+        user: User = self.model(email=normalized_email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_user(
+        self: Self,
+        email: str,
+        password: str,
+        **extra_fields: Any,
+    ) -> User:
+        """
+        Create and persist a regular Keebox user.
+
+        Args:
+            email:
+                Email address used as the account login identifier.
+            password:
+                Raw account password to hash before persistence.
+            **extra_fields:
+                Additional custom user model field values.
+
+        Returns:
+            The newly persisted regular user.
+
+        Raises:
+            ValueError: Raised when required credentials are missing.
+        """
+        extra_fields.setdefault("is_staff", False)
+        extra_fields.setdefault("is_superuser", False)
+        return self._create_user(email, password, **extra_fields)
+
+    def create_superuser(
+        self: Self,
+        email: str,
+        password: str,
+        **extra_fields: Any,
+    ) -> User:
+        """
+        Create and persist a Keebox administrative user.
+
+        Args:
+            email:
+                Email address used as the administrator login identifier.
+            password:
+                Raw administrator password to hash before persistence.
+            **extra_fields:
+                Additional custom user model field values.
+
+        Returns:
+            The newly persisted administrative user.
+
+        Raises:
+            ValueError: Raised when credentials or privilege flags are 
+            invalid.
+        """
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("A superuser must have is_staff=True.")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("A superuser must have is_superuser=True.")
+
+        return self._create_user(email, password, **extra_fields)
 
 
 class User(AbstractUser):
@@ -28,3 +131,5 @@ class User(AbstractUser):
 
     USERNAME_FIELD: str = "email"
     REQUIRED_FIELDS: ClassVar[list[str]] = ["first_name", "last_name"]
+
+    objects: UserManager = UserManager()
