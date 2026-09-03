@@ -129,3 +129,32 @@ class UserModelTests(TestCase):
                 password="valid-password",
                 is_staff=False,
             )
+
+    def test_user_has_keebox_security_fields(self: Self) -> None:
+        """
+        Verify every user can store the server PIN and protected KBKey metadata.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a required Keebox security field is missing.
+        """
+        user = User(
+            email="nelson@example.com",
+            first_name="Nelson",
+            last_name="Matrix",
+            pin_hash="encoded-pin-hash",
+            encrypted_kbkey=b"encrypted-kbkey",
+            kbkey_nonce=b"twelve-bytes",
+        )
+
+        self.assertIsInstance(user.id, UUID)
+        self.assertEqual(user.pin_hash, "encoded-pin-hash")
+        self.assertEqual(user.pin_version, 0)
+        self.assertEqual(user.encrypted_kbkey, b"encrypted-kbkey")
+        self.assertEqual(user.kbkey_nonce, b"twelve-bytes")
+        self.assertEqual(user.kbkey_encryption_version, 1)
