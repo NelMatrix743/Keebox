@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "django>=6.1",
+    "django-mongodb-backend>=6.1.0",
     "django-ninja>=1.6.3",
     "django-ninja-jwt>=5.4.5",
 ]
