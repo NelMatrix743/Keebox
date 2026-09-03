@@ -8,6 +8,7 @@ dependencies = [
     "argon2-cffi>=25.1.0",
     "cryptography>=50.0.1",
     "django>=6.1",
+    "django-environ>=0.14.0",
     "django-mongodb-backend>=6.1.0",
     "django-ninja>=1.6.3",
     "django-ninja-jwt>=5.4.5",
