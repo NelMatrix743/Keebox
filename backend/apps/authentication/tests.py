@@ -32,3 +32,25 @@ class UserModelTests(TestCase):
         self.assertEqual(app_config.name, "apps.authentication")
         self.assertIn("apps.authentication", settings.INSTALLED_APPS)
         self.assertEqual(settings.AUTH_USER_MODEL, "authentication.User")
+
+    def test_user_uses_email_as_its_login_identifier(
+        self: Self,
+    ) -> None:
+        """
+        Verify the custom user authenticates by a unique normalized email.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the email authentication contract is invalid.
+        """
+        self.assertEqual(User.USERNAME_FIELD, "email")
+        self.assertEqual(User.REQUIRED_FIELDS, ["first_name", "last_name"])
+        self.assertTrue(User._meta.get_field("email").unique)
+
+        with self.assertRaises(FieldDoesNotExist):
+            User._meta.get_field("username")
