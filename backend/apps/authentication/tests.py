@@ -391,6 +391,43 @@ class OTPVerificationModelTests(TestCase):
         otp_verification.consumed_at = current_time
         self.assertTrue(otp_verification.is_consumed())
 
+    def test_otp_verification_allows_only_active_attempts(self: Self) -> None:
+        """
+        Verify attempts require pending, unexpired, below-limit OTP state.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an unusable OTP permits verification.
+        """
+        current_time: datetime = timezone.now()
+        otp_verification: OTPVerification = OTPVerification(
+            email="nelmatrix155@gmail.com",
+            expires_at=current_time + timedelta(minutes=1),
+        )
+
+        with patch(
+            "apps.authentication.models.timezone.now",
+            return_value=current_time,
+        ):
+            self.assertTrue(otp_verification.can_attempt_verification())
+
+            otp_verification.attempt_count = OTP_MAX_ATTEMPTS
+            self.assertFalse(otp_verification.can_attempt_verification())
+
+            otp_verification.attempt_count = 0
+            otp_verification.status = OTPStatus.CONSUMED
+            self.assertFalse(otp_verification.can_attempt_verification())
+
+            otp_verification.status = OTPStatus.PENDING
+            otp_verification.expires_at = current_time
+            self.assertFalse(otp_verification.can_attempt_verification())
+
+
     def test_registration_challenge_owns_multiple_otp_verifications(
         self: Self,
     ) -> None:
