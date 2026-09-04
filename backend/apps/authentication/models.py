@@ -331,6 +331,22 @@ class OTPVerification(md.Model):
             raise ValueError("The OTP code is required.")
         self.code_hash = make_password(raw_code)
 
+    def verify_otp_code(self: Self, raw_code: str) -> bool:
+        """
+        Compare a raw OTP code with the stored code hash.
+
+        Args:
+            self: Current OTP verification instance.
+            raw_code: Raw OTP code to verify.
+
+        Returns:
+            True when the OTP code matches; otherwise, False.
+
+        Raises:
+            None.
+        """
+        return check_password(raw_code, self.code_hash)
+
     class Meta:
         db_table: str = "otp_verifications"
         ordering: ClassVar[list[str]] = ["-created_at"]
