@@ -11,7 +11,12 @@ from django.db import models as md
 from django.utils import timezone
 
 from apps.core.choices import OTPStatus, RegistrationStatus
-from apps.core.constants import OTP_MAX_ATTEMPTS, OTP_TTL, REGISTRATION_CHALLENGE_TTL
+from apps.core.constants import (
+    OTP_MAX_ATTEMPTS,
+    OTP_MAX_RESENDS,
+    OTP_TTL,
+    REGISTRATION_CHALLENGE_TTL,
+)
 
 
 
@@ -375,11 +380,7 @@ class OTPVerification(md.Model):
         Raises:
             None.
         """
-        return self.status == (
-            OTPStatus.CONSUMED
-            or 
-            self.consumed_at is not None
-        )
+        return self.status == OTPStatus.CONSUMED or self.consumed_at is not None
 
     def can_attempt_verification(self: Self) -> bool:
         """
@@ -403,3 +404,23 @@ class OTPVerification(md.Model):
     class Meta:
         db_table: str = "otp_verifications"
         ordering: ClassVar[list[str]] = ["-created_at"]
+        constraints: ClassVar[list[md.CheckConstraint]] = [
+            md.CheckConstraint(
+                condition=md.Q(attempt_count__lte=OTP_MAX_ATTEMPTS),
+                name="otp_attempt_count_within_limit",
+            ),
+            md.CheckConstraint(
+                condition=md.Q(resend_count__lte=OTP_MAX_RESENDS),
+                name="otp_resend_count_within_limit",
+            ),
+            md.CheckConstraint(
+                condition=(
+                    md.Q(status=OTPStatus.CONSUMED, consumed_at__isnull=False)
+                    | (
+                        ~md.Q(status=OTPStatus.CONSUMED)
+                        & md.Q(consumed_at__isnull=True)
+                    )
+                ),
+                name="otp_consumed_state_consistent",
+            ),
+        ]
