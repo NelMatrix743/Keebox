@@ -347,6 +347,21 @@ class OTPVerification(md.Model):
         """
         return check_password(raw_code, self.code_hash)
 
+    def is_expired(self: Self) -> bool:
+        """
+        Determine whether the OTP verification has reached its expiration.
+
+        Args:
+            self: Current OTP verification instance.
+
+        Returns:
+            True when the server time is at or beyond the expiration time.
+
+        Raises:
+            None.
+        """
+        return timezone.now() >= self.expires_at
+
     class Meta:
         db_table: str = "otp_verifications"
         ordering: ClassVar[list[str]] = ["-created_at"]
