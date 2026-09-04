@@ -353,6 +353,44 @@ class OTPVerificationModelTests(TestCase):
         with self.assertRaisesMessage(ValueError, "OTP code is required"):
             otp_verification.hash_and_set_otp_code("")
 
+    def test_otp_verification_reports_expiration_and_consumption(
+        self: Self,
+    ) -> None:
+        """
+        Verify OTP expiration and consumption state checks.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when OTP state is evaluated incorrectly.
+        """
+        current_time: datetime = timezone.now()
+        otp_verification: OTPVerification = OTPVerification(
+            email="nelmatrix155@gmail.com",
+            expires_at=current_time,
+        )
+
+        with patch(
+            "apps.authentication.models.timezone.now",
+            return_value=current_time,
+        ):
+            self.assertTrue(otp_verification.is_expired())
+
+            otp_verification.expires_at = current_time + timedelta(microseconds=1)
+            self.assertFalse(otp_verification.is_expired())
+
+        self.assertFalse(otp_verification.is_consumed())
+        otp_verification.status = OTPStatus.CONSUMED
+        self.assertTrue(otp_verification.is_consumed())
+
+        otp_verification.status = OTPStatus.PENDING
+        otp_verification.consumed_at = current_time
+        self.assertTrue(otp_verification.is_consumed())
+
     def test_registration_challenge_owns_multiple_otp_verifications(
         self: Self,
     ) -> None:
