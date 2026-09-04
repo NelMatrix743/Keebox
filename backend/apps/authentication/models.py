@@ -174,6 +174,10 @@ class User(AbstractUser):
 
     objects: UserManager = UserManager()
 
+    class Meta(AbstractUser.Meta):
+        db_table: str = "keebox_users"
+        ordering: ClassVar[list[str]] = ["-date_joined"]
+
 
 
 class RegistrationChallenge(md.Model):
@@ -183,7 +187,7 @@ class RegistrationChallenge(md.Model):
 
     first_name: md.CharField = md.CharField(max_length=150)
     last_name: md.CharField = md.CharField(max_length=150)
-    email: md.EmailField = md.EmailField(unique=True)
+    email: md.EmailField = md.EmailField()
     password_hash: md.CharField = md.CharField(max_length=128)
 
     status: md.CharField = md.CharField(
@@ -270,6 +274,10 @@ class RegistrationChallenge(md.Model):
         self.email = BaseUserManager.normalize_email(self.email.strip()).casefold()
         super().save(*args, **kwargs)
 
+    class Meta:
+        db_table: str = "auth_registration_challenge"
+        ordering: ClassVar[list[str]] = ["-created_at"]
+
 
 
 class OTPVerification(md.Model):
@@ -304,3 +312,7 @@ class OTPVerification(md.Model):
 
     created_at: md.DateTimeField = md.DateTimeField(auto_now_add=True)
     updated_at: md.DateTimeField = md.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table: str = "otp_verifications"
+        ordering: ClassVar[list[str]] = ["-created_at"]
