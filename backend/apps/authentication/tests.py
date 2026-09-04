@@ -204,6 +204,38 @@ class UserModelTests(TestCase):
         self.assertEqual(user.kbkey_encryption_version, 1)
 
 
+class RegistrationChallengeModelTests(TestCase):
+    def test_registration_challenge_allows_repeated_email_attempts(
+        self: Self,
+    ) -> None:
+        """
+        Verify one email address can own multiple registration attempts.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when repeated registration attempts are rejected.
+        """
+        for attempt_number in range(2):
+            challenge: RegistrationChallenge = RegistrationChallenge(
+                first_name="Nelson",
+                last_name="Ubochiegbu",
+                email="Nelmatrix155@gmail.com",
+            )
+            challenge.set_password(f"valid-password-{attempt_number}")
+            challenge.save()
+
+        self.assertEqual(
+            RegistrationChallenge.objects.filter(
+                email="nelmatrix155@gmail.com",
+            ).count(),
+            2,
+        )
+
     def test_registration_challenge_stores_protected_registration_data(
         self: Self,
     ) -> None:
