@@ -224,3 +224,33 @@ class RegistrationChallengeModelTests(TestCase):
 
         with self.assertRaisesMessage(ValueError, "password is required"):
             challenge.set_password("")
+
+    def test_registration_challenge_starts_pending_and_expires_from_constant(
+        self: Self,
+    ) -> None:
+        """
+        Verify a new registration has the initial state and fixed lifetime.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when registration defaults are invalid.
+        """
+        creation_started: datetime = timezone.now()
+        challenge: RegistrationChallenge = RegistrationChallenge(
+            first_name="Nelson",
+            last_name="Ubochiegbu",
+            email="nelmatrix155@gmail.com",
+        )
+
+        self.assertEqual(challenge.status, RegistrationStatus.OTP_PENDING)
+        self.assertIsNone(challenge.completed_at)
+        self.assertAlmostEqual(
+            challenge.expires_at,
+            creation_started + REGISTRATION_CHALLENGE_TTL,
+            delta=timedelta(seconds=1),
+        )
