@@ -3,6 +3,7 @@ from typing import ClassVar
 
 import django.utils.timezone
 from django.db import migrations, models
+import django.db.models.deletion
 from django.db.migrations.operations.base import Operation
 
 import apps.authentication.models
@@ -61,6 +62,23 @@ class Migration(migrations.Migration):
                 ('completed_at', models.DateTimeField(blank=True, null=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
+            ],
+        ),
+        migrations.CreateModel(
+            name='OTPVerification',
+            fields=[
+                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('email', models.EmailField(max_length=254)),
+                ('code_hash', models.CharField(max_length=128)),
+                ('status', models.CharField(choices=[('pending', 'Pending'), ('consumed', 'Consumed'), ('expired', 'Expired'), ('locked', 'Locked')], default='pending', max_length=20)),
+                ('attempt_count', models.PositiveSmallIntegerField(default=0)),
+                ('resend_count', models.PositiveSmallIntegerField(default=0)),
+                ('last_sent_at', models.DateTimeField(default=django.utils.timezone.now)),
+                ('expires_at', models.DateTimeField(default=apps.authentication.models.otp_verification_expiration)),
+                ('consumed_at', models.DateTimeField(blank=True, null=True)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
+                ('registration_challenge', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='otp_verifications', to='authentication.registrationchallenge')),
             ],
         ),
     ]
