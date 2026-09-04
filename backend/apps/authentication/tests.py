@@ -198,3 +198,29 @@ class RegistrationChallengeModelTests(TestCase):
         self.assertTrue(challenge.check_password("correct horse battery staple"))
         self.assertFalse(challenge.check_password("incorrect password"))
 
+    def test_registration_challenge_rejects_missing_credentials(
+        self: Self,
+    ) -> None:
+        """
+        Verify a pending registration rejects missing email and password values.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when incomplete credentials are accepted.
+        """
+        challenge: RegistrationChallenge = RegistrationChallenge(
+            first_name="Nelson",
+            last_name="Ubochiegbu",
+            email="",
+        )
+
+        with self.assertRaisesMessage(ValueError, "email address is required"):
+            challenge.save()
+
+        with self.assertRaisesMessage(ValueError, "password is required"):
+            challenge.set_password("")
