@@ -24,6 +24,12 @@
 - Add end-to-end tests when complete user-facing backend flows become testable.
 - A feature is incomplete until its required tests exist and pass.
 
+## Django Migration Management
+
+- Keep exactly one migration file, `0001_initial.py`, in each Django app, excluding `__init__.py`.
+- Fold every model change into the app's existing `0001_initial.py` migration.
+- Never create or retain a second numbered migration file in an app.
+
 ## Python Typing and Documentation
 
 - Use explicit type annotations throughout the Python codebase.
