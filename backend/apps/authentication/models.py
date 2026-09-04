@@ -11,7 +11,7 @@ from django.db import models as md
 from django.utils import timezone
 
 from apps.core.choices import OTPStatus, RegistrationStatus
-from apps.core.constants import OTP_TTL, REGISTRATION_CHALLENGE_TTL
+from apps.core.constants import OTP_MAX_ATTEMPTS, OTP_TTL, REGISTRATION_CHALLENGE_TTL
 
 
 
@@ -292,7 +292,7 @@ class OTPVerification(md.Model):
     )
 
     email: md.EmailField = md.EmailField()
-    
+
     code_hash: md.CharField = md.CharField(max_length=128)
 
     status: md.CharField = md.CharField(
@@ -312,6 +312,24 @@ class OTPVerification(md.Model):
 
     created_at: md.DateTimeField = md.DateTimeField(auto_now_add=True)
     updated_at: md.DateTimeField = md.DateTimeField(auto_now=True)
+
+    def hash_and_set_otp_code(self: Self, raw_code: str) -> None:
+        """
+        Hash and assign an OTP code for later verification.
+
+        Args:
+            self: Current OTP verification instance.
+            raw_code: Raw OTP code to protect before persistence.
+
+        Returns:
+            None: This method updates the OTP verification in memory.
+
+        Raises:
+            ValueError: Raised when the OTP code is empty.
+        """
+        if not raw_code:
+            raise ValueError("The OTP code is required.")
+        self.code_hash = make_password(raw_code)
 
     class Meta:
         db_table: str = "otp_verifications"
