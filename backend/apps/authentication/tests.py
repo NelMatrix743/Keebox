@@ -479,6 +479,31 @@ class OTPVerificationModelTests(TestCase):
                 attempt_count=OTP_MAX_ATTEMPTS + 1,
             )
 
+    def test_otp_verification_rejects_resend_count_above_limit(
+        self: Self,
+    ) -> None:
+        """
+        Verify the database rejects OTP resend counts above the limit.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an excessive resend count is accepted.
+        """
+        challenge: RegistrationChallenge = self._create_registration_challenge()
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            OTPVerification.objects.create(
+                registration_challenge=challenge,
+                email=challenge.email,
+                code_hash="encoded-code-hash",
+                resend_count=OTP_MAX_RESENDS + 1,
+            )
+
     def test_registration_challenge_owns_multiple_otp_verifications(
         self: Self,
     ) -> None:
