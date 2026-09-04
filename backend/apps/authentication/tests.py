@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Self
+from unittest.mock import patch
 from uuid import UUID
 
 from django.apps import AppConfig, apps
@@ -10,8 +11,8 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
-from apps.core.choices import RegistrationStatus
-from apps.core.constants import REGISTRATION_CHALLENGE_TTL
+from apps.core.choices import OTPStatus, RegistrationStatus
+from apps.core.constants import OTP_MAX_ATTEMPTS, REGISTRATION_CHALLENGE_TTL
 
 
 
@@ -325,6 +326,33 @@ class RegistrationChallengeModelTests(TestCase):
 
 
 class OTPVerificationModelTests(TestCase):
+    def test_otp_verification_hashes_and_checks_codes(self: Self) -> None:
+        """
+        Verify OTP codes are hashed and can be checked without raw persistence.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when OTP code protection behaves incorrectly.
+        """
+        otp_verification: OTPVerification = OTPVerification(
+            email="nelmatrix155@gmail.com",
+        )
+
+        otp_verification.hash_and_set_otp_code("123456")
+
+        self.assertNotEqual(otp_verification.code_hash, "123456")
+        identify_hasher(otp_verification.code_hash)
+        self.assertTrue(otp_verification.verify_otp_code("123456"))
+        self.assertFalse(otp_verification.verify_otp_code("654321"))
+
+        with self.assertRaisesMessage(ValueError, "OTP code is required"):
+            otp_verification.hash_and_set_otp_code("")
+
     def test_registration_challenge_owns_multiple_otp_verifications(
         self: Self,
     ) -> None:
