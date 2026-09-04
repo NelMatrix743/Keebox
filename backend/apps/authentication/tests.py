@@ -504,6 +504,39 @@ class OTPVerificationModelTests(TestCase):
                 resend_count=OTP_MAX_RESENDS + 1,
             )
 
+    def test_otp_verification_requires_consumed_state_consistency(
+        self: Self,
+    ) -> None:
+        """
+        Verify consumed status and timestamp must always agree.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an inconsistent consumed state is accepted.
+        """
+        challenge: RegistrationChallenge = self._create_registration_challenge()
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            OTPVerification.objects.create(
+                registration_challenge=challenge,
+                email=challenge.email,
+                code_hash="encoded-code-hash",
+                status=OTPStatus.CONSUMED,
+            )
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            OTPVerification.objects.create(
+                registration_challenge=challenge,
+                email=challenge.email,
+                code_hash="encoded-code-hash",
+                consumed_at=timezone.now(),
+            )
+
     def test_registration_challenge_owns_multiple_otp_verifications(
         self: Self,
     ) -> None:
