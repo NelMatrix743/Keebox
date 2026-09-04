@@ -362,6 +362,25 @@ class OTPVerification(md.Model):
         """
         return timezone.now() >= self.expires_at
 
+    def is_consumed(self: Self) -> bool:
+        """
+        Determine whether the OTP verification has already been consumed.
+
+        Args:
+            self: Current OTP verification instance.
+
+        Returns:
+            True when the consumed state or timestamp is present.
+
+        Raises:
+            None.
+        """
+        return self.status == (
+            OTPStatus.CONSUMED
+            or 
+            self.consumed_at is not None
+        )
+
     class Meta:
         db_table: str = "otp_verifications"
         ordering: ClassVar[list[str]] = ["-created_at"]
