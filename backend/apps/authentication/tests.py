@@ -10,12 +10,51 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
-from apps.core.choices import OTPStatus, RegistrationStatus
-from apps.core.constants import OTP_TTL, REGISTRATION_CHALLENGE_TTL
+from apps.core.choices import RegistrationStatus
+from apps.core.constants import REGISTRATION_CHALLENGE_TTL
 
 
 
 class UserModelTests(TestCase):
+
+    def test_authentication_models_define_database_metadata(
+        self: Self,
+    ) -> None:
+        """
+        Verify authentication models define tables, ordering, and uniqueness.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when model metadata is configured incorrectly.
+        """
+        self.assertEqual(User._meta.db_table, "keebox_users")
+        self.assertEqual(User._meta.ordering, ["-date_joined"])
+        self.assertTrue(User._meta.get_field("email").unique)
+
+        self.assertEqual(
+            RegistrationChallenge._meta.db_table,
+            "auth_registration_challenge",
+        )
+        self.assertEqual(RegistrationChallenge._meta.ordering, ["-created_at"])
+        self.assertFalse(RegistrationChallenge._meta.get_field("email").unique)
+        self.assertNotIn(
+            "unique_registration_challenge_email",
+            {
+                constraint.name
+                for constraint in RegistrationChallenge._meta.constraints
+            },
+        )
+
+        self.assertEqual(
+            OTPVerification._meta.db_table,
+            "otp_verifications",
+        )
+        self.assertEqual(OTPVerification._meta.ordering, ["-created_at"])
 
     def test_authentication_app_and_user_model_are_configured(
         self: Self,
@@ -165,7 +204,6 @@ class UserModelTests(TestCase):
         self.assertEqual(user.kbkey_encryption_version, 1)
 
 
-class RegistrationChallengeModelTests(TestCase):
     def test_registration_challenge_stores_protected_registration_data(
         self: Self,
     ) -> None:
@@ -191,7 +229,6 @@ class RegistrationChallengeModelTests(TestCase):
 
         self.assertIsInstance(challenge.id, UUID)
         self.assertEqual(challenge.email, "nelmatrix155@gmail.com")
-        self.assertTrue(RegistrationChallenge._meta.get_field("email").unique)
         self.assertNotEqual(challenge.password_hash, "correct horse battery staple")
         identify_hasher(challenge.password_hash)
         self.assertTrue(challenge.check_password("correct horse battery staple"))
