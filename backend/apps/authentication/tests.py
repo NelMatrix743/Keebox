@@ -7,12 +7,17 @@ from django.apps import AppConfig, apps
 from django.conf import settings
 from django.contrib.auth.hashers import identify_hasher
 from django.core.exceptions import FieldDoesNotExist
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.utils import timezone
 
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
 from apps.core.choices import OTPStatus, RegistrationStatus
-from apps.core.constants import OTP_MAX_ATTEMPTS, REGISTRATION_CHALLENGE_TTL
+from apps.core.constants import (
+    OTP_MAX_ATTEMPTS,
+    OTP_MAX_RESENDS,
+    REGISTRATION_CHALLENGE_TTL,
+)
 
 
 
@@ -326,6 +331,28 @@ class RegistrationChallengeModelTests(TestCase):
 
 
 class OTPVerificationModelTests(TestCase):
+    def _create_registration_challenge(self: Self) -> RegistrationChallenge:
+        """
+        Create a persisted registration challenge for OTP model tests.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            A persisted registration challenge with protected credentials.
+
+        Raises:
+            ValueError: Raised when the test credentials are invalid.
+        """
+        challenge: RegistrationChallenge = RegistrationChallenge(
+            first_name="Nelson",
+            last_name="Ubochiegbu",
+            email="nelmatrix155@gmail.com",
+        )
+        challenge.set_password("correct horse battery staple")
+        challenge.save()
+        return challenge
+
     def test_otp_verification_hashes_and_checks_codes(self: Self) -> None:
         """
         Verify OTP codes are hashed and can be checked without raw persistence.
@@ -427,6 +454,30 @@ class OTPVerificationModelTests(TestCase):
             otp_verification.expires_at = current_time
             self.assertFalse(otp_verification.can_attempt_verification())
 
+    def test_otp_verification_rejects_attempt_count_above_limit(
+        self: Self,
+    ) -> None:
+        """
+        Verify the database rejects OTP attempt counts above the limit.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an excessive attempt count is accepted.
+        """
+        challenge: RegistrationChallenge = self._create_registration_challenge()
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            OTPVerification.objects.create(
+                registration_challenge=challenge,
+                email=challenge.email,
+                code_hash="encoded-code-hash",
+                attempt_count=OTP_MAX_ATTEMPTS + 1,
+            )
 
     def test_registration_challenge_owns_multiple_otp_verifications(
         self: Self,
