@@ -89,6 +89,11 @@ class Migration(migrations.Migration):
             options={
                 'db_table': 'otp_verifications',
                 'ordering': ['-created_at'],
+                'constraints': [
+                    models.CheckConstraint(condition=models.Q(attempt_count__lte=5), name='otp_attempt_count_within_limit'),
+                    models.CheckConstraint(condition=models.Q(resend_count__lte=3), name='otp_resend_count_within_limit'),
+                    models.CheckConstraint(condition=(models.Q(status='consumed', consumed_at__isnull=False) | (~models.Q(status='consumed') & models.Q(consumed_at__isnull=True))), name='otp_consumed_state_consistent'),
+                ],
             },
         ),
     ]
