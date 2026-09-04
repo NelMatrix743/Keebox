@@ -43,6 +43,8 @@ class Migration(migrations.Migration):
             options={
                 'verbose_name': 'user',
                 'verbose_name_plural': 'users',
+                'db_table': 'keebox_users',
+                'ordering': ['-date_joined'],
                 'abstract': False,
             },
             managers=[
@@ -55,7 +57,7 @@ class Migration(migrations.Migration):
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ('first_name', models.CharField(max_length=150)),
                 ('last_name', models.CharField(max_length=150)),
-                ('email', models.EmailField(max_length=254, unique=True)),
+                ('email', models.EmailField(max_length=254)),
                 ('password_hash', models.CharField(max_length=128)),
                 ('status', models.CharField(choices=[('otp_pending', 'OTP pending'), ('otp_verified', 'OTP verified'), ('completed', 'Completed'), ('expired', 'Expired'), ('cancelled', 'Cancelled')], default='otp_pending', max_length=20)),
                 ('expires_at', models.DateTimeField(default=apps.authentication.models.registration_challenge_expiration)),
@@ -63,6 +65,10 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
             ],
+            options={
+                'db_table': 'auth_registration_challenge',
+                'ordering': ['-created_at'],
+            },
         ),
         migrations.CreateModel(
             name='OTPVerification',
@@ -80,5 +86,9 @@ class Migration(migrations.Migration):
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('registration_challenge', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='otp_verifications', to='authentication.registrationchallenge')),
             ],
+            options={
+                'db_table': 'otp_verifications',
+                'ordering': ['-created_at'],
+            },
         ),
     ]
