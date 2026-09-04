@@ -269,3 +269,38 @@ class RegistrationChallenge(md.Model):
 
         self.email = BaseUserManager.normalize_email(self.email.strip()).casefold()
         super().save(*args, **kwargs)
+
+
+
+class OTPVerification(md.Model):
+    """Represent one OTP verification attempt owned by an authentication challenge."""
+
+    id: md.UUIDField = md.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    registration_challenge: md.ForeignKey = md.ForeignKey(
+        RegistrationChallenge,
+        on_delete=md.CASCADE,
+        related_name="otp_verifications",
+    )
+
+    email: md.EmailField = md.EmailField()
+    
+    code_hash: md.CharField = md.CharField(max_length=128)
+
+    status: md.CharField = md.CharField(
+        max_length=20,
+        choices=OTPStatus.choices,
+        default=OTPStatus.PENDING,
+    )
+
+    attempt_count: md.PositiveSmallIntegerField = md.PositiveSmallIntegerField(default=0)
+    resend_count: md.PositiveSmallIntegerField = md.PositiveSmallIntegerField(default=0)
+
+    last_sent_at: md.DateTimeField = md.DateTimeField(default=timezone.now)
+    expires_at: md.DateTimeField = md.DateTimeField(
+        default=otp_verification_expiration,
+    )
+    consumed_at: md.DateTimeField = md.DateTimeField(null=True, blank=True)
+
+    created_at: md.DateTimeField = md.DateTimeField(auto_now_add=True)
+    updated_at: md.DateTimeField = md.DateTimeField(auto_now=True)
