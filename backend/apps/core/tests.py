@@ -1,8 +1,10 @@
+from datetime import timedelta
 from typing import Self
 
 from django.test import SimpleTestCase
 
 from apps.core.choices import RegistrationStatus
+from apps.core.constants import REGISTRATION_CHALLENGE_TTL
 
 
 
@@ -32,3 +34,22 @@ class RegistrationStatusTests(SimpleTestCase):
                 ("cancelled", "Cancelled"),
             ],
         )
+
+
+class AuthenticationConstantTests(SimpleTestCase):
+    def test_registration_challenge_ttl_is_thirty_minutes(
+        self: Self,
+    ) -> None:
+        """
+        Verify pending registrations expire after exactly thirty minutes.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the registration lifetime changes.
+        """
+        self.assertEqual(REGISTRATION_CHALLENGE_TTL, timedelta(minutes=30))
