@@ -201,3 +201,19 @@ class RegistrationChallenge(md.Model):
 
         self.password_hash = make_password(raw_password)
 
+    def check_password(self: Self, raw_password: str) -> bool:
+        """
+        Compare a raw password with the stored registration password hash.
+
+        Args:
+            self: Current registration challenge instance.
+            raw_password: Raw account password to verify.
+
+        Returns:
+            True when the password matches; otherwise, False.
+
+        Raises:
+            None.
+        """
+        return check_password(raw_password, self.password_hash)
+
