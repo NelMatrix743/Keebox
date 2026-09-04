@@ -1,11 +1,30 @@
-from __future__ import annotations
-
 import uuid
+from datetime import datetime
 from typing import Any, ClassVar, Self
 
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
 from django.db import models as md
+from django.utils import timezone
+
+from apps.core.constants import REGISTRATION_CHALLENGE_TTL
+
+
+
+def registration_challenge_expiration() -> datetime:
+    """
+    Calculate the fixed expiration time for a new registration challenge.
+
+    Args:
+        None.
+
+    Returns:
+        The server timestamp thirty minutes after challenge creation.
+
+    Raises:
+        None.
+    """
+    return timezone.now() + REGISTRATION_CHALLENGE_TTL
 
 
 
@@ -135,3 +154,4 @@ class User(AbstractUser):
     REQUIRED_FIELDS: ClassVar[list[str]] = ["first_name", "last_name"]
 
     objects: UserManager = UserManager()
+
