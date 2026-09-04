@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from typing import Self
-from unittest.mock import patch
 from uuid import UUID
 
 from django.apps import AppConfig, apps
@@ -10,9 +9,9 @@ from django.core.exceptions import FieldDoesNotExist
 from django.test import TestCase
 from django.utils import timezone
 
-from apps.authentication.models import RegistrationChallenge, User
-from apps.core.choices import RegistrationStatus
-from apps.core.constants import REGISTRATION_CHALLENGE_TTL
+from apps.authentication.models import OTPVerification, RegistrationChallenge, User
+from apps.core.choices import OTPStatus, RegistrationStatus
+from apps.core.constants import OTP_TTL, REGISTRATION_CHALLENGE_TTL
 
 
 
@@ -254,3 +253,48 @@ class RegistrationChallengeModelTests(TestCase):
             creation_started + REGISTRATION_CHALLENGE_TTL,
             delta=timedelta(seconds=1),
         )
+
+
+class OTPVerificationModelTests(TestCase):
+    def test_registration_challenge_owns_multiple_otp_verifications(
+        self: Self,
+    ) -> None:
+        """
+        Verify a registration challenge owns multiple cascading OTP records.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when OTP ownership is configured incorrectly.
+        """
+        challenge: RegistrationChallenge = RegistrationChallenge(
+            first_name="Nelson",
+            last_name="Ubochiegbu",
+            email="nelmatrix155@gmail.com",
+        )
+        challenge.set_password("correct horse battery staple")
+        challenge.save()
+
+        first_otp: OTPVerification = OTPVerification.objects.create(
+            registration_challenge=challenge,
+            email=challenge.email,
+            code_hash="first-code-hash",
+        )
+        second_otp: OTPVerification = OTPVerification.objects.create(
+            registration_challenge=challenge,
+            email=challenge.email,
+            code_hash="second-code-hash",
+        )
+
+        self.assertIsInstance(first_otp.id, UUID)
+        self.assertEqual(first_otp.registration_challenge_id, challenge.id)
+        self.assertEqual(second_otp.registration_challenge_id, challenge.id)
+        self.assertEqual(challenge.otp_verifications.count(), 2)
+
+        challenge.delete()
+
+        self.assertFalse(OTPVerification.objects.exists())
