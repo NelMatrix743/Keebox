@@ -217,3 +217,17 @@ class RegistrationChallenge(md.Model):
         """
         return check_password(raw_password, self.password_hash)
 
+    def is_expired(self: Self) -> bool:
+        """
+        Determine whether the registration challenge has reached its expiration.
+
+        Args:
+            self: Current registration challenge instance.
+
+        Returns:
+            True when the server time is at or beyond the expiration time.
+
+        Raises:
+            None.
+        """
+        return timezone.now() >= self.expires_at
