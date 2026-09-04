@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
 from typing import Any, ClassVar, Self
@@ -8,8 +10,13 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models as md
 from django.utils import timezone
 
-from apps.core.choices import RegistrationStatus
-from apps.core.constants import REGISTRATION_CHALLENGE_TTL
+from apps.core.choices import OTPStatus, RegistrationStatus
+from apps.core.constants import (
+    OTP_MAX_ATTEMPTS,
+    OTP_MAX_RESENDS,
+    OTP_TTL,
+    REGISTRATION_CHALLENGE_TTL,
+)
 
 
 
@@ -28,6 +35,21 @@ def registration_challenge_expiration() -> datetime:
     """
     return timezone.now() + REGISTRATION_CHALLENGE_TTL
 
+
+def otp_verification_expiration() -> datetime:
+    """
+    Calculate the fixed expiration time for a new OTP verification.
+
+    Args:
+        None.
+
+    Returns:
+        The server timestamp five minutes after OTP creation.
+
+    Raises:
+        None.
+    """
+    return timezone.now() + OTP_TTL
 
 
 class UserManager(BaseUserManager):
@@ -157,6 +179,10 @@ class User(AbstractUser):
 
     objects: UserManager = UserManager()
 
+    class Meta(AbstractUser.Meta):
+        db_table: str = "keebox_users"
+        ordering: ClassVar[list[str]] = ["-date_joined"]
+
 
 
 class RegistrationChallenge(md.Model):
@@ -166,7 +192,7 @@ class RegistrationChallenge(md.Model):
 
     first_name: md.CharField = md.CharField(max_length=150)
     last_name: md.CharField = md.CharField(max_length=150)
-    email: md.EmailField = md.EmailField(unique=True)
+    email: md.EmailField = md.EmailField()
     password_hash: md.CharField = md.CharField(max_length=128)
 
     status: md.CharField = md.CharField(
@@ -252,3 +278,149 @@ class RegistrationChallenge(md.Model):
 
         self.email = BaseUserManager.normalize_email(self.email.strip()).casefold()
         super().save(*args, **kwargs)
+
+    class Meta:
+        db_table: str = "auth_registration_challenge"
+        ordering: ClassVar[list[str]] = ["-created_at"]
+
+
+
+class OTPVerification(md.Model):
+    """Represent one OTP verification attempt owned by an authentication challenge."""
+
+    id: md.UUIDField = md.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    registration_challenge: md.ForeignKey = md.ForeignKey(
+        RegistrationChallenge,
+        on_delete=md.CASCADE,
+        related_name="otp_verifications",
+    )
+
+    email: md.EmailField = md.EmailField()
+
+    code_hash: md.CharField = md.CharField(max_length=128)
+
+    status: md.CharField = md.CharField(
+        max_length=20,
+        choices=OTPStatus.choices,
+        default=OTPStatus.PENDING,
+    )
+
+    attempt_count: md.PositiveSmallIntegerField = md.PositiveSmallIntegerField(default=0)
+    resend_count: md.PositiveSmallIntegerField = md.PositiveSmallIntegerField(default=0)
+
+    last_sent_at: md.DateTimeField = md.DateTimeField(default=timezone.now)
+    expires_at: md.DateTimeField = md.DateTimeField(
+        default=otp_verification_expiration,
+    )
+    consumed_at: md.DateTimeField = md.DateTimeField(null=True, blank=True)
+
+    created_at: md.DateTimeField = md.DateTimeField(auto_now_add=True)
+    updated_at: md.DateTimeField = md.DateTimeField(auto_now=True)
+
+    def hash_and_set_otp_code(self: Self, raw_code: str) -> None:
+        """
+        Hash and assign an OTP code for later verification.
+
+        Args:
+            self: Current OTP verification instance.
+            raw_code: Raw OTP code to protect before persistence.
+
+        Returns:
+            None: This method updates the OTP verification in memory.
+
+        Raises:
+            ValueError: Raised when the OTP code is empty.
+        """
+        if not raw_code:
+            raise ValueError("The OTP code is required.")
+        self.code_hash = make_password(raw_code)
+
+    def verify_otp_code(self: Self, raw_code: str) -> bool:
+        """
+        Compare a raw OTP code with the stored code hash.
+
+        Args:
+            self: Current OTP verification instance.
+            raw_code: Raw OTP code to verify.
+
+        Returns:
+            True when the OTP code matches; otherwise, False.
+
+        Raises:
+            None.
+        """
+        return check_password(raw_code, self.code_hash)
+
+    def is_expired(self: Self) -> bool:
+        """
+        Determine whether the OTP verification has reached its expiration.
+
+        Args:
+            self: Current OTP verification instance.
+
+        Returns:
+            True when the server time is at or beyond the expiration time.
+
+        Raises:
+            None.
+        """
+        return timezone.now() >= self.expires_at
+
+    def is_consumed(self: Self) -> bool:
+        """
+        Determine whether the OTP verification has already been consumed.
+
+        Args:
+            self: Current OTP verification instance.
+
+        Returns:
+            True when the consumed state or timestamp is present.
+
+        Raises:
+            None.
+        """
+        return self.status == OTPStatus.CONSUMED or self.consumed_at is not None
+
+    def can_attempt_verification(self: Self) -> bool:
+        """
+        Determine whether another OTP verification attempt is permitted.
+
+        Args:
+            self: Current OTP verification instance.
+
+        Returns:
+            True when the OTP is pending, unexpired, and below its attempt limit.
+
+        Raises:
+            None.
+        """
+        return (
+            self.status == OTPStatus.PENDING
+            and not self.is_expired()
+            and self.attempt_count < OTP_MAX_ATTEMPTS
+        )
+
+    class Meta:
+        db_table: str = "otp_verifications"
+        ordering: ClassVar[list[str]] = ["-created_at"]
+        constraints: ClassVar[list[md.CheckConstraint]] = [
+            md.CheckConstraint(
+                condition=md.Q(attempt_count__lte=OTP_MAX_ATTEMPTS),
+                name="otp_attempt_count_within_limit",
+            ),
+            md.CheckConstraint(
+                condition=md.Q(resend_count__lte=OTP_MAX_RESENDS),
+                name="otp_resend_count_within_limit",
+            ),
+            md.CheckConstraint(
+                condition=(
+                    md.Q(status=OTPStatus.CONSUMED, consumed_at__isnull=False)
+                    | (
+                        ~md.Q(status=OTPStatus.CONSUMED)
+                        & md.Q(consumed_at__isnull=True)
+                    )
+                ),
+                name="otp_consumed_state_consistent",
+            ),
+        ]
