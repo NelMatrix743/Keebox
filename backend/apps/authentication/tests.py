@@ -1,12 +1,18 @@
-from uuid import UUID
+from datetime import datetime, timedelta
 from typing import Self
+from unittest.mock import patch
+from uuid import UUID
 
 from django.apps import AppConfig, apps
 from django.conf import settings
+from django.contrib.auth.hashers import identify_hasher
 from django.core.exceptions import FieldDoesNotExist
 from django.test import TestCase
+from django.utils import timezone
 
-from apps.authentication.models import User
+from apps.authentication.models import RegistrationChallenge, User
+from apps.core.choices import RegistrationStatus
+from apps.core.constants import REGISTRATION_CHALLENGE_TTL
 
 
 
@@ -158,3 +164,93 @@ class UserModelTests(TestCase):
         self.assertEqual(user.encrypted_kbkey, b"encrypted-kbkey")
         self.assertEqual(user.kbkey_nonce, b"twelve-bytes")
         self.assertEqual(user.kbkey_encryption_version, 1)
+
+
+class RegistrationChallengeModelTests(TestCase):
+    def test_registration_challenge_stores_protected_registration_data(
+        self: Self,
+    ) -> None:
+        """
+        Verify a pending registration normalizes and protects its credentials.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when registration data is stored incorrectly.
+        """
+        challenge: RegistrationChallenge = RegistrationChallenge(
+            first_name="Nelson",
+            last_name="Ubochiegbu",
+            email="  Nelmatrix155@gmail.COM  ",
+        )
+        challenge.set_password("correct horse battery staple")
+        challenge.save()
+
+        self.assertIsInstance(challenge.id, UUID)
+        self.assertEqual(challenge.email, "nelmatrix155@gmail.com")
+        self.assertTrue(RegistrationChallenge._meta.get_field("email").unique)
+        self.assertNotEqual(challenge.password_hash, "correct horse battery staple")
+        identify_hasher(challenge.password_hash)
+        self.assertTrue(challenge.check_password("correct horse battery staple"))
+        self.assertFalse(challenge.check_password("incorrect password"))
+
+    def test_registration_challenge_rejects_missing_credentials(
+        self: Self,
+    ) -> None:
+        """
+        Verify a pending registration rejects missing email and password values.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when incomplete credentials are accepted.
+        """
+        challenge: RegistrationChallenge = RegistrationChallenge(
+            first_name="Nelson",
+            last_name="Ubochiegbu",
+            email="",
+        )
+
+        with self.assertRaisesMessage(ValueError, "email address is required"):
+            challenge.save()
+
+        with self.assertRaisesMessage(ValueError, "password is required"):
+            challenge.set_password("")
+
+    def test_registration_challenge_starts_pending_and_expires_from_constant(
+        self: Self,
+    ) -> None:
+        """
+        Verify a new registration has the initial state and fixed lifetime.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when registration defaults are invalid.
+        """
+        creation_started: datetime = timezone.now()
+        challenge: RegistrationChallenge = RegistrationChallenge(
+            first_name="Nelson",
+            last_name="Ubochiegbu",
+            email="nelmatrix155@gmail.com",
+        )
+
+        self.assertEqual(challenge.status, RegistrationStatus.OTP_PENDING)
+        self.assertIsNone(challenge.completed_at)
+        self.assertAlmostEqual(
+            challenge.expires_at,
+            creation_started + REGISTRATION_CHALLENGE_TTL,
+            delta=timedelta(seconds=1),
+        )

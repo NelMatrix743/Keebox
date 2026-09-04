@@ -1,7 +1,9 @@
 import uuid
+from typing import ClassVar
 
 import django.utils.timezone
 from django.db import migrations, models
+from django.db.migrations.operations.base import Operation
 
 import apps.authentication.models
 
@@ -9,13 +11,13 @@ import apps.authentication.models
 
 class Migration(migrations.Migration):
 
-    initial = True
+    initial: bool = True
 
-    dependencies = [
+    dependencies: ClassVar[list[tuple[str, str]]] = [
         ('auth', '0012_alter_user_first_name_max_length'),
     ]
 
-    operations = [
+    operations: ClassVar[list[Operation]] = [
         migrations.CreateModel(
             name='User',
             fields=[
@@ -44,6 +46,21 @@ class Migration(migrations.Migration):
             },
             managers=[
                 ('objects', apps.authentication.models.UserManager()),
+            ],
+        ),
+        migrations.CreateModel(
+            name='RegistrationChallenge',
+            fields=[
+                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('first_name', models.CharField(max_length=150)),
+                ('last_name', models.CharField(max_length=150)),
+                ('email', models.EmailField(max_length=254, unique=True)),
+                ('password_hash', models.CharField(max_length=128)),
+                ('status', models.CharField(choices=[('otp_pending', 'OTP pending'), ('otp_verified', 'OTP verified'), ('completed', 'Completed'), ('expired', 'Expired'), ('cancelled', 'Cancelled')], default='otp_pending', max_length=20)),
+                ('expires_at', models.DateTimeField(default=apps.authentication.models.registration_challenge_expiration)),
+                ('completed_at', models.DateTimeField(blank=True, null=True)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
             ],
         ),
     ]
