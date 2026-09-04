@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 from typing import Any, ClassVar, Self
 
@@ -33,7 +35,7 @@ class UserManager(BaseUserManager):
             The newly persisted Keebox user.
 
         Raises:
-            ValueError: Raised when the email address or password is 
+            ValueError: Raised when the email address or password is
             missing.
         """
         if not email:
@@ -95,7 +97,7 @@ class UserManager(BaseUserManager):
             The newly persisted administrative user.
 
         Raises:
-            ValueError: Raised when credentials or privilege flags are 
+            ValueError: Raised when credentials or privilege flags are
             invalid.
         """
         extra_fields.setdefault("is_staff", True)
