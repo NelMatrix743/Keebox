@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
 from typing import Any, ClassVar, Self
@@ -8,8 +10,8 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models as md
 from django.utils import timezone
 
-from apps.core.choices import RegistrationStatus
-from apps.core.constants import REGISTRATION_CHALLENGE_TTL
+from apps.core.choices import OTPStatus, RegistrationStatus
+from apps.core.constants import OTP_TTL, REGISTRATION_CHALLENGE_TTL
 
 
 
@@ -28,6 +30,21 @@ def registration_challenge_expiration() -> datetime:
     """
     return timezone.now() + REGISTRATION_CHALLENGE_TTL
 
+
+def otp_verification_expiration() -> datetime:
+    """
+    Calculate the fixed expiration time for a new OTP verification.
+
+    Args:
+        None.
+
+    Returns:
+        The server timestamp five minutes after OTP creation.
+
+    Raises:
+        None.
+    """
+    return timezone.now() + OTP_TTL
 
 
 class UserManager(BaseUserManager):
