@@ -381,6 +381,25 @@ class OTPVerification(md.Model):
             self.consumed_at is not None
         )
 
+    def can_attempt_verification(self: Self) -> bool:
+        """
+        Determine whether another OTP verification attempt is permitted.
+
+        Args:
+            self: Current OTP verification instance.
+
+        Returns:
+            True when the OTP is pending, unexpired, and below its attempt limit.
+
+        Raises:
+            None.
+        """
+        return (
+            self.status == OTPStatus.PENDING
+            and not self.is_expired()
+            and self.attempt_count < OTP_MAX_ATTEMPTS
+        )
+
     class Meta:
         db_table: str = "otp_verifications"
         ordering: ClassVar[list[str]] = ["-created_at"]
