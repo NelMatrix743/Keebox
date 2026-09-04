@@ -231,3 +231,24 @@ class RegistrationChallenge(md.Model):
             None.
         """
         return timezone.now() >= self.expires_at
+
+    def save(self: Self, *args: Any, **kwargs: Any) -> None:
+        """
+        Normalize the registration email before persisting the challenge.
+
+        Args:
+            self: Current registration challenge instance.
+            *args: Positional arguments forwarded to Django's model save method.
+            **kwargs: Keyword arguments forwarded to Django's model save method.
+
+        Returns:
+            None: This method persists the challenge.
+
+        Raises:
+            ValueError: Raised when the email address is empty.
+        """
+        if not self.email:
+            raise ValueError("The email address is required.")
+
+        self.email = BaseUserManager.normalize_email(self.email.strip()).casefold()
+        super().save(*args, **kwargs)
