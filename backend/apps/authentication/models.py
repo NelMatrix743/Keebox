@@ -182,3 +182,22 @@ class RegistrationChallenge(md.Model):
     created_at: md.DateTimeField = md.DateTimeField(auto_now_add=True)
     updated_at: md.DateTimeField = md.DateTimeField(auto_now=True)
 
+    def set_password(self: Self, raw_password: str) -> None:
+        """
+        Hash and assign the pending account password.
+
+        Args:
+            self: Current registration challenge instance.
+            raw_password: Raw account password supplied during registration.
+
+        Returns:
+            None: This method updates the challenge in memory.
+
+        Raises:
+            ValueError: Raised when the password is empty.
+        """
+        if not raw_password:
+            raise ValueError("The password is required.")
+
+        self.password_hash = make_password(raw_password)
+
