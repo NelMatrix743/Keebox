@@ -5,6 +5,7 @@ from django.test import SimpleTestCase
 
 from apps.core.choices import OTPStatus, RegistrationStatus
 from apps.core.constants import (
+    OTP_CODE_LENGTH,
     OTP_MAX_ATTEMPTS,
     OTP_MAX_RESENDS,
     OTP_RESEND_COOLDOWN,
@@ -102,6 +103,8 @@ class AuthenticationConstantTests(SimpleTestCase):
         Raises:
             AssertionError: Raised when an OTP policy constant changes.
         """
+        self.assertIsInstance(OTP_CODE_LENGTH, int)
+        self.assertEqual(OTP_CODE_LENGTH, 6)
         self.assertEqual(OTP_TTL, timedelta(minutes=5))
         self.assertEqual(OTP_RESEND_COOLDOWN, timedelta(seconds=60))
         self.assertEqual(OTP_MAX_ATTEMPTS, 5)
