@@ -115,6 +115,41 @@ class OTPIssuanceServiceTests(TestCase):
         self.assertEqual(otp_verification.status, OTPStatus.PENDING)
         self.assertEqual(OTPVerification.objects.count(), 1)
 
+    def test_issue_registration_otp_expires_older_pending_records(
+        self: Self,
+    ) -> None:
+        """
+        Verify issuance preserves history while invalidating older pending OTPs.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an older pending OTP remains active.
+        """
+        challenge: RegistrationChallenge = self._create_registration_challenge()
+        previous_otp: OTPVerification = OTPVerification(
+            registration_challenge=challenge,
+            email=challenge.email,
+        )
+        previous_otp.hash_and_set_otp_code("111111")
+        previous_otp.save()
+
+        with patch(
+            "apps.authentication.services.generate_otp_code",
+            return_value="222222",
+        ):
+            current_otp, raw_code = issue_registration_otp(challenge.id)
+
+        previous_otp.refresh_from_db()
+        self.assertEqual(previous_otp.status, OTPStatus.EXPIRED)
+        self.assertEqual(current_otp.status, OTPStatus.PENDING)
+        self.assertEqual(raw_code, "222222")
+        self.assertEqual(challenge.otp_verifications.count(), 2)
+
 class OTPServiceExceptionTests(SimpleTestCase):
     def test_otp_service_exceptions_share_a_common_base(self: Self) -> None:
         """
