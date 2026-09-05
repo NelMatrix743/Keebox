@@ -8,9 +8,19 @@ from django.conf import settings
 from django.contrib.auth.hashers import identify_hasher
 from django.core.exceptions import FieldDoesNotExist
 from django.db import IntegrityError, transaction
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 
+from apps.authentication.exceptions import (
+    ConsumedOTPError,
+    ExpiredOTPError,
+    InvalidOTPError,
+    InvalidRegistrationStateError,
+    LockedOTPError,
+    OTPResendCooldownError,
+    OTPResendLimitError,
+    OTPServiceError,
+)
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
 from apps.core.choices import OTPStatus, RegistrationStatus
 from apps.core.constants import (
@@ -19,6 +29,38 @@ from apps.core.constants import (
     REGISTRATION_CHALLENGE_TTL,
 )
 
+
+
+class OTPServiceExceptionTests(SimpleTestCase):
+    def test_otp_service_exceptions_share_a_common_base(self: Self) -> None:
+        """
+        Verify every OTP service failure can be handled through one base type.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an exception has the wrong inheritance.
+        """
+        exception_types: tuple[type[OTPServiceError], ...] = (
+            InvalidOTPError,
+            ExpiredOTPError,
+            ConsumedOTPError,
+            LockedOTPError,
+            OTPResendCooldownError,
+            OTPResendLimitError,
+            InvalidRegistrationStateError,
+        )
+
+        self.assertTrue(
+            all(
+                issubclass(exception_type, OTPServiceError)
+                for exception_type in exception_types
+            ),
+        )
 
 
 class UserModelTests(TestCase):
