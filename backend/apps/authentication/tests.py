@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Self
 from unittest.mock import patch
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from django.apps import AppConfig, apps
 from django.conf import settings
@@ -22,7 +22,7 @@ from apps.authentication.exceptions import (
     OTPServiceError,
 )
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
-from apps.authentication.services import generate_otp_code
+from apps.authentication.services import generate_otp_code, issue_registration_otp
 from apps.core.choices import OTPStatus, RegistrationStatus
 from apps.core.constants import (
     OTP_CODE_LENGTH,
@@ -60,6 +60,60 @@ class OTPCodeGenerationTests(SimpleTestCase):
         self.assertTrue(otp_code.isdigit())
         mocked_randbelow.assert_called_once_with(10**OTP_CODE_LENGTH)
 
+
+class OTPIssuanceServiceTests(TestCase):
+    def _create_registration_challenge(self: Self) -> RegistrationChallenge:
+        """
+        Create a persisted pending registration for OTP issuance tests.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            A persisted pending registration challenge.
+
+        Raises:
+            ValueError: Raised when the test credentials are invalid.
+        """
+        challenge: RegistrationChallenge = RegistrationChallenge(
+            first_name="Nelson",
+            last_name="Ubochiegbu",
+            email="nelmatrix155@gmail.com",
+        )
+        challenge.set_password("correct horse battery staple")
+        challenge.save()
+        return challenge
+
+    def test_issue_registration_otp_hashes_and_returns_the_raw_code(
+        self: Self,
+    ) -> None:
+        """
+        Verify initial OTP issuance persists only the protected code.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when OTP issuance stores incorrect data.
+        """
+        challenge: RegistrationChallenge = self._create_registration_challenge()
+
+        with patch(
+            "apps.authentication.services.generate_otp_code",
+            return_value="012345",
+        ):
+            otp_verification, raw_code = issue_registration_otp(challenge.id)
+
+        self.assertEqual(raw_code, "012345")
+        self.assertNotEqual(otp_verification.code_hash, raw_code)
+        self.assertTrue(otp_verification.verify_otp_code(raw_code))
+        self.assertEqual(otp_verification.registration_challenge, challenge)
+        self.assertEqual(otp_verification.email, challenge.email)
+        self.assertEqual(otp_verification.status, OTPStatus.PENDING)
+        self.assertEqual(OTPVerification.objects.count(), 1)
 
 class OTPServiceExceptionTests(SimpleTestCase):
     def test_otp_service_exceptions_share_a_common_base(self: Self) -> None:
