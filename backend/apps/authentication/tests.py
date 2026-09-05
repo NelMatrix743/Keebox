@@ -174,6 +174,31 @@ class OTPIssuanceServiceTests(TestCase):
 
         self.assertFalse(OTPVerification.objects.exists())
 
+    def test_issue_registration_otp_rejects_expired_or_missing_registration(
+        self: Self,
+    ) -> None:
+        """
+        Verify OTP issuance rejects expired and unknown registrations.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when unusable registration ownership is accepted.
+        """
+        challenge: RegistrationChallenge = self._create_registration_challenge()
+        challenge.expires_at = timezone.now() - timedelta(microseconds=1)
+        challenge.save(update_fields=["expires_at", "updated_at"])
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            issue_registration_otp(challenge.id)
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            issue_registration_otp(uuid4())
+
 class OTPServiceExceptionTests(SimpleTestCase):
     def test_otp_service_exceptions_share_a_common_base(self: Self) -> None:
         """
