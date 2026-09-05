@@ -22,13 +22,43 @@ from apps.authentication.exceptions import (
     OTPServiceError,
 )
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
+from apps.authentication.services import generate_otp_code
 from apps.core.choices import OTPStatus, RegistrationStatus
 from apps.core.constants import (
+    OTP_CODE_LENGTH,
     OTP_MAX_ATTEMPTS,
     OTP_MAX_RESENDS,
     REGISTRATION_CHALLENGE_TTL,
 )
 
+
+
+class OTPCodeGenerationTests(SimpleTestCase):
+    def test_generate_otp_code_returns_six_secure_numeric_characters(
+        self: Self,
+    ) -> None:
+        """
+        Verify OTP generation uses secure randomness and preserves leading zeroes.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when generated OTP formatting is invalid.
+        """
+        with patch(
+            "apps.authentication.services.secrets.randbelow",
+            return_value=42,
+        ) as mocked_randbelow:
+            otp_code: str = generate_otp_code()
+
+        self.assertEqual(otp_code, "000042")
+        self.assertEqual(len(otp_code), OTP_CODE_LENGTH)
+        self.assertTrue(otp_code.isdigit())
+        mocked_randbelow.assert_called_once_with(10**OTP_CODE_LENGTH)
 
 
 class OTPServiceExceptionTests(SimpleTestCase):
