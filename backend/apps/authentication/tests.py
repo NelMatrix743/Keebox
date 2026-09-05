@@ -199,6 +199,47 @@ class OTPIssuanceServiceTests(TestCase):
         with self.assertRaises(InvalidRegistrationStateError):
             issue_registration_otp(uuid4())
 
+    def test_issue_registration_otp_rolls_back_previous_invalidation(
+        self: Self,
+    ) -> None:
+        """
+        Verify failed OTP creation restores the previously pending OTP.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when issuance changes are not atomic.
+        """
+        challenge: RegistrationChallenge = self._create_registration_challenge()
+        previous_otp: OTPVerification = OTPVerification(
+            registration_challenge=challenge,
+            email=challenge.email,
+        )
+        previous_otp.hash_and_set_otp_code("111111")
+        previous_otp.save()
+
+        with (
+            patch(
+                "apps.authentication.services.generate_otp_code",
+                return_value="222222",
+            ),
+            patch.object(
+                OTPVerification,
+                "save",
+                side_effect=RuntimeError("simulated persistence failure"),
+            ),
+            self.assertRaises(RuntimeError),
+        ):
+            issue_registration_otp(challenge.id)
+
+        previous_otp.refresh_from_db()
+        self.assertEqual(previous_otp.status, OTPStatus.PENDING)
+        self.assertEqual(challenge.otp_verifications.count(), 1)
+
 class OTPServiceExceptionTests(SimpleTestCase):
     def test_otp_service_exceptions_share_a_common_base(self: Self) -> None:
         """
