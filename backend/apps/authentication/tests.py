@@ -150,6 +150,30 @@ class OTPIssuanceServiceTests(TestCase):
         self.assertEqual(raw_code, "222222")
         self.assertEqual(challenge.otp_verifications.count(), 2)
 
+    def test_issue_registration_otp_rejects_an_invalid_registration_state(
+        self: Self,
+    ) -> None:
+        """
+        Verify OTP issuance requires a pending registration challenge.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an invalid registration state is accepted.
+        """
+        challenge: RegistrationChallenge = self._create_registration_challenge()
+        challenge.status = RegistrationStatus.OTP_VERIFIED
+        challenge.save(update_fields=["status", "updated_at"])
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            issue_registration_otp(challenge.id)
+
+        self.assertFalse(OTPVerification.objects.exists())
+
 class OTPServiceExceptionTests(SimpleTestCase):
     def test_otp_service_exceptions_share_a_common_base(self: Self) -> None:
         """
