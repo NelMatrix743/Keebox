@@ -277,6 +277,36 @@ class OTPResendServiceTests(TestCase):
         otp_verification.save()
         return challenge, otp_verification
 
+    def test_resend_registration_otp_creates_a_replacement(self: Self) -> None:
+        """
+        Verify a resend expires the old OTP and creates a protected replacement.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when replacement OTP issuance is incorrect.
+        """
+        challenge, previous_otp = self._create_registration_with_otp()
+
+        with patch(
+            "apps.authentication.services.generate_otp_code",
+            return_value="222222",
+        ):
+            replacement_otp, raw_code = resend_registration_otp(challenge.id)
+
+        challenge.refresh_from_db()
+        previous_otp.refresh_from_db()
+        self.assertEqual(challenge.resend_count, 1)
+        self.assertEqual(previous_otp.status, OTPStatus.EXPIRED)
+        self.assertEqual(replacement_otp.status, OTPStatus.PENDING)
+        self.assertTrue(replacement_otp.verify_otp_code(raw_code))
+        self.assertEqual(raw_code, "222222")
+        self.assertEqual(challenge.otp_verifications.count(), 2)
+
 class OTPServiceExceptionTests(SimpleTestCase):
     def test_otp_service_exceptions_share_a_common_base(self: Self) -> None:
         """
