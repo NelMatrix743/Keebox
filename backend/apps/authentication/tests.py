@@ -573,6 +573,7 @@ class RegistrationChallengeModelTests(TestCase):
         )
 
         self.assertEqual(challenge.status, RegistrationStatus.OTP_PENDING)
+        self.assertEqual(challenge.resend_count, 0)
         self.assertIsNone(challenge.completed_at)
         self.assertAlmostEqual(
             challenge.expires_at,
@@ -730,11 +731,11 @@ class OTPVerificationModelTests(TestCase):
                 attempt_count=OTP_MAX_ATTEMPTS + 1,
             )
 
-    def test_otp_verification_rejects_resend_count_above_limit(
+    def test_registration_challenge_rejects_resend_count_above_limit(
         self: Self,
     ) -> None:
         """
-        Verify the database rejects OTP resend counts above the limit.
+        Verify the database rejects registration resend counts above the limit.
 
         Args:
             self: Current test case instance.
@@ -748,12 +749,26 @@ class OTPVerificationModelTests(TestCase):
         challenge: RegistrationChallenge = self._create_registration_challenge()
 
         with self.assertRaises(IntegrityError), transaction.atomic():
-            OTPVerification.objects.create(
-                registration_challenge=challenge,
-                email=challenge.email,
-                code_hash="encoded-code-hash",
-                resend_count=OTP_MAX_RESENDS + 1,
-            )
+            challenge.resend_count = OTP_MAX_RESENDS + 1
+            challenge.save(update_fields=["resend_count"])
+
+    def test_otp_verification_does_not_own_registration_resend_count(
+        self: Self,
+    ) -> None:
+        """
+        Verify individual OTP records do not track registration resends.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the OTP model owns a resend counter.
+        """
+        with self.assertRaises(FieldDoesNotExist):
+            OTPVerification._meta.get_field("resend_count")
 
     def test_otp_verification_requires_consumed_state_consistency(
         self: Self,
