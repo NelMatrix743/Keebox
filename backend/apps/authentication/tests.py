@@ -307,6 +307,32 @@ class OTPResendServiceTests(TestCase):
         self.assertEqual(raw_code, "222222")
         self.assertEqual(challenge.otp_verifications.count(), 2)
 
+    def test_resend_registration_otp_enforces_the_cooldown(self: Self) -> None:
+        """
+        Verify a replacement cannot be issued before the cooldown elapses.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an early resend changes persisted state.
+        """
+        challenge, current_otp = self._create_registration_with_otp()
+        current_otp.last_sent_at = timezone.now()
+        current_otp.save(update_fields=["last_sent_at", "updated_at"])
+
+        with self.assertRaises(OTPResendCooldownError):
+            resend_registration_otp(challenge.id)
+
+        challenge.refresh_from_db()
+        current_otp.refresh_from_db()
+        self.assertEqual(challenge.resend_count, 0)
+        self.assertEqual(current_otp.status, OTPStatus.PENDING)
+        self.assertEqual(challenge.otp_verifications.count(), 1)
+
 class OTPServiceExceptionTests(SimpleTestCase):
     def test_otp_service_exceptions_share_a_common_base(self: Self) -> None:
         """
