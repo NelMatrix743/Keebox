@@ -22,12 +22,17 @@ from apps.authentication.exceptions import (
     OTPServiceError,
 )
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
-from apps.authentication.services import generate_otp_code, issue_registration_otp
+from apps.authentication.services import (
+    generate_otp_code,
+    issue_registration_otp,
+    resend_registration_otp,
+)
 from apps.core.choices import OTPStatus, RegistrationStatus
 from apps.core.constants import (
     OTP_CODE_LENGTH,
     OTP_MAX_ATTEMPTS,
     OTP_MAX_RESENDS,
+    OTP_RESEND_COOLDOWN,
     REGISTRATION_CHALLENGE_TTL,
 )
 
@@ -239,6 +244,38 @@ class OTPIssuanceServiceTests(TestCase):
         previous_otp.refresh_from_db()
         self.assertEqual(previous_otp.status, OTPStatus.PENDING)
         self.assertEqual(challenge.otp_verifications.count(), 1)
+
+class OTPResendServiceTests(TestCase):
+    def _create_registration_with_otp(
+        self: Self,
+    ) -> tuple[RegistrationChallenge, OTPVerification]:
+        """
+        Create a pending registration with an OTP eligible for replacement.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            The persisted registration challenge and its current OTP.
+
+        Raises:
+            ValueError: Raised when the test credentials are invalid.
+        """
+        challenge: RegistrationChallenge = RegistrationChallenge(
+            first_name="Nelson",
+            last_name="Ubochiegbu",
+            email="nelmatrix155@gmail.com",
+        )
+        challenge.set_password("correct horse battery staple")
+        challenge.save()
+        otp_verification: OTPVerification = OTPVerification(
+            registration_challenge=challenge,
+            email=challenge.email,
+            last_sent_at=timezone.now() - OTP_RESEND_COOLDOWN,
+        )
+        otp_verification.hash_and_set_otp_code("111111")
+        otp_verification.save()
+        return challenge, otp_verification
 
 class OTPServiceExceptionTests(SimpleTestCase):
     def test_otp_service_exceptions_share_a_common_base(self: Self) -> None:
