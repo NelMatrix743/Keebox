@@ -361,6 +361,44 @@ class OTPResendServiceTests(TestCase):
         self.assertEqual(current_otp.status, OTPStatus.EXPIRED)
         self.assertEqual(challenge.otp_verifications.count(), 1)
 
+    def test_resend_registration_otp_requires_an_active_registration_and_otp(
+        self: Self,
+    ) -> None:
+        """
+        Verify resending requires a pending registration with an issued OTP.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an invalid resend request is accepted.
+        """
+        challenge, current_otp = self._create_registration_with_otp()
+        challenge.status = RegistrationStatus.OTP_VERIFIED
+        challenge.save(update_fields=["status", "updated_at"])
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            resend_registration_otp(challenge.id)
+
+        empty_challenge: RegistrationChallenge = RegistrationChallenge(
+            first_name="Keebox",
+            last_name="User",
+            email="new@example.com",
+        )
+        empty_challenge.set_password("correct horse battery staple")
+        empty_challenge.save()
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            resend_registration_otp(empty_challenge.id)
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            resend_registration_otp(uuid4())
+
+        current_otp.refresh_from_db()
+        self.assertEqual(current_otp.status, OTPStatus.PENDING)
 
 class OTPServiceExceptionTests(SimpleTestCase):
     def test_otp_service_exceptions_share_a_common_base(self: Self) -> None:
