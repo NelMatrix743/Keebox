@@ -23,7 +23,7 @@ class OTPResendCooldownError(OTPServiceError):
 
 
 class OTPResendLimitError(OTPServiceError):
-    """Indicate that an OTP verification reached its resend limit."""
+    """Indicate that a registration challenge reached its OTP resend limit."""
 
 
 class InvalidRegistrationStateError(OTPServiceError):
