@@ -511,6 +511,30 @@ class OTPVerificationServiceTests(TestCase):
         self.assertEqual(otp_verification.attempt_count, OTP_MAX_ATTEMPTS)
         self.assertEqual(otp_verification.status, OTPStatus.LOCKED)
 
+    def test_verify_registration_otp_expires_an_elapsed_otp(self: Self) -> None:
+        """
+        Verify an elapsed OTP is marked expired before rejection.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when elapsed OTP state is not persisted.
+        """
+        challenge, otp_verification = self._create_registration_with_otp()
+        otp_verification.expires_at = timezone.now() - timedelta(microseconds=1)
+        otp_verification.save(update_fields=["expires_at", "updated_at"])
+
+        with self.assertRaises(ExpiredOTPError):
+            verify_registration_otp(challenge.id, "123456")
+
+        otp_verification.refresh_from_db()
+        self.assertEqual(otp_verification.status, OTPStatus.EXPIRED)
+        self.assertEqual(otp_verification.attempt_count, 0)
+
 class OTPServiceExceptionTests(SimpleTestCase):
     def test_otp_service_exceptions_share_a_common_base(self: Self) -> None:
         """
