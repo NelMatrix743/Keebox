@@ -200,6 +200,7 @@ class RegistrationChallenge(md.Model):
         choices=RegistrationStatus.choices,
         default=RegistrationStatus.OTP_PENDING,
     )
+    resend_count: md.PositiveSmallIntegerField = md.PositiveSmallIntegerField(default=0)
     expires_at: md.DateTimeField = md.DateTimeField(
         default=registration_challenge_expiration,
     )
@@ -282,6 +283,12 @@ class RegistrationChallenge(md.Model):
     class Meta:
         db_table: str = "auth_registration_challenge"
         ordering: ClassVar[list[str]] = ["-created_at"]
+        constraints: ClassVar[list[md.CheckConstraint]] = [
+            md.CheckConstraint(
+                condition=md.Q(resend_count__lte=OTP_MAX_RESENDS),
+                name="registration_resend_count_within_limit",
+            ),
+        ]
 
 
 
@@ -307,7 +314,6 @@ class OTPVerification(md.Model):
     )
 
     attempt_count: md.PositiveSmallIntegerField = md.PositiveSmallIntegerField(default=0)
-    resend_count: md.PositiveSmallIntegerField = md.PositiveSmallIntegerField(default=0)
 
     last_sent_at: md.DateTimeField = md.DateTimeField(default=timezone.now)
     expires_at: md.DateTimeField = md.DateTimeField(
@@ -408,10 +414,6 @@ class OTPVerification(md.Model):
             md.CheckConstraint(
                 condition=md.Q(attempt_count__lte=OTP_MAX_ATTEMPTS),
                 name="otp_attempt_count_within_limit",
-            ),
-            md.CheckConstraint(
-                condition=md.Q(resend_count__lte=OTP_MAX_RESENDS),
-                name="otp_resend_count_within_limit",
             ),
             md.CheckConstraint(
                 condition=(

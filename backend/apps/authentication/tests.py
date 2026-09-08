@@ -1,24 +1,677 @@
 from datetime import datetime, timedelta
 from typing import Self
 from unittest.mock import patch
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from django.apps import AppConfig, apps
 from django.conf import settings
 from django.contrib.auth.hashers import identify_hasher
 from django.core.exceptions import FieldDoesNotExist
 from django.db import IntegrityError, transaction
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 
+from apps.authentication.exceptions import (
+    ConsumedOTPError,
+    ExpiredOTPError,
+    InvalidOTPError,
+    InvalidRegistrationStateError,
+    LockedOTPError,
+    OTPResendCooldownError,
+    OTPResendLimitError,
+    OTPServiceError,
+)
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
+from apps.authentication.services import (
+    generate_otp_code,
+    issue_registration_otp,
+    resend_registration_otp,
+    verify_registration_otp,
+)
 from apps.core.choices import OTPStatus, RegistrationStatus
 from apps.core.constants import (
+    OTP_CODE_LENGTH,
     OTP_MAX_ATTEMPTS,
     OTP_MAX_RESENDS,
+    OTP_RESEND_COOLDOWN,
     REGISTRATION_CHALLENGE_TTL,
 )
 
+
+
+class OTPCodeGenerationTests(SimpleTestCase):
+    def test_generate_otp_code_returns_six_secure_numeric_characters(
+        self: Self,
+    ) -> None:
+        """
+        Verify OTP generation uses secure randomness and preserves leading zeroes.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when generated OTP formatting is invalid.
+        """
+        with patch(
+            "apps.authentication.services.secrets.randbelow",
+            return_value=42,
+        ) as mocked_randbelow:
+            otp_code: str = generate_otp_code()
+
+        self.assertEqual(otp_code, "000042")
+        self.assertEqual(len(otp_code), OTP_CODE_LENGTH)
+        self.assertTrue(otp_code.isdigit())
+        mocked_randbelow.assert_called_once_with(10**OTP_CODE_LENGTH)
+
+
+class OTPIssuanceServiceTests(TestCase):
+    def _create_registration_challenge(self: Self) -> RegistrationChallenge:
+        """
+        Create a persisted pending registration for OTP issuance tests.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            A persisted pending registration challenge.
+
+        Raises:
+            ValueError: Raised when the test credentials are invalid.
+        """
+        challenge: RegistrationChallenge = RegistrationChallenge(
+            first_name="Nelson",
+            last_name="Ubochiegbu",
+            email="nelmatrix155@gmail.com",
+        )
+        challenge.set_password("correct horse battery staple")
+        challenge.save()
+        return challenge
+
+    def test_issue_registration_otp_hashes_and_returns_the_raw_code(
+        self: Self,
+    ) -> None:
+        """
+        Verify initial OTP issuance persists only the protected code.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when OTP issuance stores incorrect data.
+        """
+        challenge: RegistrationChallenge = self._create_registration_challenge()
+
+        with patch(
+            "apps.authentication.services.generate_otp_code",
+            return_value="012345",
+        ):
+            otp_verification, raw_code = issue_registration_otp(challenge.id)
+
+        self.assertEqual(raw_code, "012345")
+        self.assertNotEqual(otp_verification.code_hash, raw_code)
+        self.assertTrue(otp_verification.verify_otp_code(raw_code))
+        self.assertEqual(otp_verification.registration_challenge, challenge)
+        self.assertEqual(otp_verification.email, challenge.email)
+        self.assertEqual(otp_verification.status, OTPStatus.PENDING)
+        self.assertEqual(OTPVerification.objects.count(), 1)
+
+    def test_issue_registration_otp_expires_older_pending_records(
+        self: Self,
+    ) -> None:
+        """
+        Verify issuance preserves history while invalidating older pending OTPs.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an older pending OTP remains active.
+        """
+        challenge: RegistrationChallenge = self._create_registration_challenge()
+        previous_otp: OTPVerification = OTPVerification(
+            registration_challenge=challenge,
+            email=challenge.email,
+        )
+        previous_otp.hash_and_set_otp_code("111111")
+        previous_otp.save()
+
+        with patch(
+            "apps.authentication.services.generate_otp_code",
+            return_value="222222",
+        ):
+            current_otp, raw_code = issue_registration_otp(challenge.id)
+
+        previous_otp.refresh_from_db()
+        self.assertEqual(previous_otp.status, OTPStatus.EXPIRED)
+        self.assertEqual(current_otp.status, OTPStatus.PENDING)
+        self.assertEqual(raw_code, "222222")
+        self.assertEqual(challenge.otp_verifications.count(), 2)
+
+    def test_issue_registration_otp_rejects_an_invalid_registration_state(
+        self: Self,
+    ) -> None:
+        """
+        Verify OTP issuance requires a pending registration challenge.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an invalid registration state is accepted.
+        """
+        challenge: RegistrationChallenge = self._create_registration_challenge()
+        challenge.status = RegistrationStatus.OTP_VERIFIED
+        challenge.save(update_fields=["status", "updated_at"])
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            issue_registration_otp(challenge.id)
+
+        self.assertFalse(OTPVerification.objects.exists())
+
+    def test_issue_registration_otp_rejects_expired_or_missing_registration(
+        self: Self,
+    ) -> None:
+        """
+        Verify OTP issuance rejects expired and unknown registrations.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when unusable registration ownership is accepted.
+        """
+        challenge: RegistrationChallenge = self._create_registration_challenge()
+        challenge.expires_at = timezone.now() - timedelta(microseconds=1)
+        challenge.save(update_fields=["expires_at", "updated_at"])
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            issue_registration_otp(challenge.id)
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            issue_registration_otp(uuid4())
+
+    def test_issue_registration_otp_rolls_back_previous_invalidation(
+        self: Self,
+    ) -> None:
+        """
+        Verify failed OTP creation restores the previously pending OTP.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when issuance changes are not atomic.
+        """
+        challenge: RegistrationChallenge = self._create_registration_challenge()
+        previous_otp: OTPVerification = OTPVerification(
+            registration_challenge=challenge,
+            email=challenge.email,
+        )
+        previous_otp.hash_and_set_otp_code("111111")
+        previous_otp.save()
+
+        with (
+            patch(
+                "apps.authentication.services.generate_otp_code",
+                return_value="222222",
+            ),
+            patch.object(
+                OTPVerification,
+                "save",
+                side_effect=RuntimeError("simulated persistence failure"),
+            ),
+            self.assertRaises(RuntimeError),
+        ):
+            issue_registration_otp(challenge.id)
+
+        previous_otp.refresh_from_db()
+        self.assertEqual(previous_otp.status, OTPStatus.PENDING)
+        self.assertEqual(challenge.otp_verifications.count(), 1)
+
+class OTPResendServiceTests(TestCase):
+    def _create_registration_with_otp(
+        self: Self,
+    ) -> tuple[RegistrationChallenge, OTPVerification]:
+        """
+        Create a pending registration with an OTP eligible for replacement.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            The persisted registration challenge and its current OTP.
+
+        Raises:
+            ValueError: Raised when the test credentials are invalid.
+        """
+        challenge: RegistrationChallenge = RegistrationChallenge(
+            first_name="Nelson",
+            last_name="Ubochiegbu",
+            email="nelmatrix155@gmail.com",
+        )
+        challenge.set_password("correct horse battery staple")
+        challenge.save()
+        otp_verification: OTPVerification = OTPVerification(
+            registration_challenge=challenge,
+            email=challenge.email,
+            last_sent_at=timezone.now() - OTP_RESEND_COOLDOWN,
+        )
+        otp_verification.hash_and_set_otp_code("111111")
+        otp_verification.save()
+        return challenge, otp_verification
+
+    def test_resend_registration_otp_creates_a_replacement(self: Self) -> None:
+        """
+        Verify a resend expires the old OTP and creates a protected replacement.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when replacement OTP issuance is incorrect.
+        """
+        challenge, previous_otp = self._create_registration_with_otp()
+
+        with patch(
+            "apps.authentication.services.generate_otp_code",
+            return_value="222222",
+        ):
+            replacement_otp, raw_code = resend_registration_otp(challenge.id)
+
+        challenge.refresh_from_db()
+        previous_otp.refresh_from_db()
+        self.assertEqual(challenge.resend_count, 1)
+        self.assertEqual(previous_otp.status, OTPStatus.EXPIRED)
+        self.assertEqual(replacement_otp.status, OTPStatus.PENDING)
+        self.assertTrue(replacement_otp.verify_otp_code(raw_code))
+        self.assertEqual(raw_code, "222222")
+        self.assertEqual(challenge.otp_verifications.count(), 2)
+
+    def test_resend_registration_otp_enforces_the_cooldown(self: Self) -> None:
+        """
+        Verify a replacement cannot be issued before the cooldown elapses.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an early resend changes persisted state.
+        """
+        challenge, current_otp = self._create_registration_with_otp()
+        current_otp.last_sent_at = timezone.now()
+        current_otp.save(update_fields=["last_sent_at", "updated_at"])
+
+        with self.assertRaises(OTPResendCooldownError):
+            resend_registration_otp(challenge.id)
+
+        challenge.refresh_from_db()
+        current_otp.refresh_from_db()
+        self.assertEqual(challenge.resend_count, 0)
+        self.assertEqual(current_otp.status, OTPStatus.PENDING)
+        self.assertEqual(challenge.otp_verifications.count(), 1)
+
+    def test_resend_registration_otp_invalidates_challenge_at_limit(
+        self: Self,
+    ) -> None:
+        """
+        Verify exceeding the resend allowance cancels the registration workflow.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a resend-limit challenge remains active.
+        """
+        challenge, current_otp = self._create_registration_with_otp()
+        challenge.resend_count = OTP_MAX_RESENDS
+        challenge.save(update_fields=["resend_count", "updated_at"])
+
+        with self.assertRaises(OTPResendLimitError):
+            resend_registration_otp(challenge.id)
+
+        challenge.refresh_from_db()
+        current_otp.refresh_from_db()
+        self.assertEqual(challenge.status, RegistrationStatus.CANCELLED)
+        self.assertEqual(current_otp.status, OTPStatus.EXPIRED)
+        self.assertEqual(challenge.otp_verifications.count(), 1)
+
+    def test_resend_registration_otp_requires_an_active_registration_and_otp(
+        self: Self,
+    ) -> None:
+        """
+        Verify resending requires a pending registration with an issued OTP.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an invalid resend request is accepted.
+        """
+        challenge, current_otp = self._create_registration_with_otp()
+        challenge.status = RegistrationStatus.OTP_VERIFIED
+        challenge.save(update_fields=["status", "updated_at"])
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            resend_registration_otp(challenge.id)
+
+        empty_challenge: RegistrationChallenge = RegistrationChallenge(
+            first_name="Keebox",
+            last_name="User",
+            email="new@example.com",
+        )
+        empty_challenge.set_password("correct horse battery staple")
+        empty_challenge.save()
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            resend_registration_otp(empty_challenge.id)
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            resend_registration_otp(uuid4())
+
+        current_otp.refresh_from_db()
+        self.assertEqual(current_otp.status, OTPStatus.PENDING)
+
+
+class OTPVerificationServiceTests(TestCase):
+    def _create_registration_with_otp(
+        self: Self,
+    ) -> tuple[RegistrationChallenge, OTPVerification]:
+        """
+        Create a pending registration with one active OTP verification.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            The persisted registration challenge and active OTP verification.
+
+        Raises:
+            ValueError: Raised when the test credentials or OTP are invalid.
+        """
+        challenge: RegistrationChallenge = RegistrationChallenge(
+            first_name="Nelson",
+            last_name="Ubochiegbu",
+            email="nelmatrix155@gmail.com",
+        )
+        challenge.set_password("correct horse battery staple")
+        challenge.save()
+        otp_verification: OTPVerification = OTPVerification(
+            registration_challenge=challenge,
+            email=challenge.email,
+        )
+        otp_verification.hash_and_set_otp_code("123456")
+        otp_verification.save()
+        return challenge, otp_verification
+
+    def test_verify_registration_otp_consumes_a_valid_code(self: Self) -> None:
+        """
+        Verify a valid code consumes its OTP and verifies the registration.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when successful verification state is invalid.
+        """
+        challenge, otp_verification = self._create_registration_with_otp()
+
+        verified_otp: OTPVerification = verify_registration_otp(
+            challenge.id,
+            "123456",
+        )
+
+        challenge.refresh_from_db()
+        verified_otp.refresh_from_db()
+        self.assertEqual(verified_otp, otp_verification)
+        self.assertEqual(verified_otp.status, OTPStatus.CONSUMED)
+        self.assertIsNotNone(verified_otp.consumed_at)
+        self.assertEqual(verified_otp.attempt_count, 0)
+        self.assertEqual(challenge.status, RegistrationStatus.OTP_VERIFIED)
+
+    def test_verify_registration_otp_counts_an_invalid_code(self: Self) -> None:
+        """
+        Verify an incorrect code consumes one attempt without changing workflow state.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a failed attempt is not persisted correctly.
+        """
+        challenge, otp_verification = self._create_registration_with_otp()
+
+        with self.assertRaises(InvalidOTPError):
+            verify_registration_otp(challenge.id, "654321")
+
+        challenge.refresh_from_db()
+        otp_verification.refresh_from_db()
+        self.assertEqual(otp_verification.attempt_count, 1)
+        self.assertEqual(otp_verification.status, OTPStatus.PENDING)
+        self.assertEqual(challenge.status, RegistrationStatus.OTP_PENDING)
+
+    def test_verify_registration_otp_locks_the_final_failed_attempt(
+        self: Self,
+    ) -> None:
+        """
+        Verify the final permitted failed attempt locks the OTP verification.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the attempt limit does not lock the OTP.
+        """
+        challenge, otp_verification = self._create_registration_with_otp()
+        otp_verification.attempt_count = OTP_MAX_ATTEMPTS - 1
+        otp_verification.save(update_fields=["attempt_count", "updated_at"])
+
+        with self.assertRaises(LockedOTPError):
+            verify_registration_otp(challenge.id, "654321")
+
+        otp_verification.refresh_from_db()
+        self.assertEqual(otp_verification.attempt_count, OTP_MAX_ATTEMPTS)
+        self.assertEqual(otp_verification.status, OTPStatus.LOCKED)
+
+    def test_verify_registration_otp_expires_an_elapsed_otp(self: Self) -> None:
+        """
+        Verify an elapsed OTP is marked expired before rejection.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when elapsed OTP state is not persisted.
+        """
+        challenge, otp_verification = self._create_registration_with_otp()
+        otp_verification.expires_at = timezone.now() - timedelta(microseconds=1)
+        otp_verification.save(update_fields=["expires_at", "updated_at"])
+
+        with self.assertRaises(ExpiredOTPError):
+            verify_registration_otp(challenge.id, "123456")
+
+        otp_verification.refresh_from_db()
+        self.assertEqual(otp_verification.status, OTPStatus.EXPIRED)
+        self.assertEqual(otp_verification.attempt_count, 0)
+
+    def test_verify_registration_otp_rejects_consumed_and_locked_codes(
+        self: Self,
+    ) -> None:
+        """
+        Verify consumed and locked OTP records cannot be verified again.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a terminal OTP state is accepted.
+        """
+        challenge, otp_verification = self._create_registration_with_otp()
+        otp_verification.status = OTPStatus.CONSUMED
+        otp_verification.consumed_at = timezone.now()
+        otp_verification.save(
+            update_fields=["status", "consumed_at", "updated_at"],
+        )
+
+        with self.assertRaises(ConsumedOTPError):
+            verify_registration_otp(challenge.id, "123456")
+
+        otp_verification.status = OTPStatus.LOCKED
+        otp_verification.consumed_at = None
+        otp_verification.save(
+            update_fields=["status", "consumed_at", "updated_at"],
+        )
+
+        with self.assertRaises(LockedOTPError):
+            verify_registration_otp(challenge.id, "123456")
+
+    def test_verify_registration_otp_requires_an_active_registration_and_otp(
+        self: Self,
+    ) -> None:
+        """
+        Verify OTP verification requires an active registration and issued code.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an invalid verification owner is accepted.
+        """
+        challenge, otp_verification = self._create_registration_with_otp()
+        challenge.status = RegistrationStatus.CANCELLED
+        challenge.save(update_fields=["status", "updated_at"])
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            verify_registration_otp(challenge.id, "123456")
+
+        empty_challenge: RegistrationChallenge = RegistrationChallenge(
+            first_name="Keebox",
+            last_name="User",
+            email="new@example.com",
+        )
+        empty_challenge.set_password("correct horse battery staple")
+        empty_challenge.save()
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            verify_registration_otp(empty_challenge.id, "123456")
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            verify_registration_otp(uuid4(), "123456")
+
+        otp_verification.refresh_from_db()
+        self.assertEqual(otp_verification.status, OTPStatus.PENDING)
+
+    def test_verify_registration_otp_rolls_back_success_state_on_failure(
+        self: Self,
+    ) -> None:
+        """
+        Verify a failed registration update restores the active OTP state.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when successful verification is not atomic.
+        """
+        challenge, otp_verification = self._create_registration_with_otp()
+
+        with (
+            patch.object(
+                RegistrationChallenge,
+                "save",
+                side_effect=RuntimeError("simulated persistence failure"),
+            ),
+            self.assertRaises(RuntimeError),
+        ):
+            verify_registration_otp(challenge.id, "123456")
+
+        challenge.refresh_from_db()
+        otp_verification.refresh_from_db()
+        self.assertEqual(challenge.status, RegistrationStatus.OTP_PENDING)
+        self.assertEqual(otp_verification.status, OTPStatus.PENDING)
+        self.assertIsNone(otp_verification.consumed_at)
+
+
+class OTPServiceExceptionTests(SimpleTestCase):
+    def test_otp_service_exceptions_share_a_common_base(self: Self) -> None:
+        """
+        Verify every OTP service failure can be handled through one base type.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an exception has the wrong inheritance.
+        """
+        exception_types: tuple[type[OTPServiceError], ...] = (
+            InvalidOTPError,
+            ExpiredOTPError,
+            ConsumedOTPError,
+            LockedOTPError,
+            OTPResendCooldownError,
+            OTPResendLimitError,
+            InvalidRegistrationStateError,
+        )
+
+        self.assertTrue(
+            all(
+                issubclass(exception_type, OTPServiceError)
+                for exception_type in exception_types
+            ),
+        )
 
 
 class UserModelTests(TestCase):
@@ -322,6 +975,7 @@ class RegistrationChallengeModelTests(TestCase):
         )
 
         self.assertEqual(challenge.status, RegistrationStatus.OTP_PENDING)
+        self.assertEqual(challenge.resend_count, 0)
         self.assertIsNone(challenge.completed_at)
         self.assertAlmostEqual(
             challenge.expires_at,
@@ -479,11 +1133,11 @@ class OTPVerificationModelTests(TestCase):
                 attempt_count=OTP_MAX_ATTEMPTS + 1,
             )
 
-    def test_otp_verification_rejects_resend_count_above_limit(
+    def test_registration_challenge_rejects_resend_count_above_limit(
         self: Self,
     ) -> None:
         """
-        Verify the database rejects OTP resend counts above the limit.
+        Verify the database rejects registration resend counts above the limit.
 
         Args:
             self: Current test case instance.
@@ -497,12 +1151,26 @@ class OTPVerificationModelTests(TestCase):
         challenge: RegistrationChallenge = self._create_registration_challenge()
 
         with self.assertRaises(IntegrityError), transaction.atomic():
-            OTPVerification.objects.create(
-                registration_challenge=challenge,
-                email=challenge.email,
-                code_hash="encoded-code-hash",
-                resend_count=OTP_MAX_RESENDS + 1,
-            )
+            challenge.resend_count = OTP_MAX_RESENDS + 1
+            challenge.save(update_fields=["resend_count"])
+
+    def test_otp_verification_does_not_own_registration_resend_count(
+        self: Self,
+    ) -> None:
+        """
+        Verify individual OTP records do not track registration resends.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the OTP model owns a resend counter.
+        """
+        with self.assertRaises(FieldDoesNotExist):
+            OTPVerification._meta.get_field("resend_count")
 
     def test_otp_verification_requires_consumed_state_consistency(
         self: Self,

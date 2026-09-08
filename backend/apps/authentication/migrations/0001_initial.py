@@ -60,6 +60,7 @@ class Migration(migrations.Migration):
                 ('email', models.EmailField(max_length=254)),
                 ('password_hash', models.CharField(max_length=128)),
                 ('status', models.CharField(choices=[('otp_pending', 'OTP pending'), ('otp_verified', 'OTP verified'), ('completed', 'Completed'), ('expired', 'Expired'), ('cancelled', 'Cancelled')], default='otp_pending', max_length=20)),
+                ('resend_count', models.PositiveSmallIntegerField(default=0)),
                 ('expires_at', models.DateTimeField(default=apps.authentication.models.registration_challenge_expiration)),
                 ('completed_at', models.DateTimeField(blank=True, null=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
@@ -68,6 +69,7 @@ class Migration(migrations.Migration):
             options={
                 'db_table': 'auth_registration_challenge',
                 'ordering': ['-created_at'],
+                'constraints': [models.CheckConstraint(condition=models.Q(resend_count__lte=3), name='registration_resend_count_within_limit')],
             },
         ),
         migrations.CreateModel(
@@ -78,7 +80,6 @@ class Migration(migrations.Migration):
                 ('code_hash', models.CharField(max_length=128)),
                 ('status', models.CharField(choices=[('pending', 'Pending'), ('consumed', 'Consumed'), ('expired', 'Expired'), ('locked', 'Locked')], default='pending', max_length=20)),
                 ('attempt_count', models.PositiveSmallIntegerField(default=0)),
-                ('resend_count', models.PositiveSmallIntegerField(default=0)),
                 ('last_sent_at', models.DateTimeField(default=django.utils.timezone.now)),
                 ('expires_at', models.DateTimeField(default=apps.authentication.models.otp_verification_expiration)),
                 ('consumed_at', models.DateTimeField(blank=True, null=True)),
@@ -91,7 +92,6 @@ class Migration(migrations.Migration):
                 'ordering': ['-created_at'],
                 'constraints': [
                     models.CheckConstraint(condition=models.Q(attempt_count__lte=5), name='otp_attempt_count_within_limit'),
-                    models.CheckConstraint(condition=models.Q(resend_count__lte=3), name='otp_resend_count_within_limit'),
                     models.CheckConstraint(condition=(models.Q(status='consumed', consumed_at__isnull=False) | (~models.Q(status='consumed') & models.Q(consumed_at__isnull=True))), name='otp_consumed_state_consistent'),
                 ],
             },
