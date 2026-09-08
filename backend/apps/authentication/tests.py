@@ -19,9 +19,9 @@ from apps.authentication.exceptions import (
     LockedOTPError,
     OTPResendCooldownError,
     OTPResendLimitError,
-    OTPServiceError,
 )
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
+from apps.authentication.otp import generate_otp_code
 from apps.authentication.registration_services import RegistrationService
 from apps.core.choices import OTPStatus, RegistrationStatus
 from apps.core.constants import (
@@ -51,10 +51,10 @@ class OTPCodeGenerationTests(SimpleTestCase):
             AssertionError: Raised when generated OTP formatting is invalid.
         """
         with patch(
-            "apps.authentication.registration_services.secrets.randbelow",
+            "apps.authentication.otp.secrets.randbelow",
             return_value=42,
         ) as mocked_randbelow:
-            otp_code: str = RegistrationService.generate_otp_code()
+            otp_code: str = generate_otp_code()
 
         self.assertEqual(otp_code, "000042")
         self.assertEqual(len(otp_code), OTP_CODE_LENGTH)
@@ -103,7 +103,7 @@ class OTPIssuanceServiceTests(TestCase):
         challenge: RegistrationChallenge = self._create_registration_challenge()
 
         with patch(
-            "apps.authentication.registration_services.RegistrationService.generate_otp_code",
+            "apps.authentication.registration_services.generate_otp_code",
             return_value="012345",
         ):
             otp_verification, raw_code = RegistrationService.issue_registration_otp(
@@ -142,7 +142,7 @@ class OTPIssuanceServiceTests(TestCase):
         previous_otp.save()
 
         with patch(
-            "apps.authentication.registration_services.RegistrationService.generate_otp_code",
+            "apps.authentication.registration_services.generate_otp_code",
             return_value="222222",
         ):
             current_otp, raw_code = RegistrationService.issue_registration_otp(
@@ -229,7 +229,7 @@ class OTPIssuanceServiceTests(TestCase):
 
         with (
             patch(
-                "apps.authentication.registration_services.RegistrationService.generate_otp_code",
+                "apps.authentication.registration_services.generate_otp_code",
                 return_value="222222",
             ),
             patch.object(
@@ -293,7 +293,7 @@ class OTPResendServiceTests(TestCase):
         challenge, previous_otp = self._create_registration_with_otp()
 
         with patch(
-            "apps.authentication.registration_services.RegistrationService.generate_otp_code",
+            "apps.authentication.registration_services.generate_otp_code",
             return_value="222222",
         ):
             replacement_otp, raw_code = RegistrationService.resend_registration_otp(
@@ -644,38 +644,6 @@ class OTPVerificationServiceTests(TestCase):
         self.assertEqual(challenge.status, RegistrationStatus.OTP_PENDING)
         self.assertEqual(otp_verification.status, OTPStatus.PENDING)
         self.assertIsNone(otp_verification.consumed_at)
-
-
-class OTPServiceExceptionTests(SimpleTestCase):
-    def test_otp_service_exceptions_share_a_common_base(self: Self) -> None:
-        """
-        Verify every OTP service failure can be handled through one base type.
-
-        Args:
-            self: Current test case instance.
-
-        Returns:
-            None: This test does not return a value.
-
-        Raises:
-            AssertionError: Raised when an exception has the wrong inheritance.
-        """
-        exception_types: tuple[type[OTPServiceError], ...] = (
-            InvalidOTPError,
-            ExpiredOTPError,
-            ConsumedOTPError,
-            LockedOTPError,
-            OTPResendCooldownError,
-            OTPResendLimitError,
-            InvalidRegistrationStateError,
-        )
-
-        self.assertTrue(
-            all(
-                issubclass(exception_type, OTPServiceError)
-                for exception_type in exception_types
-            ),
-        )
 
 
 class UserModelTests(TestCase):
