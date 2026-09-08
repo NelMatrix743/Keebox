@@ -26,6 +26,7 @@ from apps.authentication.services import (
     generate_otp_code,
     issue_registration_otp,
     resend_registration_otp,
+    verify_registration_otp,
 )
 from apps.core.choices import OTPStatus, RegistrationStatus
 from apps.core.constants import (
@@ -399,6 +400,66 @@ class OTPResendServiceTests(TestCase):
 
         current_otp.refresh_from_db()
         self.assertEqual(current_otp.status, OTPStatus.PENDING)
+
+
+class OTPVerificationServiceTests(TestCase):
+    def _create_registration_with_otp(
+        self: Self,
+    ) -> tuple[RegistrationChallenge, OTPVerification]:
+        """
+        Create a pending registration with one active OTP verification.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            The persisted registration challenge and active OTP verification.
+
+        Raises:
+            ValueError: Raised when the test credentials or OTP are invalid.
+        """
+        challenge: RegistrationChallenge = RegistrationChallenge(
+            first_name="Nelson",
+            last_name="Ubochiegbu",
+            email="nelmatrix155@gmail.com",
+        )
+        challenge.set_password("correct horse battery staple")
+        challenge.save()
+        otp_verification: OTPVerification = OTPVerification(
+            registration_challenge=challenge,
+            email=challenge.email,
+        )
+        otp_verification.hash_and_set_otp_code("123456")
+        otp_verification.save()
+        return challenge, otp_verification
+
+    def test_verify_registration_otp_consumes_a_valid_code(self: Self) -> None:
+        """
+        Verify a valid code consumes its OTP and verifies the registration.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when successful verification state is invalid.
+        """
+        challenge, otp_verification = self._create_registration_with_otp()
+
+        verified_otp: OTPVerification = verify_registration_otp(
+            challenge.id,
+            "123456",
+        )
+
+        challenge.refresh_from_db()
+        verified_otp.refresh_from_db()
+        self.assertEqual(verified_otp, otp_verification)
+        self.assertEqual(verified_otp.status, OTPStatus.CONSUMED)
+        self.assertIsNotNone(verified_otp.consumed_at)
+        self.assertEqual(verified_otp.attempt_count, 0)
+        self.assertEqual(challenge.status, RegistrationStatus.OTP_VERIFIED)
 
 class OTPServiceExceptionTests(SimpleTestCase):
     def test_otp_service_exceptions_share_a_common_base(self: Self) -> None:
