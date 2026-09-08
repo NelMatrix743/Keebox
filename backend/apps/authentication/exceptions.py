@@ -1,4 +1,20 @@
-class OTPServiceError(Exception):
+class AuthenticationServiceError(Exception):
+    """Represent a failure raised by a Keebox authentication service."""
+
+
+class RegistrationServiceError(AuthenticationServiceError):
+    """Represent a failure raised by the Keebox registration service."""
+
+
+class InvalidRegistrationStateError(RegistrationServiceError):
+    """Indicate that a registration cannot perform the requested operation."""
+
+
+class RegistrationEmailConflictError(RegistrationServiceError):
+    """Indicate that a registration email already belongs to a user."""
+
+
+class OTPServiceError(AuthenticationServiceError):
     """Represent a failure raised by the Keebox OTP service."""
 
 
@@ -24,7 +40,3 @@ class OTPResendCooldownError(OTPServiceError):
 
 class OTPResendLimitError(OTPServiceError):
     """Indicate that a registration challenge reached its OTP resend limit."""
-
-
-class InvalidRegistrationStateError(OTPServiceError):
-    """Indicate that a registration cannot perform the requested OTP operation."""
