@@ -608,6 +608,40 @@ class OTPVerificationServiceTests(TestCase):
         otp_verification.refresh_from_db()
         self.assertEqual(otp_verification.status, OTPStatus.PENDING)
 
+    def test_verify_registration_otp_rolls_back_success_state_on_failure(
+        self: Self,
+    ) -> None:
+        """
+        Verify a failed registration update restores the active OTP state.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when successful verification is not atomic.
+        """
+        challenge, otp_verification = self._create_registration_with_otp()
+
+        with (
+            patch.object(
+                RegistrationChallenge,
+                "save",
+                side_effect=RuntimeError("simulated persistence failure"),
+            ),
+            self.assertRaises(RuntimeError),
+        ):
+            verify_registration_otp(challenge.id, "123456")
+
+        challenge.refresh_from_db()
+        otp_verification.refresh_from_db()
+        self.assertEqual(challenge.status, RegistrationStatus.OTP_PENDING)
+        self.assertEqual(otp_verification.status, OTPStatus.PENDING)
+        self.assertIsNone(otp_verification.consumed_at)
+
+
 class OTPServiceExceptionTests(SimpleTestCase):
     def test_otp_service_exceptions_share_a_common_base(self: Self) -> None:
         """
