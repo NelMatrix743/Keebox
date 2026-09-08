@@ -22,12 +22,7 @@ from apps.authentication.exceptions import (
     OTPServiceError,
 )
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
-from apps.authentication.services import (
-    generate_otp_code,
-    issue_registration_otp,
-    resend_registration_otp,
-    verify_registration_otp,
-)
+from apps.authentication.registration_services import RegistrationService
 from apps.core.choices import OTPStatus, RegistrationStatus
 from apps.core.constants import (
     OTP_CODE_LENGTH,
@@ -56,10 +51,10 @@ class OTPCodeGenerationTests(SimpleTestCase):
             AssertionError: Raised when generated OTP formatting is invalid.
         """
         with patch(
-            "apps.authentication.services.secrets.randbelow",
+            "apps.authentication.registration_services.secrets.randbelow",
             return_value=42,
         ) as mocked_randbelow:
-            otp_code: str = generate_otp_code()
+            otp_code: str = RegistrationService.generate_otp_code()
 
         self.assertEqual(otp_code, "000042")
         self.assertEqual(len(otp_code), OTP_CODE_LENGTH)
@@ -108,10 +103,12 @@ class OTPIssuanceServiceTests(TestCase):
         challenge: RegistrationChallenge = self._create_registration_challenge()
 
         with patch(
-            "apps.authentication.services.generate_otp_code",
+            "apps.authentication.registration_services.RegistrationService.generate_otp_code",
             return_value="012345",
         ):
-            otp_verification, raw_code = issue_registration_otp(challenge.id)
+            otp_verification, raw_code = RegistrationService.issue_registration_otp(
+                challenge.id,
+            )
 
         self.assertEqual(raw_code, "012345")
         self.assertNotEqual(otp_verification.code_hash, raw_code)
@@ -145,10 +142,12 @@ class OTPIssuanceServiceTests(TestCase):
         previous_otp.save()
 
         with patch(
-            "apps.authentication.services.generate_otp_code",
+            "apps.authentication.registration_services.RegistrationService.generate_otp_code",
             return_value="222222",
         ):
-            current_otp, raw_code = issue_registration_otp(challenge.id)
+            current_otp, raw_code = RegistrationService.issue_registration_otp(
+                challenge.id,
+            )
 
         previous_otp.refresh_from_db()
         self.assertEqual(previous_otp.status, OTPStatus.EXPIRED)
@@ -176,7 +175,7 @@ class OTPIssuanceServiceTests(TestCase):
         challenge.save(update_fields=["status", "updated_at"])
 
         with self.assertRaises(InvalidRegistrationStateError):
-            issue_registration_otp(challenge.id)
+            RegistrationService.issue_registration_otp(challenge.id)
 
         self.assertFalse(OTPVerification.objects.exists())
 
@@ -200,10 +199,10 @@ class OTPIssuanceServiceTests(TestCase):
         challenge.save(update_fields=["expires_at", "updated_at"])
 
         with self.assertRaises(InvalidRegistrationStateError):
-            issue_registration_otp(challenge.id)
+            RegistrationService.issue_registration_otp(challenge.id)
 
         with self.assertRaises(InvalidRegistrationStateError):
-            issue_registration_otp(uuid4())
+            RegistrationService.issue_registration_otp(uuid4())
 
     def test_issue_registration_otp_rolls_back_previous_invalidation(
         self: Self,
@@ -230,7 +229,7 @@ class OTPIssuanceServiceTests(TestCase):
 
         with (
             patch(
-                "apps.authentication.services.generate_otp_code",
+                "apps.authentication.registration_services.RegistrationService.generate_otp_code",
                 return_value="222222",
             ),
             patch.object(
@@ -240,7 +239,7 @@ class OTPIssuanceServiceTests(TestCase):
             ),
             self.assertRaises(RuntimeError),
         ):
-            issue_registration_otp(challenge.id)
+            RegistrationService.issue_registration_otp(challenge.id)
 
         previous_otp.refresh_from_db()
         self.assertEqual(previous_otp.status, OTPStatus.PENDING)
@@ -294,10 +293,12 @@ class OTPResendServiceTests(TestCase):
         challenge, previous_otp = self._create_registration_with_otp()
 
         with patch(
-            "apps.authentication.services.generate_otp_code",
+            "apps.authentication.registration_services.RegistrationService.generate_otp_code",
             return_value="222222",
         ):
-            replacement_otp, raw_code = resend_registration_otp(challenge.id)
+            replacement_otp, raw_code = RegistrationService.resend_registration_otp(
+                challenge.id,
+            )
 
         challenge.refresh_from_db()
         previous_otp.refresh_from_db()
@@ -326,7 +327,7 @@ class OTPResendServiceTests(TestCase):
         current_otp.save(update_fields=["last_sent_at", "updated_at"])
 
         with self.assertRaises(OTPResendCooldownError):
-            resend_registration_otp(challenge.id)
+            RegistrationService.resend_registration_otp(challenge.id)
 
         challenge.refresh_from_db()
         current_otp.refresh_from_db()
@@ -354,7 +355,7 @@ class OTPResendServiceTests(TestCase):
         challenge.save(update_fields=["resend_count", "updated_at"])
 
         with self.assertRaises(OTPResendLimitError):
-            resend_registration_otp(challenge.id)
+            RegistrationService.resend_registration_otp(challenge.id)
 
         challenge.refresh_from_db()
         current_otp.refresh_from_db()
@@ -382,7 +383,7 @@ class OTPResendServiceTests(TestCase):
         challenge.save(update_fields=["status", "updated_at"])
 
         with self.assertRaises(InvalidRegistrationStateError):
-            resend_registration_otp(challenge.id)
+            RegistrationService.resend_registration_otp(challenge.id)
 
         empty_challenge: RegistrationChallenge = RegistrationChallenge(
             first_name="Keebox",
@@ -393,10 +394,10 @@ class OTPResendServiceTests(TestCase):
         empty_challenge.save()
 
         with self.assertRaises(InvalidRegistrationStateError):
-            resend_registration_otp(empty_challenge.id)
+            RegistrationService.resend_registration_otp(empty_challenge.id)
 
         with self.assertRaises(InvalidRegistrationStateError):
-            resend_registration_otp(uuid4())
+            RegistrationService.resend_registration_otp(uuid4())
 
         current_otp.refresh_from_db()
         self.assertEqual(current_otp.status, OTPStatus.PENDING)
@@ -448,7 +449,7 @@ class OTPVerificationServiceTests(TestCase):
         """
         challenge, otp_verification = self._create_registration_with_otp()
 
-        verified_otp: OTPVerification = verify_registration_otp(
+        verified_otp: OTPVerification = RegistrationService.verify_registration_otp(
             challenge.id,
             "123456",
         )
@@ -477,7 +478,7 @@ class OTPVerificationServiceTests(TestCase):
         challenge, otp_verification = self._create_registration_with_otp()
 
         with self.assertRaises(InvalidOTPError):
-            verify_registration_otp(challenge.id, "654321")
+            RegistrationService.verify_registration_otp(challenge.id, "654321")
 
         challenge.refresh_from_db()
         otp_verification.refresh_from_db()
@@ -505,7 +506,7 @@ class OTPVerificationServiceTests(TestCase):
         otp_verification.save(update_fields=["attempt_count", "updated_at"])
 
         with self.assertRaises(LockedOTPError):
-            verify_registration_otp(challenge.id, "654321")
+            RegistrationService.verify_registration_otp(challenge.id, "654321")
 
         otp_verification.refresh_from_db()
         self.assertEqual(otp_verification.attempt_count, OTP_MAX_ATTEMPTS)
@@ -529,7 +530,7 @@ class OTPVerificationServiceTests(TestCase):
         otp_verification.save(update_fields=["expires_at", "updated_at"])
 
         with self.assertRaises(ExpiredOTPError):
-            verify_registration_otp(challenge.id, "123456")
+            RegistrationService.verify_registration_otp(challenge.id, "123456")
 
         otp_verification.refresh_from_db()
         self.assertEqual(otp_verification.status, OTPStatus.EXPIRED)
@@ -558,7 +559,7 @@ class OTPVerificationServiceTests(TestCase):
         )
 
         with self.assertRaises(ConsumedOTPError):
-            verify_registration_otp(challenge.id, "123456")
+            RegistrationService.verify_registration_otp(challenge.id, "123456")
 
         otp_verification.status = OTPStatus.LOCKED
         otp_verification.consumed_at = None
@@ -567,7 +568,7 @@ class OTPVerificationServiceTests(TestCase):
         )
 
         with self.assertRaises(LockedOTPError):
-            verify_registration_otp(challenge.id, "123456")
+            RegistrationService.verify_registration_otp(challenge.id, "123456")
 
     def test_verify_registration_otp_requires_an_active_registration_and_otp(
         self: Self,
@@ -589,7 +590,7 @@ class OTPVerificationServiceTests(TestCase):
         challenge.save(update_fields=["status", "updated_at"])
 
         with self.assertRaises(InvalidRegistrationStateError):
-            verify_registration_otp(challenge.id, "123456")
+            RegistrationService.verify_registration_otp(challenge.id, "123456")
 
         empty_challenge: RegistrationChallenge = RegistrationChallenge(
             first_name="Keebox",
@@ -600,10 +601,13 @@ class OTPVerificationServiceTests(TestCase):
         empty_challenge.save()
 
         with self.assertRaises(InvalidRegistrationStateError):
-            verify_registration_otp(empty_challenge.id, "123456")
+            RegistrationService.verify_registration_otp(
+                empty_challenge.id,
+                "123456",
+            )
 
         with self.assertRaises(InvalidRegistrationStateError):
-            verify_registration_otp(uuid4(), "123456")
+            RegistrationService.verify_registration_otp(uuid4(), "123456")
 
         otp_verification.refresh_from_db()
         self.assertEqual(otp_verification.status, OTPStatus.PENDING)
@@ -633,7 +637,7 @@ class OTPVerificationServiceTests(TestCase):
             ),
             self.assertRaises(RuntimeError),
         ):
-            verify_registration_otp(challenge.id, "123456")
+            RegistrationService.verify_registration_otp(challenge.id, "123456")
 
         challenge.refresh_from_db()
         otp_verification.refresh_from_db()
