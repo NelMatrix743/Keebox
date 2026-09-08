@@ -535,6 +535,40 @@ class OTPVerificationServiceTests(TestCase):
         self.assertEqual(otp_verification.status, OTPStatus.EXPIRED)
         self.assertEqual(otp_verification.attempt_count, 0)
 
+    def test_verify_registration_otp_rejects_consumed_and_locked_codes(
+        self: Self,
+    ) -> None:
+        """
+        Verify consumed and locked OTP records cannot be verified again.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a terminal OTP state is accepted.
+        """
+        challenge, otp_verification = self._create_registration_with_otp()
+        otp_verification.status = OTPStatus.CONSUMED
+        otp_verification.consumed_at = timezone.now()
+        otp_verification.save(
+            update_fields=["status", "consumed_at", "updated_at"],
+        )
+
+        with self.assertRaises(ConsumedOTPError):
+            verify_registration_otp(challenge.id, "123456")
+
+        otp_verification.status = OTPStatus.LOCKED
+        otp_verification.consumed_at = None
+        otp_verification.save(
+            update_fields=["status", "consumed_at", "updated_at"],
+        )
+
+        with self.assertRaises(LockedOTPError):
+            verify_registration_otp(challenge.id, "123456")
+
 class OTPServiceExceptionTests(SimpleTestCase):
     def test_otp_service_exceptions_share_a_common_base(self: Self) -> None:
         """
