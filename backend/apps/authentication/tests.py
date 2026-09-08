@@ -569,6 +569,45 @@ class OTPVerificationServiceTests(TestCase):
         with self.assertRaises(LockedOTPError):
             verify_registration_otp(challenge.id, "123456")
 
+    def test_verify_registration_otp_requires_an_active_registration_and_otp(
+        self: Self,
+    ) -> None:
+        """
+        Verify OTP verification requires an active registration and issued code.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an invalid verification owner is accepted.
+        """
+        challenge, otp_verification = self._create_registration_with_otp()
+        challenge.status = RegistrationStatus.CANCELLED
+        challenge.save(update_fields=["status", "updated_at"])
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            verify_registration_otp(challenge.id, "123456")
+
+        empty_challenge: RegistrationChallenge = RegistrationChallenge(
+            first_name="Keebox",
+            last_name="User",
+            email="new@example.com",
+        )
+        empty_challenge.set_password("correct horse battery staple")
+        empty_challenge.save()
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            verify_registration_otp(empty_challenge.id, "123456")
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            verify_registration_otp(uuid4(), "123456")
+
+        otp_verification.refresh_from_db()
+        self.assertEqual(otp_verification.status, OTPStatus.PENDING)
+
 class OTPServiceExceptionTests(SimpleTestCase):
     def test_otp_service_exceptions_share_a_common_base(self: Self) -> None:
         """
