@@ -485,6 +485,32 @@ class OTPVerificationServiceTests(TestCase):
         self.assertEqual(otp_verification.status, OTPStatus.PENDING)
         self.assertEqual(challenge.status, RegistrationStatus.OTP_PENDING)
 
+    def test_verify_registration_otp_locks_the_final_failed_attempt(
+        self: Self,
+    ) -> None:
+        """
+        Verify the final permitted failed attempt locks the OTP verification.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the attempt limit does not lock the OTP.
+        """
+        challenge, otp_verification = self._create_registration_with_otp()
+        otp_verification.attempt_count = OTP_MAX_ATTEMPTS - 1
+        otp_verification.save(update_fields=["attempt_count", "updated_at"])
+
+        with self.assertRaises(LockedOTPError):
+            verify_registration_otp(challenge.id, "654321")
+
+        otp_verification.refresh_from_db()
+        self.assertEqual(otp_verification.attempt_count, OTP_MAX_ATTEMPTS)
+        self.assertEqual(otp_verification.status, OTPStatus.LOCKED)
+
 class OTPServiceExceptionTests(SimpleTestCase):
     def test_otp_service_exceptions_share_a_common_base(self: Self) -> None:
         """
