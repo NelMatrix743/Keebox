@@ -461,6 +461,30 @@ class OTPVerificationServiceTests(TestCase):
         self.assertEqual(verified_otp.attempt_count, 0)
         self.assertEqual(challenge.status, RegistrationStatus.OTP_VERIFIED)
 
+    def test_verify_registration_otp_counts_an_invalid_code(self: Self) -> None:
+        """
+        Verify an incorrect code consumes one attempt without changing workflow state.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a failed attempt is not persisted correctly.
+        """
+        challenge, otp_verification = self._create_registration_with_otp()
+
+        with self.assertRaises(InvalidOTPError):
+            verify_registration_otp(challenge.id, "654321")
+
+        challenge.refresh_from_db()
+        otp_verification.refresh_from_db()
+        self.assertEqual(otp_verification.attempt_count, 1)
+        self.assertEqual(otp_verification.status, OTPStatus.PENDING)
+        self.assertEqual(challenge.status, RegistrationStatus.OTP_PENDING)
+
 class OTPServiceExceptionTests(SimpleTestCase):
     def test_otp_service_exceptions_share_a_common_base(self: Self) -> None:
         """
