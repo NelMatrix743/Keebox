@@ -19,6 +19,7 @@ from apps.authentication.exceptions import (
     LockedOTPError,
     OTPResendCooldownError,
     OTPResendLimitError,
+    RegistrationEmailConflictError,
 )
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
 from apps.authentication.otp import generate_otp_code
@@ -645,6 +646,28 @@ class OTPVerificationServiceTests(TestCase):
         self.assertEqual(otp_verification.status, OTPStatus.PENDING)
         self.assertIsNone(otp_verification.consumed_at)
 
+
+class RegistrationInitiationServiceTests(TestCase):
+    def test_ensure_email_available_returns_a_normalized_available_email(
+        self: Self,
+    ) -> None:
+        """
+        Verify an available registration email is normalized for later use.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an available email is rejected or malformed.
+        """
+        normalized_email: str = RegistrationService.ensure_email_available(
+            "  Nelson@Example.COM  ",
+        )
+
+        self.assertEqual(normalized_email, "nelson@example.com")
 
 class UserModelTests(TestCase):
 
