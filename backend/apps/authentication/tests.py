@@ -771,6 +771,40 @@ class RegistrationCompletionServiceTests(TestCase):
 
         self.assertEqual(User.objects.count(), 1)
 
+    def test_complete_registration_rejects_invalid_challenge_states(
+        self: Self,
+    ) -> None:
+        """
+        Verify only an OTP-verified registration can create a permanent user.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an invalid registration state is accepted.
+        """
+        invalid_statuses: tuple[RegistrationStatus, ...] = (
+            RegistrationStatus.OTP_PENDING,
+            RegistrationStatus.CANCELLED,
+            RegistrationStatus.EXPIRED,
+        )
+
+        for status in invalid_statuses:
+            with self.subTest(status=status):
+                challenge: RegistrationChallenge = (
+                    self._create_verified_registration()
+                )
+                challenge.status = status
+                challenge.email = f"{status}@example.com"
+                challenge.save(update_fields=["status", "email", "updated_at"])
+
+                with self.assertRaises(InvalidRegistrationStateError):
+                    RegistrationService.complete_registration(challenge.id)
+
+        self.assertFalse(User.objects.exists())
 
 class UserModelTests(TestCase):
 
