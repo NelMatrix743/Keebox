@@ -19,8 +19,9 @@ from apps.authentication.exceptions import (
     OTPResendCooldownError,
     OTPResendLimitError,
     OTPServiceError,
+    RegistrationEmailConflictError,
 )
-from apps.authentication.models import OTPVerification, RegistrationChallenge
+from apps.authentication.models import OTPVerification, RegistrationChallenge, User
 from apps.authentication.otp import generate_otp_code
 
 
@@ -31,21 +32,18 @@ class RegistrationService:
     @staticmethod
     def _get_locked_registration_challenge(
         registration_challenge_id: UUID,
-        operation: str,
     ) -> RegistrationChallenge:
         """
-        Retrieve and validate a registration challenge for an OTP operation.
+        Retrieve and lock a registration challenge for a service operation.
 
         Args:
             registration_challenge_id: Identifier of the registration challenge.
-            operation: OTP operation being performed for the error message.
 
         Returns:
-            The locked active registration challenge.
+            The locked registration challenge.
 
         Raises:
-            InvalidRegistrationStateError: Raised when the registration is missing,
-                inactive, or expired.
+            InvalidRegistrationStateError: Raised when the registration is missing.
         """
         try:
             registration_challenge: RegistrationChallenge = (
@@ -58,15 +56,36 @@ class RegistrationService:
                 "The registration challenge is unavailable.",
             ) from exception
 
+        return registration_challenge
+
+    @staticmethod
+    def _validate_registration_challenge(
+        registration_challenge: RegistrationChallenge,
+        required_status: RegistrationStatus,
+        operation: str,
+    ) -> None:
+        """
+        Validate the lifecycle state of a registration challenge.
+
+        Args:
+            registration_challenge: Registration challenge being validated.
+            required_status: Status required to perform the service operation.
+            operation: Description of the operation for the error message.
+
+        Returns:
+            None: This method only validates registration state.
+
+        Raises:
+            InvalidRegistrationStateError: Raised when the challenge has an invalid
+                status or has expired.
+        """
         if (
-            registration_challenge.status != RegistrationStatus.OTP_PENDING
+            registration_challenge.status != required_status
             or registration_challenge.is_expired()
         ):
             raise InvalidRegistrationStateError(
-                f"The registration challenge cannot {operation} an OTP.",
+                f"The registration challenge cannot {operation}.",
             )
-
-        return registration_challenge
 
     @staticmethod
     def _get_locked_latest_otp(
@@ -279,6 +298,31 @@ class RegistrationService:
         registration_challenge.save(update_fields=["status", "updated_at"])
 
     @staticmethod
+    def _create_user(
+        registration_challenge: RegistrationChallenge,
+    ) -> User:
+        """
+        Create a permanent user from a verified registration challenge.
+
+        Args:
+            registration_challenge: Verified registration data used for the user.
+
+        Returns:
+            The persisted permanent user account.
+
+        Raises:
+            None.
+        """
+        user: User = User(
+            first_name=registration_challenge.first_name,
+            last_name=registration_challenge.last_name,
+            email=registration_challenge.email,
+            password=registration_challenge.password_hash,
+        )
+        user.save()
+        return user
+
+    @staticmethod
     @transaction.atomic
     def issue_registration_otp(
         registration_challenge_id: UUID,
@@ -300,8 +344,12 @@ class RegistrationService:
         registration_challenge: RegistrationChallenge = (
             RegistrationService._get_locked_registration_challenge(
                 registration_challenge_id,
-                "issue",
             )
+        )
+        RegistrationService._validate_registration_challenge(
+            registration_challenge,
+            RegistrationStatus.OTP_PENDING,
+            "issue an OTP",
         )
         RegistrationService._expire_pending_otps(registration_challenge)
         return RegistrationService._create_otp(registration_challenge)
@@ -335,8 +383,12 @@ class RegistrationService:
             registration_challenge: RegistrationChallenge = (
                 RegistrationService._get_locked_registration_challenge(
                     registration_challenge_id,
-                    "resend",
                 )
+            )
+            RegistrationService._validate_registration_challenge(
+                registration_challenge,
+                RegistrationStatus.OTP_PENDING,
+                "resend an OTP",
             )
             current_otp: OTPVerification = (
                 RegistrationService._get_locked_latest_otp(
@@ -402,8 +454,12 @@ class RegistrationService:
             registration_challenge: RegistrationChallenge = (
                 RegistrationService._get_locked_registration_challenge(
                     registration_challenge_id,
-                    "verify",
                 )
+            )
+            RegistrationService._validate_registration_challenge(
+                registration_challenge,
+                RegistrationStatus.OTP_PENDING,
+                "verify an OTP",
             )
             current_otp: OTPVerification = (
                 RegistrationService._get_locked_latest_otp(
@@ -435,3 +491,35 @@ class RegistrationService:
             )
 
         return verified_otp
+
+    @staticmethod
+    @transaction.atomic
+    def complete_registration(
+        registration_challenge_id: UUID,
+    ) -> User:
+        """
+        Convert an OTP-verified registration into a permanent user account.
+
+        Args:
+            registration_challenge_id: Identifier of the verified registration.
+
+        Returns:
+            The permanent user created from the registration challenge.
+
+        Raises:
+            InvalidRegistrationStateError: Raised when the registration is missing,
+                expired, or not OTP-verified.
+        """
+        registration_challenge: RegistrationChallenge = (
+            RegistrationService._get_locked_registration_challenge(
+                registration_challenge_id,
+            )
+        )
+        RegistrationService._validate_registration_challenge(
+            registration_challenge,
+            RegistrationStatus.OTP_VERIFIED,
+            "be completed",
+        )
+        user: User = RegistrationService._create_user(registration_challenge)
+        RegistrationService._mark_registration_completed(registration_challenge)
+        return user
