@@ -323,6 +323,28 @@ class RegistrationService:
         return user
 
     @staticmethod
+    def _mark_registration_completed(
+        registration_challenge: RegistrationChallenge,
+    ) -> None:
+        """
+        Persist the completed state of a registration challenge.
+
+        Args:
+            registration_challenge: Registration challenge that created a user.
+
+        Returns:
+            None: This method persists the completed registration state.
+
+        Raises:
+            None.
+        """
+        registration_challenge.status = RegistrationStatus.COMPLETED
+        registration_challenge.completed_at = timezone.now()
+        registration_challenge.save(
+            update_fields=["status", "completed_at", "updated_at"],
+        )
+
+    @staticmethod
     @transaction.atomic
     def issue_registration_otp(
         registration_challenge_id: UUID,
