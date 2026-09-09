@@ -713,6 +713,65 @@ class RegistrationInitiationServiceTests(TestCase):
             RegistrationService.ensure_email_available("  ")
 
 
+class RegistrationCompletionServiceTests(TestCase):
+    def _create_verified_registration(self: Self) -> RegistrationChallenge:
+        """
+        Create a persisted OTP-verified registration challenge.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            The persisted verified registration challenge.
+
+        Raises:
+            ValueError: Raised when the test credentials are invalid.
+        """
+        challenge: RegistrationChallenge = RegistrationChallenge(
+            first_name="Nelson",
+            last_name="Ubochiegbu",
+            email="nelmatrix155@gmail.com",
+            status=RegistrationStatus.OTP_VERIFIED,
+        )
+        challenge.set_password("correct horse battery staple")
+        challenge.save()
+        return challenge
+
+    def test_complete_registration_creates_a_permanent_user(self: Self) -> None:
+        """
+        Verify a verified challenge creates one usable permanent user account.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the created user has incorrect data.
+        """
+        challenge: RegistrationChallenge = self._create_verified_registration()
+        password_hash: str = challenge.password_hash
+
+        user: User = RegistrationService.complete_registration(challenge.id)
+
+        challenge.refresh_from_db()
+        user.refresh_from_db()
+        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(user.first_name, challenge.first_name)
+        self.assertEqual(user.last_name, challenge.last_name)
+        self.assertEqual(user.email, challenge.email)
+        self.assertEqual(user.password, password_hash)
+        self.assertTrue(user.check_password("correct horse battery staple"))
+        self.assertEqual(challenge.status, RegistrationStatus.COMPLETED)
+        self.assertIsNotNone(challenge.completed_at)
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            RegistrationService.complete_registration(challenge.id)
+
+        self.assertEqual(User.objects.count(), 1)
+
+
 class UserModelTests(TestCase):
 
     def test_authentication_models_define_database_metadata(
