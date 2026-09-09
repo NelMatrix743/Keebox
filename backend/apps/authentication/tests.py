@@ -833,6 +833,38 @@ class RegistrationCompletionServiceTests(TestCase):
 
         self.assertFalse(User.objects.exists())
 
+    def test_complete_registration_rolls_back_user_creation_on_failure(
+        self: Self,
+    ) -> None:
+        """
+        Verify a failed challenge update rolls back permanent user creation.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when registration completion is not atomic.
+        """
+        challenge: RegistrationChallenge = self._create_verified_registration()
+
+        with (
+            patch.object(
+                RegistrationChallenge,
+                "save",
+                side_effect=RuntimeError("simulated persistence failure"),
+            ),
+            self.assertRaises(RuntimeError),
+        ):
+            RegistrationService.complete_registration(challenge.id)
+
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.status, RegistrationStatus.OTP_VERIFIED)
+        self.assertIsNone(challenge.completed_at)
+        self.assertFalse(User.objects.exists())
+
 
 class UserModelTests(TestCase):
 
