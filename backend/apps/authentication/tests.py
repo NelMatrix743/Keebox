@@ -819,6 +819,39 @@ class RegistrationInitiationServiceTests(TestCase):
         self.assertFalse(RegistrationChallenge.objects.exists())
         self.assertFalse(OTPVerification.objects.exists())
 
+    def test_start_registration_rolls_back_when_initial_otp_issuance_fails(
+        self: Self,
+    ) -> None:
+        """
+        Verify an OTP issuance failure removes the incomplete registration attempt.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when failed initiation leaves persisted data.
+        """
+        with (
+            patch.object(
+                RegistrationService,
+                "issue_registration_otp",
+                side_effect=RuntimeError("simulated OTP issuance failure"),
+            ),
+            self.assertRaises(RuntimeError),
+        ):
+            RegistrationService.start_registration(
+                first_name="Nelson",
+                last_name="Ubochiegbu",
+                email="nelson@example.com",
+                raw_password="correct horse battery staple",
+            )
+
+        self.assertFalse(RegistrationChallenge.objects.exists())
+        self.assertFalse(OTPVerification.objects.exists())
+
 
 class RegistrationCompletionServiceTests(TestCase):
     def _create_verified_registration(self: Self) -> RegistrationChallenge:
