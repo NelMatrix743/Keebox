@@ -696,6 +696,23 @@ class RegistrationInitiationServiceTests(TestCase):
                 "  Nelson@Example.COM  ",
             )
 
+    def test_ensure_email_available_rejects_an_empty_email(self: Self) -> None:
+        """
+        Verify registration email availability requires an email address.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an empty registration email is accepted.
+        """
+        with self.assertRaisesMessage(ValueError, "email address is required"):
+            RegistrationService.ensure_email_available("  ")
+
+
 class UserModelTests(TestCase):
 
     def test_authentication_models_define_database_metadata(
