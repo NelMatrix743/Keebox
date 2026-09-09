@@ -669,6 +669,33 @@ class RegistrationInitiationServiceTests(TestCase):
 
         self.assertEqual(normalized_email, "nelson@example.com")
 
+    def test_ensure_email_available_rejects_an_existing_user_email(
+        self: Self,
+    ) -> None:
+        """
+        Verify registration cannot start for an existing permanent account.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an existing account email is accepted.
+        """
+        User.objects.create_user(
+            email="nelson@example.com",
+            password="correct horse battery staple",
+            first_name="Nelson",
+            last_name="Ubochiegbu",
+        )
+
+        with self.assertRaises(RegistrationEmailConflictError):
+            RegistrationService.ensure_email_available(
+                "  Nelson@Example.COM  ",
+            )
+
 class UserModelTests(TestCase):
 
     def test_authentication_models_define_database_metadata(
