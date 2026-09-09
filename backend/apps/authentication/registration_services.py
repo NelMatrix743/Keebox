@@ -298,6 +298,37 @@ class RegistrationService:
         registration_challenge.save(update_fields=["status", "updated_at"])
 
     @staticmethod
+    def _create_registration_challenge(
+        first_name: str,
+        last_name: str,
+        normalized_email: str,
+        raw_password: str,
+    ) -> RegistrationChallenge:
+        """
+        Create a pending registration challenge with a protected password.
+
+        Args:
+            first_name: Given name submitted for the permanent account.
+            last_name: Family name submitted for the permanent account.
+            normalized_email: Canonical available registration email address.
+            raw_password: Raw account password to protect for later completion.
+
+        Returns:
+            The persisted pending registration challenge.
+
+        Raises:
+            ValueError: Raised when the password is empty.
+        """
+        registration_challenge: RegistrationChallenge = RegistrationChallenge(
+            first_name=first_name,
+            last_name=last_name,
+            email=normalized_email,
+        )
+        registration_challenge.set_password(raw_password)
+        registration_challenge.save()
+        return registration_challenge
+
+    @staticmethod
     def _create_user(
         registration_challenge: RegistrationChallenge,
     ) -> User:
