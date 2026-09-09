@@ -406,6 +406,49 @@ class RegistrationService:
 
     @staticmethod
     @transaction.atomic
+    def start_registration(
+        first_name: str,
+        last_name: str,
+        email: str,
+        raw_password: str,
+    ) -> tuple[RegistrationChallenge, OTPVerification, str]:
+        """
+        Begin a registration challenge and issue its initial OTP.
+
+        Args:
+            first_name: Given name submitted for the permanent account.
+            last_name: Family name submitted for the permanent account.
+            email: Email address submitted for registration.
+            raw_password: Raw password submitted for the permanent account.
+
+        Returns:
+            The registration challenge, initial OTP record, and raw delivery code.
+
+        Raises:
+            ValueError: Raised when the email address or password is empty.
+            RegistrationEmailConflictError: Raised when the email already belongs
+                to a permanent user.
+            InvalidRegistrationStateError: Raised when the initial OTP cannot be
+                issued for the newly created challenge.
+        """
+        normalized_email: str = RegistrationService.ensure_email_available(email)
+        registration_challenge: RegistrationChallenge = (
+            RegistrationService._create_registration_challenge(
+                first_name,
+                last_name,
+                normalized_email,
+                raw_password,
+            )
+        )
+        otp_verification: OTPVerification
+        raw_code: str
+        otp_verification, raw_code = RegistrationService.issue_registration_otp(
+            registration_challenge.id,
+        )
+        return registration_challenge, otp_verification, raw_code
+
+    @staticmethod
+    @transaction.atomic
     def issue_registration_otp(
         registration_challenge_id: UUID,
     ) -> tuple[OTPVerification, str]:
