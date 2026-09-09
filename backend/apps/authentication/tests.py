@@ -756,6 +756,39 @@ class RegistrationInitiationServiceTests(TestCase):
         self.assertEqual(RegistrationChallenge.objects.count(), 1)
         self.assertEqual(OTPVerification.objects.count(), 1)
 
+    def test_start_registration_allows_repeated_unregistered_email_attempts(
+        self: Self,
+    ) -> None:
+        """
+        Verify an unregistered email can own separate registration attempts.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a repeated pending attempt is rejected.
+        """
+        first_challenge, _, _ = RegistrationService.start_registration(
+            first_name="Nelson",
+            last_name="Ubochiegbu",
+            email="nelson@example.com",
+            raw_password="first valid password",
+        )
+        second_challenge, _, _ = RegistrationService.start_registration(
+            first_name="Nelson",
+            last_name="Ubochiegbu",
+            email="NELSON@example.com",
+            raw_password="second valid password",
+        )
+
+        self.assertNotEqual(first_challenge.id, second_challenge.id)
+        self.assertEqual(RegistrationChallenge.objects.count(), 2)
+        self.assertEqual(OTPVerification.objects.count(), 2)
+
+
 class RegistrationCompletionServiceTests(TestCase):
     def _create_verified_registration(self: Self) -> RegistrationChallenge:
         """
