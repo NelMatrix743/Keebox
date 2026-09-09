@@ -806,6 +806,34 @@ class RegistrationCompletionServiceTests(TestCase):
 
         self.assertFalse(User.objects.exists())
 
+    def test_complete_registration_rejects_expired_and_missing_challenges(
+        self: Self,
+    ) -> None:
+        """
+        Verify completion rejects elapsed and unavailable registrations.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an unusable registration creates a user.
+        """
+        challenge: RegistrationChallenge = self._create_verified_registration()
+        challenge.expires_at = timezone.now() - timedelta(microseconds=1)
+        challenge.save(update_fields=["expires_at", "updated_at"])
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            RegistrationService.complete_registration(challenge.id)
+
+        with self.assertRaises(InvalidRegistrationStateError):
+            RegistrationService.complete_registration(uuid4())
+
+        self.assertFalse(User.objects.exists())
+
+
 class UserModelTests(TestCase):
 
     def test_authentication_models_define_database_metadata(
