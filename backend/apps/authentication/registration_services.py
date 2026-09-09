@@ -345,6 +345,35 @@ class RegistrationService:
         )
 
     @staticmethod
+    def ensure_email_available(email: str) -> str:
+        """
+        Ensure an email can be used to begin a new registration.
+
+        Args:
+            email: Email address submitted for registration.
+
+        Returns:
+            The normalized email address for subsequent registration operations.
+
+        Raises:
+            ValueError: Raised when the email address is empty.
+            RegistrationEmailConflictError: Raised when a permanent user already
+                owns the normalized email address.
+        """
+        if not email.strip():
+            raise ValueError("The email address is required.")
+
+        normalized_email: str = User.objects.normalize_email(
+            email.strip()
+        ).casefold()
+        if User.objects.filter(email=normalized_email).exists():
+            raise RegistrationEmailConflictError(
+                "A user with this email address already exists.",
+            )
+
+        return normalized_email
+
+    @staticmethod
     @transaction.atomic
     def issue_registration_otp(
         registration_challenge_id: UUID,
