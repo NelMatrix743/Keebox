@@ -712,6 +712,49 @@ class RegistrationInitiationServiceTests(TestCase):
         with self.assertRaisesMessage(ValueError, "email address is required"):
             RegistrationService.ensure_email_available("  ")
 
+    def test_start_registration_creates_challenge_and_initial_otp(
+        self: Self,
+    ) -> None:
+        """
+        Verify registration initiation persists protected data and an initial OTP.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when registration initiation is incomplete.
+        """
+        with patch(
+            "apps.authentication.registration_services.generate_otp_code",
+            return_value="012345",
+        ):
+            challenge, otp_verification, raw_code = (
+                RegistrationService.start_registration(
+                    first_name="Nelson",
+                    last_name="Ubochiegbu",
+                    email="  Nelson@Example.COM  ",
+                    raw_password="correct horse battery staple",
+                )
+            )
+
+        self.assertEqual(challenge.first_name, "Nelson")
+        self.assertEqual(challenge.last_name, "Ubochiegbu")
+        self.assertEqual(challenge.email, "nelson@example.com")
+        self.assertNotEqual(
+            challenge.password_hash,
+            "correct horse battery staple",
+        )
+        self.assertTrue(challenge.check_password("correct horse battery staple"))
+        self.assertEqual(challenge.status, RegistrationStatus.OTP_PENDING)
+        self.assertEqual(otp_verification.registration_challenge, challenge)
+        self.assertEqual(otp_verification.email, challenge.email)
+        self.assertTrue(otp_verification.verify_otp_code(raw_code))
+        self.assertEqual(raw_code, "012345")
+        self.assertEqual(RegistrationChallenge.objects.count(), 1)
+        self.assertEqual(OTPVerification.objects.count(), 1)
 
 class RegistrationCompletionServiceTests(TestCase):
     def _create_verified_registration(self: Self) -> RegistrationChallenge:
