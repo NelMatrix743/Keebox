@@ -788,6 +788,37 @@ class RegistrationInitiationServiceTests(TestCase):
         self.assertEqual(RegistrationChallenge.objects.count(), 2)
         self.assertEqual(OTPVerification.objects.count(), 2)
 
+    def test_start_registration_rejects_an_existing_account(self: Self) -> None:
+        """
+        Verify registration initiation stops when the email owns an account.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a conflicting registration is persisted.
+        """
+        User.objects.create_user(
+            email="nelson@example.com",
+            password="correct horse battery staple",
+            first_name="Nelson",
+            last_name="Ubochiegbu",
+        )
+
+        with self.assertRaises(RegistrationEmailConflictError):
+            RegistrationService.start_registration(
+                first_name="Nelson",
+                last_name="Ubochiegbu",
+                email="nelson@example.com",
+                raw_password="another valid password",
+            )
+
+        self.assertFalse(RegistrationChallenge.objects.exists())
+        self.assertFalse(OTPVerification.objects.exists())
+
 
 class RegistrationCompletionServiceTests(TestCase):
     def _create_verified_registration(self: Self) -> RegistrationChallenge:
