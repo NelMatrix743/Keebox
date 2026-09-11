@@ -1,10 +1,17 @@
 from datetime import timedelta
 from importlib import reload
-from typing import Self
+from typing import Self, cast
 from types import ModuleType
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
-from django.test import SimpleTestCase
+from brevo import Brevo
+from brevo.core.api_error import ApiError
+from brevo.transactional_emails import (
+    SendTransacEmailRequestSender,
+    SendTransacEmailRequestToItem,
+    SendTransacEmailResponse,
+)
+from django.test import SimpleTestCase, override_settings
 
 from apps.core.choices import OTPStatus, RegistrationStatus
 from apps.core.constants import (
@@ -15,6 +22,8 @@ from apps.core.constants import (
     OTP_TTL,
     REGISTRATION_CHALLENGE_TTL,
 )
+from apps.core.email import EmailDeliveryService
+from apps.core.exceptions import EmailDeliveryError
 from apps.core.response import APIResponse
 from config import settings as project_settings
 
@@ -225,3 +234,34 @@ class BrevoSettingsTests(SimpleTestCase):
             self.assertEqual(settings_module.BREVO_OTP_TEMPLATE_ID, 123)
 
         reload(project_settings)
+
+
+@override_settings(
+    BREVO_API_KEY="xkeysib-test",
+    BREVO_SENDER_EMAIL="no-reply@keebox.dev",
+    BREVO_SENDER_NAME="Keebox",
+    BREVO_REQUEST_TIMEOUT_SECONDS=10.0,
+    BREVO_OTP_TEMPLATE_ID=123,
+)
+class EmailDeliveryServiceTests(SimpleTestCase):
+    @patch("apps.core.email.Brevo")
+    def test_service_configures_the_brevo_client(self: Self, brevo: Mock) -> None:
+        """
+        Verify the delivery service configures Brevo from Django settings.
+
+        Args:
+            self: Current test case instance.
+            brevo: Mocked Brevo client class.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when Brevo receives incorrect configuration.
+        """
+        EmailDeliveryService()
+
+        brevo.assert_called_once_with(
+            api_key="xkeysib-test",
+            timeout=10.0,
+        )
