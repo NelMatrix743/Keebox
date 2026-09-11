@@ -10,6 +10,7 @@ from django.core.exceptions import FieldDoesNotExist
 from django.db import IntegrityError, transaction
 from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
+from pydantic import ValidationError
 
 from apps.authentication.exceptions import (
     ConsumedOTPError,
@@ -24,6 +25,7 @@ from apps.authentication.exceptions import (
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
 from apps.authentication.otp import generate_otp_code
 from apps.authentication.registration_services import RegistrationService
+from apps.authentication.schemas import RegistrationRequest, RegistrationStartedData
 from apps.core.choices import OTPStatus, RegistrationStatus
 from apps.core.constants import (
     OTP_CODE_LENGTH,
@@ -32,7 +34,44 @@ from apps.core.constants import (
     OTP_RESEND_COOLDOWN,
     REGISTRATION_CHALLENGE_TTL,
 )
+from apps.core.response import (
+    ErrorData,
+    ErrorResponse,
+    APIResponse,
+    SuccessResponse,
+)
 
+
+
+class RegistrationSchemaTests(SimpleTestCase):
+    def test_registration_request_normalizes_and_validates_input(
+        self: Self,
+    ) -> None:
+        """
+        Verify valid registration input is normalized for the service layer.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when valid input is rejected or not normalized.
+        """
+        request: RegistrationRequest = RegistrationRequest.model_validate(
+            {
+                "first_name": "  Nelson  ",
+                "last_name": "  Ubochiegbu  ",
+                "email": "  Nelson@Example.COM  ",
+                "password": "correct horse battery staple",
+            },
+        )
+
+        self.assertEqual(request.first_name, "Nelson")
+        self.assertEqual(request.last_name, "Ubochiegbu")
+        self.assertEqual(str(request.email), "Nelson@example.com")
+        self.assertEqual(request.password, "correct horse battery staple")
 
 
 class OTPCodeGenerationTests(SimpleTestCase):
