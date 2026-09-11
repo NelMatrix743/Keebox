@@ -113,6 +113,50 @@ class RegistrationSchemaTests(SimpleTestCase):
             with self.subTest(payload=payload), self.assertRaises(ValidationError):
                 RegistrationRequest.model_validate(payload)
 
+    def test_registration_started_response_serializes_the_safe_envelope(
+        self: Self,
+    ) -> None:
+        """
+        Verify registration-start data serializes through the success envelope.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the response contract is not preserved.
+        """
+        current_time: datetime = timezone.now()
+        registration_id: UUID = uuid4()
+        response: SuccessResponse[RegistrationStartedData] = (
+            SuccessResponse[RegistrationStartedData].model_validate(
+                APIResponse.success(
+                    {
+                        "registration_id": registration_id,
+                        "status": RegistrationStatus.OTP_PENDING,
+                        "expires_at": current_time + timedelta(minutes=30),
+                        "otp_expires_at": current_time + timedelta(minutes=5),
+                        "resend_available_at": current_time + timedelta(minutes=1),
+                        "message": (
+                            "Registration started. Check your email for the "
+                            "verification code."
+                        ),
+                    },
+                ),
+            )
+        )
+        serialized_response: dict[str, object] = response.model_dump(mode="json")
+
+        self.assertTrue(serialized_response["success"])
+        self.assertEqual(
+            serialized_response["data"]["registration_id"],
+            str(registration_id),
+        )
+        self.assertIsNone(serialized_response["error"])
+        self.assertIsNone(serialized_response["meta"])
+
 
 class OTPCodeGenerationTests(SimpleTestCase):
     def test_generate_otp_code_returns_six_secure_numeric_characters(
