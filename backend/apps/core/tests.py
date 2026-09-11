@@ -265,3 +265,63 @@ class EmailDeliveryServiceTests(SimpleTestCase):
             api_key="xkeysib-test",
             timeout=10.0,
         )
+
+    def test_send_otp_email_delivers_the_complete_template_payload(
+        self: Self,
+    ) -> None:
+        """
+        Verify OTP delivery includes recipient identity and verification data.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the Brevo payload is incomplete.
+        """
+        client: Mock = Mock()
+        client.transactional_emails.send_transac_email.return_value = (
+            SendTransacEmailResponse(message_id="brevo-message-id")
+        )
+        service: EmailDeliveryService = EmailDeliveryService(
+            client=cast(Brevo, client),
+        )
+
+        message_id: str = service.send_otp_email(
+            recipient_email="nelson@example.com",
+            recipient_full_name="Nelson Ubochiegbu",
+            otp_code="482913",
+            expiration_minutes=5,
+        )
+
+        self.assertEqual(message_id, "brevo-message-id")
+        call_arguments: dict[str, object] = (
+            client.transactional_emails.send_transac_email.call_args.kwargs
+        )
+        sender: SendTransacEmailRequestSender = cast(
+            SendTransacEmailRequestSender,
+            call_arguments["sender"],
+        )
+        recipients: list[SendTransacEmailRequestToItem] = cast(
+            list[SendTransacEmailRequestToItem],
+            call_arguments["to"],
+        )
+        self.assertEqual(call_arguments["template_id"], 123)
+        self.assertEqual(
+            call_arguments["params"],
+            {
+                "full_name": "Nelson Ubochiegbu",
+                "otp_code": "482913",
+                "expiration_minutes": 5,
+            },
+        )
+        self.assertEqual(call_arguments["tags"], ["registration-otp"])
+        self.assertEqual(sender.email, "no-reply@keebox.dev")
+        self.assertEqual(sender.name, "Keebox")
+        self.assertEqual(recipients[0].email, "nelson@example.com")
+        self.assertEqual(
+            recipients[0].name,
+            "Nelson Ubochiegbu",
+        )
