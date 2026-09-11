@@ -1,5 +1,40 @@
-from typing import Any
+from typing import Any, Literal
 
+from ninja import Schema
+from pydantic import ConfigDict
+
+
+
+class SuccessResponse[DataType](Schema):
+    """Represent a successful API response with typed dynamic data."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    success: Literal[True] = True
+    data: DataType
+    error: None = None
+    meta: dict[str, Any] | None = None
+
+
+class ErrorData(Schema):
+    """Represent structured error information returned by an API endpoint."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    code: str
+    message: str
+    details: Any = None
+
+
+class ErrorResponse[ErrorType](Schema):
+    """Represent an unsuccessful API response with a typed dynamic error."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    success: Literal[False] = False
+    data: None = None
+    error: ErrorType
+    meta: dict[str, Any] | None = None
 
 
 class APIResponse:
