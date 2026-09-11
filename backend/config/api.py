@@ -4,9 +4,9 @@ from django.http import HttpRequest, HttpResponse
 from ninja import NinjaAPI
 from ninja.errors import ValidationError
 
-from apps.authentication.api import router as authentication_router
 from apps.core.info import API_DESCRIPTION, API_TITLE, API_VERSION
 from apps.core.response import ErrorData, APIResponse
+from apps.authentication.api import router as authentication_router
 
 
 
@@ -56,3 +56,5 @@ def handle_validation_error(
         status=422,
     )
 
+
+api.add_router("/auth", authentication_router)
