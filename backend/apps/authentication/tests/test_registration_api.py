@@ -124,3 +124,39 @@ class RegistrationAPITests(TestCase):
         self.assertFalse(RegistrationChallenge.objects.exists())
         self.assertFalse(OTPVerification.objects.exists())
         email_delivery_service.assert_not_called()
+
+    @patch("apps.authentication.api.EmailDeliveryService")
+    def test_register_returns_a_safe_error_when_email_delivery_fails(
+        self: Self,
+        email_delivery_service: Mock,
+    ) -> None:
+        """
+        Verify a delivery failure returns a safe service-unavailable response.
+
+        Args:
+            self: Current test case instance.
+            email_delivery_service: Mocked failing email delivery service.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when delivery failures leak or appear successful.
+        """
+        email_delivery_service.return_value.send_otp_email.side_effect = (
+            EmailDeliveryError("sensitive provider details")
+        )
+
+        response: HttpResponse = self.client.post(
+            "/api/auth/register",
+            data=self._registration_payload(),
+            content_type="application/json",
+        )
+        response_body: dict[str, Any] = response.json()
+
+        self.assertEqual(response.status_code, 503)
+        self.assertFalse(response_body["success"])
+        self.assertEqual(response_body["error"]["code"], "email_delivery_failed")
+        self.assertNotIn("sensitive provider details", str(response_body))
+        self.assertEqual(RegistrationChallenge.objects.count(), 1)
+        self.assertEqual(OTPVerification.objects.count(), 1)
