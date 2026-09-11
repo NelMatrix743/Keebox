@@ -73,6 +73,46 @@ class RegistrationSchemaTests(SimpleTestCase):
         self.assertEqual(str(request.email), "Nelson@example.com")
         self.assertEqual(request.password, "correct horse battery staple")
 
+    def test_registration_request_rejects_invalid_registration_data(
+        self: Self,
+    ) -> None:
+        """
+        Verify invalid names, emails, and weak passwords are rejected.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when invalid registration input is accepted.
+        """
+        invalid_payloads: tuple[dict[str, str], ...] = (
+            {
+                "first_name": "  ",
+                "last_name": "Ubochiegbu",
+                "email": "nelson@example.com",
+                "password": "correct horse battery staple",
+            },
+            {
+                "first_name": "Nelson",
+                "last_name": "Ubochiegbu",
+                "email": "not-an-email",
+                "password": "correct horse battery staple",
+            },
+            {
+                "first_name": "Nelson",
+                "last_name": "Ubochiegbu",
+                "email": "nelson@example.com",
+                "password": "12345678",
+            },
+        )
+
+        for payload in invalid_payloads:
+            with self.subTest(payload=payload), self.assertRaises(ValidationError):
+                RegistrationRequest.model_validate(payload)
+
 
 class OTPCodeGenerationTests(SimpleTestCase):
     def test_generate_otp_code_returns_six_secure_numeric_characters(
