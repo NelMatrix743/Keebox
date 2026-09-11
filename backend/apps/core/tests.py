@@ -355,3 +355,34 @@ class EmailDeliveryServiceTests(SimpleTestCase):
                 otp_code="482913",
                 expiration_minutes=5,
             )
+
+    def test_send_otp_email_rejects_a_missing_provider_message_id(
+        self: Self,
+    ) -> None:
+        """
+        Verify a provider response without a message ID is treated as failure.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an incomplete response is accepted.
+        """
+        client: Mock = Mock()
+        client.transactional_emails.send_transac_email.return_value = (
+            SendTransacEmailResponse()
+        )
+        service: EmailDeliveryService = EmailDeliveryService(
+            client=cast(Brevo, client),
+        )
+
+        with self.assertRaises(EmailDeliveryError):
+            service.send_otp_email(
+                recipient_email="nelson@example.com",
+                recipient_full_name="Nelson Ubochiegbu",
+                otp_code="482913",
+                expiration_minutes=5,
+            )
