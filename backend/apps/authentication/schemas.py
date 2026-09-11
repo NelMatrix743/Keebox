@@ -64,3 +64,16 @@ class RegistrationRequest(Schema):
             raise ValueError(" ".join(exception.messages)) from exception
         return value
 
+
+class RegistrationStartedData(Schema):
+    """Represent safe response data for a newly started registration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    registration_id: UUID
+    status: Literal["otp_pending"]
+    expires_at: datetime
+    otp_expires_at: datetime
+    resend_available_at: datetime
+    message: str
+
