@@ -1,5 +1,8 @@
 from datetime import timedelta
+from importlib import reload
 from typing import Self
+from types import ModuleType
+from unittest.mock import patch
 
 from django.test import SimpleTestCase
 
@@ -13,6 +16,7 @@ from apps.core.constants import (
     REGISTRATION_CHALLENGE_TTL,
 )
 from apps.core.response import APIResponse
+from config import settings as project_settings
 
 
 
@@ -184,3 +188,40 @@ class APIResponseTests(SimpleTestCase):
                 "meta": response_meta,
             },
         )
+
+
+class BrevoSettingsTests(SimpleTestCase):
+    def test_brevo_settings_load_typed_environment_values(self: Self) -> None:
+        """
+        Verify Brevo environment values are exposed with their expected types.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a Brevo setting is missing or mistyped.
+        """
+        environment_values: dict[str, str] = {
+            "BREVO_API_KEY": "xkeysib-test",
+            "BREVO_SENDER_EMAIL": "no-reply@keebox.dev",
+            "BREVO_SENDER_NAME": "Keebox",
+            "BREVO_REQUEST_TIMEOUT_SECONDS": "7.5",
+            "BREVO_OTP_TEMPLATE_ID": "123",
+        }
+
+        with patch.dict("os.environ", environment_values):
+            settings_module: ModuleType = reload(project_settings)
+
+            self.assertEqual(settings_module.BREVO_API_KEY, "xkeysib-test")
+            self.assertEqual(
+                settings_module.BREVO_SENDER_EMAIL,
+                "no-reply@keebox.dev",
+            )
+            self.assertEqual(settings_module.BREVO_SENDER_NAME, "Keebox")
+            self.assertEqual(settings_module.BREVO_REQUEST_TIMEOUT_SECONDS, 7.5)
+            self.assertEqual(settings_module.BREVO_OTP_TEMPLATE_ID, 123)
+
+        reload(project_settings)
