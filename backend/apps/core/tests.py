@@ -148,3 +148,39 @@ class APIResponseTests(SimpleTestCase):
                 "meta": response_meta,
             },
         )
+
+    def test_error_returns_error_details_without_data(self: Self) -> None:
+        """
+        Verify an error response preserves its dynamic error details.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the error envelope is incorrect.
+        """
+        error_details: dict[str, str] = {
+            "code": "registration_email_conflict",
+            "detail": "An account already uses this email address.",
+        }
+        response_meta: dict[str, str] = {
+            "request_id": "abc-123",
+        }
+
+        response: dict[str, object] = APIResponse.error(
+            error_details,
+            response_meta,
+        )
+
+        self.assertEqual(
+            response,
+            {
+                "success": False,
+                "data": None,
+                "error": error_details,
+                "meta": response_meta,
+            },
+        )
