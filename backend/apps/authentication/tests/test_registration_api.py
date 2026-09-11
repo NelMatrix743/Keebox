@@ -1,0 +1,83 @@
+from typing import Any, Self
+from unittest.mock import Mock, patch
+
+from django.http import HttpResponse
+from django.test import TestCase
+
+from apps.authentication.models import OTPVerification, RegistrationChallenge, User
+from apps.core.exceptions import EmailDeliveryError
+
+
+
+class RegistrationAPITests(TestCase):
+    def _registration_payload(self: Self) -> dict[str, str]:
+        """
+        Build valid input for the registration endpoint.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            Valid registration request data.
+
+        Raises:
+            None.
+        """
+        return {
+            "first_name": "Nelson",
+            "last_name": "Ubochiegbu",
+            "email": "nelson@example.com",
+            "password": "correct horse battery staple",
+        }
+
+    @patch("apps.authentication.api.EmailDeliveryService")
+    @patch(
+        "apps.authentication.registration_services.generate_otp_code",
+        return_value="482913",
+    )
+    def test_register_starts_registration_and_delivers_the_otp(
+        self: Self,
+        generate_otp: Mock,
+        email_delivery_service: Mock,
+    ) -> None:
+        """
+        Verify registration creates its challenge and emails the generated OTP.
+
+        Args:
+            self: Current test case instance.
+            generate_otp: Mocked secure OTP generator.
+            email_delivery_service: Mocked lowest-level email delivery service.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when registration initiation is incomplete.
+        """
+        email_delivery_service.return_value.send_otp_email.return_value = (
+            "brevo-message-id"
+        )
+
+        response: HttpResponse = self.client.post(
+            "/api/auth/register",
+            data=self._registration_payload(),
+            content_type="application/json",
+        )
+        response_body: dict[str, Any] = response.json()
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(response_body["success"])
+        self.assertEqual(response_body["data"]["status"], "otp_pending")
+        self.assertIsNone(response_body["error"])
+        self.assertIsNone(response_body["meta"])
+        self.assertEqual(RegistrationChallenge.objects.count(), 1)
+        self.assertEqual(OTPVerification.objects.count(), 1)
+        self.assertNotIn("password", response_body["data"])
+        self.assertNotIn("482913", str(response_body))
+        generate_otp.assert_called_once_with()
+        email_delivery_service.return_value.send_otp_email.assert_called_once_with(
+            recipient_email="nelson@example.com",
+            recipient_full_name="Nelson Ubochiegbu",
+            otp_code="482913",
+            expiration_minutes=5,
+        )
