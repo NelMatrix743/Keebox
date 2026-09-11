@@ -325,3 +325,33 @@ class EmailDeliveryServiceTests(SimpleTestCase):
             recipients[0].name,
             "Nelson Ubochiegbu",
         )
+
+    def test_send_otp_email_translates_brevo_errors(self: Self) -> None:
+        """
+        Verify provider failures are translated into a Keebox delivery error.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a provider failure escapes untranslated.
+        """
+        client: Mock = Mock()
+        client.transactional_emails.send_transac_email.side_effect = ApiError(
+            status_code=500,
+            body={"message": "Provider unavailable"},
+        )
+        service: EmailDeliveryService = EmailDeliveryService(
+            client=cast(Brevo, client),
+        )
+
+        with self.assertRaises(EmailDeliveryError):
+            service.send_otp_email(
+                recipient_email="nelson@example.com",
+                recipient_full_name="Nelson Ubochiegbu",
+                otp_code="482913",
+                expiration_minutes=5,
+            )
