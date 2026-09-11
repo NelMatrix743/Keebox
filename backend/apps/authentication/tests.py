@@ -157,6 +157,34 @@ class RegistrationSchemaTests(SimpleTestCase):
         self.assertIsNone(serialized_response["error"])
         self.assertIsNone(serialized_response["meta"])
 
+    def test_api_error_response_serializes_structured_error_details(
+        self: Self,
+    ) -> None:
+        """
+        Verify API errors serialize through the standard error envelope.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when structured error serialization fails.
+        """
+        error_data: ErrorData = ErrorData(
+            code="registration_email_conflict",
+            message="An account already uses this email address.",
+        )
+        response: ErrorResponse[ErrorData] = ErrorResponse[
+            ErrorData
+        ].model_validate(APIResponse.error(error_data.model_dump()))
+
+        self.assertFalse(response.success)
+        self.assertIsNone(response.data)
+        self.assertEqual(response.error, error_data)
+        self.assertIsNone(response.meta)
+
 
 class OTPCodeGenerationTests(SimpleTestCase):
     def test_generate_otp_code_returns_six_secure_numeric_characters(
