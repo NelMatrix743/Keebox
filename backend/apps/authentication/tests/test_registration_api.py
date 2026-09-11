@@ -81,3 +81,46 @@ class RegistrationAPITests(TestCase):
             otp_code="482913",
             expiration_minutes=5,
         )
+
+    @patch("apps.authentication.api.EmailDeliveryService")
+    def test_register_rejects_an_existing_user_email(
+        self: Self,
+        email_delivery_service: Mock,
+    ) -> None:
+        """
+        Verify registration returns a conflict for an existing account email.
+
+        Args:
+            self: Current test case instance.
+            email_delivery_service: Mocked lowest-level email delivery service.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a conflicting registration is accepted.
+        """
+        User.objects.create_user(
+            email="nelson@example.com",
+            password="correct horse battery staple",
+            first_name="Nelson",
+            last_name="Ubochiegbu",
+        )
+
+        response: HttpResponse = self.client.post(
+            "/api/auth/register",
+            data=self._registration_payload(),
+            content_type="application/json",
+        )
+        response_body: dict[str, Any] = response.json()
+
+        self.assertEqual(response.status_code, 409)
+        self.assertFalse(response_body["success"])
+        self.assertIsNone(response_body["data"])
+        self.assertEqual(
+            response_body["error"]["code"],
+            "registration_email_conflict",
+        )
+        self.assertFalse(RegistrationChallenge.objects.exists())
+        self.assertFalse(OTPVerification.objects.exists())
+        email_delivery_service.assert_not_called()
