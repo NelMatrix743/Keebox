@@ -160,3 +160,32 @@ class RegistrationAPITests(TestCase):
         self.assertNotIn("sensitive provider details", str(response_body))
         self.assertEqual(RegistrationChallenge.objects.count(), 1)
         self.assertEqual(OTPVerification.objects.count(), 1)
+
+    def test_register_wraps_request_validation_errors(self: Self) -> None:
+        """
+        Verify invalid registration input uses the standard API error envelope.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when validation errors use another response shape.
+        """
+        invalid_payload: dict[str, str] = self._registration_payload()
+        invalid_payload["email"] = "not-an-email"
+
+        response: HttpResponse = self.client.post(
+            "/api/auth/register",
+            data=invalid_payload,
+            content_type="application/json",
+        )
+        response_body: dict[str, Any] = response.json()
+
+        self.assertEqual(response.status_code, 422)
+        self.assertFalse(response_body["success"])
+        self.assertIsNone(response_body["data"])
+        self.assertEqual(response_body["error"]["code"], "validation_error")
+        self.assertIsInstance(response_body["error"]["details"], list)
