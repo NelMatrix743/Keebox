@@ -105,3 +105,42 @@ class KeeboxKeyCommandTests(SimpleTestCase):
         """
         with self.assertRaises(CommandError):
             call_command("keeboxkey", "--user", "--master")
+
+    @patch(
+        "apps.core.management.commands.keeboxkey.pyperclip.copy",
+        side_effect=PyperclipException("Clipboard unavailable"),
+    )
+    @patch(
+        "apps.core.management.commands.keeboxkey.generate_kbkey",
+        return_value="KBK-user-segmented-key",
+    )
+    def test_clipboard_failure_prints_the_key_and_raises_a_command_error(
+        self: Self,
+        generate_kbkey: Mock,
+        copy_to_clipboard: Mock,
+    ) -> None:
+        """
+        Verify a generated key remains visible when clipboard writing fails.
+
+        Args:
+            self: Current test case instance.
+            generate_kbkey: Mocked KBKey generator.
+            copy_to_clipboard: Mocked failing clipboard writer.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when clipboard failure handling is incorrect.
+        """
+        output: StringIO = StringIO()
+
+        with self.assertRaisesMessage(
+            CommandError,
+            "The generated key could not be copied to the clipboard.",
+        ):
+            call_command("keeboxkey", "--user", stdout=output)
+
+        generate_kbkey.assert_called_once_with()
+        copy_to_clipboard.assert_called_once_with("KBK-user-segmented-key")
+        self.assertEqual(output.getvalue(), "KBK-user-segmented-key\n")
