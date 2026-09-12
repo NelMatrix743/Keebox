@@ -130,3 +130,18 @@ def generate_kmkey() -> str:
     """
     return _generate_key(KMKEY_PREFIX)
 
+
+def validate_kbkey(value: str) -> bool:
+    """
+    Determine whether a value is a valid formatted Keebox user key.
+
+    Args:
+        value: Formatted key value to validate.
+
+    Returns:
+        True when the value is a canonical KBKey.
+
+    Raises:
+        None.
+    """
+    return _validate_key(value, KBKEY_PREFIX)
