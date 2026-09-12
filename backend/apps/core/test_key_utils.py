@@ -1,0 +1,42 @@
+from unittest.mock import Mock, patch
+
+from django.test import SimpleTestCase
+
+from apps.core.key_utils import (
+    generate_kbkey,
+    generate_kmkey,
+    validate_kbkey,
+    validate_kmkey,
+)
+
+
+
+class KeeboxKeyGenerationTests(SimpleTestCase):
+    @patch("apps.core.key_utils.token_bytes", return_value=bytes(range(32)))
+    def test_generate_kbkey_returns_a_formatted_user_key(
+        self,
+        secure_random_bytes: Mock,
+    ) -> None:
+        """
+        Verify KBKey generation preserves 256 random bits in the user format.
+
+        Args:
+            self: Current test case instance.
+            secure_random_bytes: Mocked cryptographic random-byte generator.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the generated KBKey format is invalid.
+        """
+        key: str = generate_kbkey()
+
+        self.assertEqual(len(key), 48)
+        self.assertEqual(key[:4], "KBK-")
+        self.assertEqual(key[26], "-")
+        self.assertEqual(len(key[4:26]), 22)
+        self.assertEqual(len(key[27:48]), 21)
+        self.assertTrue(validate_kbkey(key))
+        self.assertFalse(validate_kmkey(key))
+        secure_random_bytes.assert_called_once_with(32)
