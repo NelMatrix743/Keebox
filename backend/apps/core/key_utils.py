@@ -32,3 +32,24 @@ def _encode_key_material(key_material: bytes) -> str:
     """
     return urlsafe_b64encode(key_material).decode("ascii").rstrip("=")
 
+
+def _generate_key(prefix: KeyPrefix) -> str:
+    """
+    Generate a formatted Keebox key for the requested key type.
+
+    Args:
+        prefix: Approved prefix identifying the generated key type.
+
+    Returns:
+        Formatted key containing 256 bits of random key material.
+
+    Raises:
+        None.
+    """
+    encoded_payload: str = _encode_key_material(
+        token_bytes(KEEBOX_KEY_BYTE_LENGTH),
+    )
+    first_segment: str = encoded_payload[:KEEBOX_KEY_FIRST_SEGMENT_LENGTH]
+    second_segment: str = encoded_payload[KEEBOX_KEY_FIRST_SEGMENT_LENGTH:]
+    return f"{prefix}-{first_segment}-{second_segment}"
+
