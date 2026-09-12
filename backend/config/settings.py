@@ -1,9 +1,15 @@
 from pathlib import Path
 
+import environ
+
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR: Path = Path(__file__).resolve().parent.parent
+ENV_FILE: Path = BASE_DIR / '.ENV'
+
+env: environ.Env = environ.Env()
+environ.Env.read_env(ENV_FILE)
 
 
 # Quick-start development settings - unsuitable for production
@@ -117,7 +123,25 @@ STATIC_URL = 'static/'
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-MAILERS = {
+BREVO_API_KEY: str = env.str('BREVO_API_KEY', default='').strip()
+BREVO_SENDER_EMAIL: str = env.str('BREVO_SENDER_EMAIL', default='').strip()
+BREVO_SENDER_NAME: str = env.str('BREVO_SENDER_NAME', default='').strip()
+
+_brevo_request_timeout: str = env.str(
+    'BREVO_REQUEST_TIMEOUT_SECONDS',
+    default='',
+).strip()
+BREVO_REQUEST_TIMEOUT_SECONDS: float = float(_brevo_request_timeout or 10.0)
+
+_brevo_otp_template_id: str = env.str(
+    'BREVO_OTP_TEMPLATE_ID',
+    default='',
+).strip()
+BREVO_OTP_TEMPLATE_ID: int | None = (
+    int(_brevo_otp_template_id) if _brevo_otp_template_id else None
+)
+
+MAILERS: dict[str, dict[str, str]] = {
     'default': {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
