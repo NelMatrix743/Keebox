@@ -36,6 +36,7 @@ INSTALLED_APPS: list[str] = [
 
     # main apps
     'apps.authentication',
+    'apps.core',
     'apps.kcredentialboxes',
     'apps.knoteboxes',
 ]
