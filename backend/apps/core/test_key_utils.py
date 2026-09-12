@@ -120,3 +120,25 @@ class KeeboxKeyValidationTests(SimpleTestCase):
         for malformed_key in malformed_keys:
             with self.subTest(key=malformed_key):
                 self.assertFalse(validate_kbkey(malformed_key))
+
+    def test_validation_requires_the_expected_key_prefix(self) -> None:
+        """
+        Verify user and master validators do not accept the other key type.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when validation accepts the wrong prefix.
+        """
+        payload: str = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"
+        kbkey: str = f"KBK-{payload[:22]}-{payload[22:]}"
+        kmkey: str = f"KMK-{payload[:22]}-{payload[22:]}"
+
+        self.assertTrue(validate_kbkey(kbkey))
+        self.assertFalse(validate_kbkey(kmkey))
+        self.assertTrue(validate_kmkey(kmkey))
+        self.assertFalse(validate_kmkey(kbkey))
