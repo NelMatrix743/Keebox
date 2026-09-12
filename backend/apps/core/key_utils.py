@@ -145,3 +145,19 @@ def validate_kbkey(value: str) -> bool:
         None.
     """
     return _validate_key(value, KBKEY_PREFIX)
+
+
+def validate_kmkey(value: str) -> bool:
+    """
+    Determine whether a value is a valid formatted Keebox master key.
+
+    Args:
+        value: Formatted key value to validate.
+
+    Returns:
+        True when the value is a canonical KMKey.
+
+    Raises:
+        None.
+    """
+    return _validate_key(value, KMKEY_PREFIX)
