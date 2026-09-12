@@ -98,3 +98,19 @@ def _validate_key(value: str, expected_prefix: KeyPrefix) -> bool:
         and _encode_key_material(decoded_key_material) == encoded_payload
     )
 
+
+def generate_kbkey() -> str:
+    """
+    Generate a formatted Keebox user key.
+
+    Args:
+        None.
+
+    Returns:
+        KBKey containing 256 bits of random key material.
+
+    Raises:
+        None.
+    """
+    return _generate_key(KBKEY_PREFIX)
+
