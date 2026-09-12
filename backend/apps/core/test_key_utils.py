@@ -89,3 +89,34 @@ class KeeboxKeyValidationTests(SimpleTestCase):
         key: str = f"KBK-{payload[:22]}-{payload[22:]}"
 
         self.assertTrue(validate_kbkey(key))
+
+    def test_validation_rejects_malformed_keys(self) -> None:
+        """
+        Verify malformed or noncanonical key representations are rejected.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an invalid key is accepted.
+        """
+        valid_key: str = (
+            "KBK-AAECAwQFBgcICQoLDA0ODx-AREhMUFRYXGBkaGxwdHh8"
+        )
+        malformed_keys: tuple[str, ...] = (
+            "",
+            valid_key[1:],
+            f"KMK{valid_key[3:]}",
+            f"KBK_{valid_key[4:]}",
+            f"{valid_key[:26]}_{valid_key[27:]}",
+            f"{valid_key[:4]}+{valid_key[5:]}",
+            f"{valid_key}=",
+            f"{valid_key[:-1]}9",
+        )
+
+        for malformed_key in malformed_keys:
+            with self.subTest(key=malformed_key):
+                self.assertFalse(validate_kbkey(malformed_key))
