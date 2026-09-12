@@ -53,3 +53,48 @@ def _generate_key(prefix: KeyPrefix) -> str:
     second_segment: str = encoded_payload[KEEBOX_KEY_FIRST_SEGMENT_LENGTH:]
     return f"{prefix}-{first_segment}-{second_segment}"
 
+
+def _validate_key(value: str, expected_prefix: KeyPrefix) -> bool:
+    """
+    Validate a formatted Keebox key using fixed delimiter positions.
+
+    Args:
+        value: Formatted key value to validate.
+        expected_prefix: Prefix required for the requested key type.
+
+    Returns:
+        True when the value is a canonical key of the expected type.
+
+    Raises:
+        None.
+    """
+    if len(value) != KEEBOX_KEY_FORMATTED_LENGTH:
+        return False
+    if value[:3] != expected_prefix:
+        return False
+    
+    second_delimiter_index: int = 4 + KEEBOX_KEY_FIRST_SEGMENT_LENGTH
+    if value[3] != "-" or value[second_delimiter_index] != "-":
+        return False
+
+    encoded_payload: str = (
+        value[4:second_delimiter_index]
+        + value[second_delimiter_index + 1:]
+    )
+    if not all(character in BASE64URL_ALPHABET for character in encoded_payload):
+        return False
+
+    try:
+        decoded_key_material: bytes = b64decode(
+            f"{encoded_payload}=",
+            altchars=b"-_",
+            validate=True,
+        )
+    except (BinasciiError, ValueError):
+        return False
+
+    return (
+        len(decoded_key_material) == KEEBOX_KEY_BYTE_LENGTH
+        and _encode_key_material(decoded_key_material) == encoded_payload
+    )
+
