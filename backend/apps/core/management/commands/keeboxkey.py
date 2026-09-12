@@ -37,3 +37,32 @@ class Command(BaseCommand):
             action="store_true",
             help="Generate a Keebox master key.",
         )
+
+    def handle(self: Self, *args: Any, **options: Any) -> None:
+        """
+        Generate, copy, and print the requested Keebox key.
+
+        Args:
+            self: Current management command instance.
+            args: Additional positional arguments supplied by Django.
+            options: Parsed management command options.
+
+        Returns:
+            None: The generated key is written to standard output.
+
+        Raises:
+            CommandError: Raised when the key cannot be copied to the clipboard.
+        """
+        generated_key: str = (
+            generate_kbkey() if options["user"] else generate_kmkey()
+        )
+
+        try:
+            pyperclip.copy(generated_key)
+        except pyperclip.PyperclipException as exception:
+            self.stdout.write(generated_key)
+            raise CommandError(
+                "The generated key could not be copied to the clipboard.",
+            ) from exception
+
+        self.stdout.write(generated_key)
