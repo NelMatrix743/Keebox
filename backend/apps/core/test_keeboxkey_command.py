@@ -89,3 +89,19 @@ class KeeboxKeyCommandTests(SimpleTestCase):
         """
         with self.assertRaises(CommandError):
             call_command("keeboxkey")
+
+    def test_command_rejects_multiple_key_type_options(self: Self) -> None:
+        """
+        Verify the user and master options cannot be supplied together.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when both key type options are accepted.
+        """
+        with self.assertRaises(CommandError):
+            call_command("keeboxkey", "--user", "--master")
