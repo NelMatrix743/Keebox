@@ -70,3 +70,22 @@ class KeeboxKeyGenerationTests(SimpleTestCase):
         self.assertFalse(validate_kbkey(key))
         secure_random_bytes.assert_called_once_with(32)
 
+
+class KeeboxKeyValidationTests(SimpleTestCase):
+    def test_validation_accepts_base64url_hyphens_inside_segments(self) -> None:
+        """
+        Verify payload hyphens are not mistaken for structural delimiters.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a valid Base64url payload is rejected.
+        """
+        payload: str = "-__7__v_-__7__v_-__7__v_-__7__v_-__7__v_-_8"
+        key: str = f"KBK-{payload[:22]}-{payload[22:]}"
+
+        self.assertTrue(validate_kbkey(key))
