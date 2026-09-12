@@ -114,3 +114,19 @@ def generate_kbkey() -> str:
     """
     return _generate_key(KBKEY_PREFIX)
 
+
+def generate_kmkey() -> str:
+    """
+    Generate a formatted Keebox master key.
+
+    Args:
+        None.
+
+    Returns:
+        KMKey containing 256 bits of random key material.
+
+    Raises:
+        None.
+    """
+    return _generate_key(KMKEY_PREFIX)
+
