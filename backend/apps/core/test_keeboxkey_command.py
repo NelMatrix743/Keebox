@@ -73,3 +73,19 @@ class KeeboxKeyCommandTests(SimpleTestCase):
         generate_kmkey.assert_called_once_with()
         copy_to_clipboard.assert_called_once_with("KMK-master-segmented-key")
         self.assertEqual(output.getvalue(), "KMK-master-segmented-key\n")
+
+    def test_command_requires_a_key_type_option(self: Self) -> None:
+        """
+        Verify the command rejects invocations without a key type.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an optionless invocation is accepted.
+        """
+        with self.assertRaises(CommandError):
+            call_command("keeboxkey")
