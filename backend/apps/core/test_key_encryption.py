@@ -123,3 +123,52 @@ class KeeboxKeyEncryptionTests(SimpleTestCase):
                 self.alternate_kmkey,
                 encryption_version,
             )
+
+    def test_decrypt_kbkey_rejects_modified_encrypted_data(self: Self) -> None:
+        """
+        Verify AES-GCM rejects modified ciphertext and nonce values.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when modified encrypted data is accepted.
+        """
+        encrypted_kbkey, nonce, encryption_version = encrypt_kbkey(
+            self.kbkey,
+            self.kmkey,
+        )
+        modified_ciphertext: bytes = bytes([encrypted_kbkey[0] ^ 1]) + (
+            encrypted_kbkey[1:]
+        )
+        modified_authentication_tag: bytes = encrypted_kbkey[:-1] + bytes(
+            [encrypted_kbkey[-1] ^ 1],
+        )
+        modified_nonce: bytes = bytes([nonce[0] ^ 1]) + nonce[1:]
+
+        with self.assertRaises(KeeboxKeyDecryptionError):
+            decrypt_kbkey(
+                modified_ciphertext,
+                nonce,
+                self.kmkey,
+                encryption_version,
+            )
+
+        with self.assertRaises(KeeboxKeyDecryptionError):
+            decrypt_kbkey(
+                modified_authentication_tag,
+                nonce,
+                self.kmkey,
+                encryption_version,
+            )
+
+        with self.assertRaises(KeeboxKeyDecryptionError):
+            decrypt_kbkey(
+                encrypted_kbkey,
+                modified_nonce,
+                self.kmkey,
+                encryption_version,
+            )
