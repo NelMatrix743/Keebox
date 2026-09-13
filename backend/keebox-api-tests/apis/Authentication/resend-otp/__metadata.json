@@ -1,0 +1,10 @@
+{
+  "$schema": "https://assets.requestly.com/local/v1.17.0/metadata.json",
+  "type": "api",
+  "entryType": "http",
+  "id": "9ae9f301-de78-4ba9-93b3-4be8b65cf260",
+  "rank": "",
+  "url": "{{base_url}}/api/auth/register/resend-otp",
+  "method": "POST",
+  "contentType": "json"
+}
