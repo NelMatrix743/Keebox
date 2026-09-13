@@ -77,3 +77,22 @@ class RegistrationStartedData(Schema):
     resend_available_at: datetime
     message: str
 
+
+class RegistrationVerificationRequest(Schema):
+    """Validate data submitted to verify a registration OTP."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    registration_id: UUID
+    otp_code: str = Field(pattern=r"^[0-9]{6}$", strict=True)
+
+
+class RegistrationCompletedResponse(Schema):
+    """Represent safe response data for a completed registration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: UUID
+    registration_id: UUID
+    status: Literal["completed"]
+    message: str
