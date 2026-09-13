@@ -184,3 +184,34 @@ class RegistrationVerificationAPITests(TestCase):
         self.assertEqual(response.status_code, 410)
         self.assertEqual(response_body["error"]["code"], "expired_otp")
         self.assertEqual(otp_verification.status, OTPStatus.EXPIRED)
+
+    def test_verify_otp_rejects_a_locked_code(self: Self) -> None:
+        """
+        Verify a locked OTP returns a locked response without further attempts.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when locked OTP handling is incorrect.
+        """
+        registration_challenge, otp_verification = (
+            self._create_registration_with_otp()
+        )
+        otp_verification.status = OTPStatus.LOCKED
+        otp_verification.save(update_fields=["status", "updated_at"])
+
+        response: Any = self.client.post(
+            "/api/auth/register/verify-otp",
+            data=self._verification_payload(registration_challenge),
+            content_type="application/json",
+        )
+        response_body: dict[str, Any] = response.json()
+
+        otp_verification.refresh_from_db()
+        self.assertEqual(response.status_code, 423)
+        self.assertEqual(response_body["error"]["code"], "locked_otp")
+        self.assertEqual(otp_verification.attempt_count, 0)
