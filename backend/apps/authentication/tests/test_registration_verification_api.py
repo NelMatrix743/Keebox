@@ -153,3 +153,34 @@ class RegistrationVerificationAPITests(TestCase):
             registration_challenge.status,
             RegistrationStatus.OTP_PENDING,
         )
+
+    def test_verify_otp_rejects_an_expired_code(self: Self) -> None:
+        """
+        Verify an expired OTP returns a gone response and is persisted as expired.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when expired OTP handling is incorrect.
+        """
+        registration_challenge, otp_verification = (
+            self._create_registration_with_otp()
+        )
+        otp_verification.expires_at = timezone.now() - timedelta(microseconds=1)
+        otp_verification.save(update_fields=["expires_at", "updated_at"])
+
+        response: Any = self.client.post(
+            "/api/auth/register/verify-otp",
+            data=self._verification_payload(registration_challenge),
+            content_type="application/json",
+        )
+        response_body: dict[str, Any] = response.json()
+
+        otp_verification.refresh_from_db()
+        self.assertEqual(response.status_code, 410)
+        self.assertEqual(response_body["error"]["code"], "expired_otp")
+        self.assertEqual(otp_verification.status, OTPStatus.EXPIRED)
