@@ -52,3 +52,22 @@ class KeeboxKeyEncryptionTests(SimpleTestCase):
             len(self.kbkey.encode("utf-8")) + KBKEY_AUTH_TAG_LENGTH,
         )
         self.assertNotIn(self.kbkey.encode("utf-8"), encrypted_kbkey)
+
+    def test_encrypt_kbkey_uses_a_unique_nonce(self: Self) -> None:
+        """
+        Verify repeated encryption produces distinct nonces and ciphertext.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an AES-GCM nonce is reused.
+        """
+        first_encrypted, first_nonce, _ = encrypt_kbkey(self.kbkey, self.kmkey)
+        second_encrypted, second_nonce, _ = encrypt_kbkey(self.kbkey, self.kmkey)
+
+        self.assertNotEqual(first_nonce, second_nonce)
+        self.assertNotEqual(first_encrypted, second_encrypted)
