@@ -87,12 +87,21 @@ class RegistrationVerificationRequest(Schema):
     otp_code: str = Field(pattern=r"^[0-9]{6}$", strict=True)
 
 
+class RegistrationOTPVerifiedResponse(Schema):
+    """Represent safe response data after registration OTP verification."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    registration_id: UUID
+    status: Literal["otp_verified"]
+    message: str
+
+
 class RegistrationCompletedResponse(Schema):
     """Represent safe response data for a completed registration."""
 
     model_config = ConfigDict(extra="forbid")
 
     user_id: UUID
-    registration_id: UUID
     status: Literal["completed"]
     message: str
