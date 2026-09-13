@@ -272,3 +272,28 @@ class RegistrationOTPResendAPITests(TestCase):
         self.assertNotIn("sensitive provider details", str(response_body))
         self.assertEqual(registration_challenge.resend_count, 1)
         self.assertEqual(registration_challenge.otp_verifications.count(), 2)
+
+    def test_resend_otp_wraps_request_validation_errors(self: Self) -> None:
+        """
+        Verify malformed resend input uses the standard API error envelope.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when validation uses another response shape.
+        """
+        response: Any = self.client.post(
+            "/api/auth/register/resend-otp",
+            data={"registration_id": "not-a-uuid"},
+            content_type="application/json",
+        )
+        response_body: dict[str, Any] = response.json()
+
+        self.assertEqual(response.status_code, 422)
+        self.assertFalse(response_body["success"])
+        self.assertIsNone(response_body["data"])
+        self.assertEqual(response_body["error"]["code"], "validation_error")
