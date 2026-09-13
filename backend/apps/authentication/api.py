@@ -4,14 +4,20 @@ from django.http import HttpRequest
 from ninja import Router
 
 from apps.authentication.exceptions import (
+    ConsumedOTPError,
+    ExpiredOTPError,
+    InvalidOTPError,
     InvalidRegistrationStateError,
+    LockedOTPError,
     RegistrationEmailConflictError,
 )
 from apps.authentication.models import OTPVerification, RegistrationChallenge
 from apps.authentication.registration_services import RegistrationService
 from apps.authentication.schemas import (
+    RegistrationOTPVerifiedResponse,
     RegistrationRequest,
     RegistrationStartedResponse,
+    RegistrationVerificationRequest,
 )
 from apps.core.constants import OTP_RESEND_COOLDOWN, OTP_TTL
 from apps.core.email import EmailDeliveryService
@@ -26,10 +32,7 @@ router: Router = Router(tags=["Authentication"])
     "/register",
     response={
         201: SuccessResponse[RegistrationStartedResponse],
-        400: ErrorResponse[ErrorData],
-        409: ErrorResponse[ErrorData],
-        422: ErrorResponse[ErrorData],
-        503: ErrorResponse[ErrorData],
+        Ellipsis: ErrorResponse[ErrorData],
     },
 )
 def register(
@@ -117,3 +120,82 @@ def register(
         )
     )
     return 201, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    "/register/verify-otp",
+    response={
+        200: SuccessResponse[RegistrationOTPVerifiedResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def verify_registration_otp(
+    request: HttpRequest,
+    payload: RegistrationVerificationRequest,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Verify the current OTP for a pending registration challenge.
+
+    Args:
+        request: HTTP request that initiated OTP verification.
+        payload: Validated registration identifier and OTP code.
+
+    Returns:
+        HTTP status and the standard OTP verification response envelope.
+
+    Raises:
+        None: Expected registration and OTP failures are mapped to API responses.
+    """
+    try:
+        RegistrationService.verify_registration_otp(
+            registration_challenge_id=payload.registration_id,
+            raw_code=payload.otp_code,
+        )
+    except InvalidOTPError:
+        return 400, APIResponse.error(
+            ErrorData(
+                code="invalid_otp",
+                message="The OTP code is invalid.",
+            ).model_dump(),
+        )
+    except ExpiredOTPError:
+        return 410, APIResponse.error(
+            ErrorData(
+                code="expired_otp",
+                message="The OTP code has expired.",
+            ).model_dump(),
+        )
+    except LockedOTPError:
+        return 423, APIResponse.error(
+            ErrorData(
+                code="locked_otp",
+                message="The OTP code is locked.",
+            ).model_dump(),
+        )
+    except ConsumedOTPError:
+        return 409, APIResponse.error(
+            ErrorData(
+                code="consumed_otp",
+                message="The OTP code has already been used.",
+            ).model_dump(),
+        )
+    except InvalidRegistrationStateError:
+        return 409, APIResponse.error(
+            ErrorData(
+                code="invalid_registration_state",
+                message="The registration cannot verify an OTP.",
+            ).model_dump(),
+        )
+
+    response_data: RegistrationOTPVerifiedResponse = (
+        RegistrationOTPVerifiedResponse.model_validate(
+            {
+                "registration_id": payload.registration_id,
+                "status": "otp_verified",
+                "message": (
+                    "Email verified. Create your lock PIN to complete registration."
+                ),
+            },
+        )
+    )
+    return 200, APIResponse.success(response_data.model_dump())
