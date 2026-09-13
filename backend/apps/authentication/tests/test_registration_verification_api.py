@@ -62,3 +62,53 @@ class RegistrationVerificationAPITests(TestCase):
             "registration_id": str(registration_challenge.id),
             "otp_code": "482913",
         }
+
+    def test_verify_otp_advances_registration_without_creating_user(
+        self: Self,
+    ) -> None:
+        """
+        Verify a valid OTP advances registration to the PIN setup stage.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when successful verification is incomplete.
+        """
+        registration_challenge, otp_verification = (
+            self._create_registration_with_otp()
+        )
+
+        response: Any = self.client.post(
+            "/api/auth/register/verify-otp",
+            data=self._verification_payload(registration_challenge),
+            content_type="application/json",
+        )
+        response_body: dict[str, Any] = response.json()
+
+        registration_challenge.refresh_from_db()
+        otp_verification.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response_body["success"])
+        self.assertEqual(
+            response_body["data"],
+            {
+                "registration_id": str(registration_challenge.id),
+                "status": "otp_verified",
+                "message": (
+                    "Email verified. Create your lock PIN to complete registration."
+                ),
+            },
+        )
+        self.assertIsNone(response_body["error"])
+        self.assertIsNone(response_body["meta"])
+        self.assertEqual(
+            registration_challenge.status,
+            RegistrationStatus.OTP_VERIFIED,
+        )
+        self.assertEqual(otp_verification.status, OTPStatus.CONSUMED)
+        self.assertIsNotNone(otp_verification.consumed_at)
+        self.assertFalse(User.objects.exists())
