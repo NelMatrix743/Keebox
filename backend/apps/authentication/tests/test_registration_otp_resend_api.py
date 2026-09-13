@@ -1,5 +1,6 @@
 from typing import Any, Self, cast
 from unittest.mock import Mock, patch
+from uuid import uuid4
 
 from django.test import TestCase
 from django.utils import timezone
@@ -7,6 +8,7 @@ from django.utils import timezone
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
 from apps.core.choices import OTPStatus, RegistrationStatus
 from apps.core.constants import OTP_MAX_RESENDS, OTP_RESEND_COOLDOWN
+from apps.core.exceptions import EmailDeliveryError
 
 
 
@@ -119,3 +121,46 @@ class RegistrationOTPResendAPITests(TestCase):
             otp_code="482913",
             expiration_minutes=5,
         )
+
+    @patch("apps.authentication.api.EmailDeliveryService")
+    def test_resend_otp_rejects_requests_during_cooldown(
+        self: Self,
+        email_delivery_service: Mock,
+    ) -> None:
+        """
+        Verify an early resend returns a retry error without changing state.
+
+        Args:
+            self: Current test case instance.
+            email_delivery_service: Mocked lowest-level email delivery service.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the resend cooldown is not enforced.
+        """
+        registration_challenge, current_otp = self._create_registration_with_otp()
+        current_otp.last_sent_at = timezone.now()
+        current_otp.save(update_fields=["last_sent_at", "updated_at"])
+
+        response: Any = self.client.post(
+            "/api/auth/register/resend-otp",
+            data={"registration_id": str(registration_challenge.id)},
+            content_type="application/json",
+        )
+        response_body: dict[str, Any] = response.json()
+
+        registration_challenge.refresh_from_db()
+        current_otp.refresh_from_db()
+        self.assertEqual(response.status_code, 429)
+        self.assertFalse(response_body["success"])
+        self.assertIsNone(response_body["data"])
+        self.assertEqual(
+            response_body["error"]["code"],
+            "otp_resend_cooldown",
+        )
+        self.assertEqual(registration_challenge.resend_count, 0)
+        self.assertEqual(current_otp.status, OTPStatus.PENDING)
+        self.assertEqual(registration_challenge.otp_verifications.count(), 1)
+        email_delivery_service.assert_not_called()
