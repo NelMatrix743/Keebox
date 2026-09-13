@@ -216,3 +216,53 @@ def encrypt_kbkey(kbkey: str, kmkey: str) -> tuple[bytes, bytes, int]:
     )
     return encrypted_kbkey, nonce, KBKEY_ENCRYPTION_VERSION
 
+
+def decrypt_kbkey(
+    encrypted_kbkey: bytes,
+    nonce: bytes,
+    kmkey: str,
+    encryption_version: int,
+) -> str:
+    """
+    Decrypt and validate a formatted KBKey using the server KMKey.
+
+    Args:
+        encrypted_kbkey: Authenticated KBKey ciphertext and authentication tag.
+        nonce: Unique nonce used when the KBKey was encrypted.
+        kmkey: Canonical formatted master key protecting the user key.
+        encryption_version: Version selecting the supported encryption process.
+
+    Returns:
+        The recovered canonical formatted KBKey.
+
+    Raises:
+        ValueError: Raised when metadata or the KMKey is invalid.
+        KeeboxKeyDecryptionError: Raised when encrypted data cannot be 
+            authenticated or does not recover a canonical KBKey.
+    """
+    if not encrypted_kbkey:
+        raise ValueError("The encrypted KBKey is required.")
+    if len(nonce) != KBKEY_NONCE_LENGTH:
+        raise ValueError("The KBKey nonce length is invalid.")
+    if encryption_version != KBKEY_ENCRYPTION_VERSION:
+        raise ValueError("The KBKey encryption version is unsupported.")
+
+    raw_kmkey: bytes = _decode_key_material(kmkey, KMKEY_PREFIX)
+    try:
+        decrypted_value: bytes = AESGCM(raw_kmkey).decrypt(
+            nonce,
+            encrypted_kbkey,
+            None,
+        )
+        kbkey: str = decrypted_value.decode("utf-8")
+    except (InvalidTag, UnicodeDecodeError) as exception:
+        raise KeeboxKeyDecryptionError(
+            "The encrypted KBKey could not be decrypted.",
+        ) from exception
+
+    if not validate_kbkey(kbkey):
+        raise KeeboxKeyDecryptionError(
+            "The encrypted KBKey could not be decrypted.",
+        )
+
+    return kbkey
