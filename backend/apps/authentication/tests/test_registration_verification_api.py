@@ -276,3 +276,33 @@ class RegistrationVerificationAPITests(TestCase):
             response_body["error"]["code"],
             "invalid_registration_state",
         )
+
+    def test_verify_otp_wraps_request_validation_errors(self: Self) -> None:
+        """
+        Verify malformed OTP input uses the standard API error envelope.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when validation uses another response shape.
+        """
+        registration_challenge, _ = self._create_registration_with_otp()
+        payload: dict[str, str] = self._verification_payload(
+            registration_challenge,
+        )
+        payload["otp_code"] = "48291"
+
+        response: Any = self.client.post(
+            "/api/auth/register/verify-otp",
+            data=payload,
+            content_type="application/json",
+        )
+        response_body: dict[str, Any] = response.json()
+
+        self.assertEqual(response.status_code, 422)
+        self.assertFalse(response_body["success"])
+        self.assertEqual(response_body["error"]["code"], "validation_error")
