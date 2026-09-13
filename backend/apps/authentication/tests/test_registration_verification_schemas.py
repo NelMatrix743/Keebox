@@ -141,3 +141,45 @@ class RegistrationVerificationSchemaTests(SimpleTestCase):
                 "meta": None,
             },
         )
+
+    def test_completed_response_rejects_unsafe_or_incomplete_data(
+        self: Self,
+    ) -> None:
+        """
+        Verify the completed response accepts only its safe public contract.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when unsafe or incomplete data is accepted.
+        """
+        user_id: UUID = uuid4()
+        registration_id: UUID = uuid4()
+        invalid_payloads: tuple[dict[str, object], ...] = (
+            {
+                "user_id": user_id,
+                "registration_id": registration_id,
+                "status": "otp_verified",
+                "message": "Registration completed successfully.",
+            },
+            {
+                "user_id": user_id,
+                "registration_id": registration_id,
+                "status": "completed",
+                "message": "Registration completed successfully.",
+                "password_hash": "protected-value",
+            },
+            {
+                "registration_id": registration_id,
+                "status": "completed",
+                "message": "Registration completed successfully.",
+            },
+        )
+
+        for payload in invalid_payloads:
+            with self.subTest(payload=payload), self.assertRaises(ValidationError):
+                RegistrationCompletedResponse.model_validate(payload)
