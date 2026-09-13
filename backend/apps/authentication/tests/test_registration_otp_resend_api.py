@@ -164,3 +164,47 @@ class RegistrationOTPResendAPITests(TestCase):
         self.assertEqual(current_otp.status, OTPStatus.PENDING)
         self.assertEqual(registration_challenge.otp_verifications.count(), 1)
         email_delivery_service.assert_not_called()
+
+    @patch("apps.authentication.api.EmailDeliveryService")
+    def test_resend_otp_cancels_registration_at_the_resend_limit(
+        self: Self,
+        email_delivery_service: Mock,
+    ) -> None:
+        """
+        Verify an exhausted resend allowance cancels the registration.
+
+        Args:
+            self: Current test case instance.
+            email_delivery_service: Mocked lowest-level email delivery service.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when resend-limit cancellation is incomplete.
+        """
+        registration_challenge, current_otp = self._create_registration_with_otp()
+        registration_challenge.resend_count = OTP_MAX_RESENDS
+        registration_challenge.save(update_fields=["resend_count", "updated_at"])
+
+        response: Any = self.client.post(
+            "/api/auth/register/resend-otp",
+            data={"registration_id": str(registration_challenge.id)},
+            content_type="application/json",
+        )
+        response_body: dict[str, Any] = response.json()
+
+        registration_challenge.refresh_from_db()
+        current_otp.refresh_from_db()
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(
+            response_body["error"]["code"],
+            "otp_resend_limit_reached",
+        )
+        self.assertEqual(
+            registration_challenge.status,
+            RegistrationStatus.CANCELLED,
+        )
+        self.assertEqual(current_otp.status, OTPStatus.EXPIRED)
+        self.assertEqual(registration_challenge.otp_verifications.count(), 1)
+        email_delivery_service.assert_not_called()
