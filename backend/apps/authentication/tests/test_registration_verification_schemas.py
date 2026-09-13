@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from apps.authentication.schemas import (
     RegistrationCompletedResponse,
+    RegistrationOTPVerifiedResponse,
     RegistrationVerificationRequest,
 )
 from apps.core.choices import RegistrationStatus
@@ -96,11 +97,11 @@ class RegistrationVerificationSchemaTests(SimpleTestCase):
             with self.subTest(payload=payload), self.assertRaises(ValidationError):
                 RegistrationVerificationRequest.model_validate(payload)
 
-    def test_completed_response_serializes_through_the_success_envelope(
+    def test_otp_verified_response_serializes_through_the_envelope(
         self: Self,
     ) -> None:
         """
-        Verify completed registration data uses the standard success envelope.
+        Verify OTP verification returns the PIN-setup continuation data.
 
         Args:
             self: Current test case instance.
@@ -109,18 +110,19 @@ class RegistrationVerificationSchemaTests(SimpleTestCase):
             None: This test does not return a value.
 
         Raises:
-            AssertionError: Raised when completed response serialization fails.
+            AssertionError: Raised when OTP-verified serialization fails.
         """
-        user_id: UUID = uuid4()
         registration_id: UUID = uuid4()
-        response: SuccessResponse[RegistrationCompletedResponse] = (
-            SuccessResponse[RegistrationCompletedResponse].model_validate(
+        response: SuccessResponse[RegistrationOTPVerifiedResponse] = (
+            SuccessResponse[RegistrationOTPVerifiedResponse].model_validate(
                 APIResponse.success(
                     {
-                        "user_id": user_id,
                         "registration_id": registration_id,
-                        "status": RegistrationStatus.COMPLETED,
-                        "message": "Registration completed successfully.",
+                        "status": RegistrationStatus.OTP_VERIFIED,
+                        "message": (
+                            "Email verified. Create your lock PIN to complete "
+                            "registration."
+                        ),
                     },
                 ),
             )
@@ -132,21 +134,23 @@ class RegistrationVerificationSchemaTests(SimpleTestCase):
             {
                 "success": True,
                 "data": {
-                    "user_id": str(user_id),
                     "registration_id": str(registration_id),
-                    "status": "completed",
-                    "message": "Registration completed successfully.",
+                    "status": "otp_verified",
+                    "message": (
+                        "Email verified. Create your lock PIN to complete "
+                        "registration."
+                    ),
                 },
                 "error": None,
                 "meta": None,
             },
         )
 
-    def test_completed_response_rejects_unsafe_or_incomplete_data(
+    def test_otp_verified_response_rejects_unsafe_or_incomplete_data(
         self: Self,
     ) -> None:
         """
-        Verify the completed response accepts only its safe public contract.
+        Verify the OTP-verified response accepts only its public contract.
 
         Args:
             self: Current test case instance.
@@ -155,31 +159,61 @@ class RegistrationVerificationSchemaTests(SimpleTestCase):
             None: This test does not return a value.
 
         Raises:
-            AssertionError: Raised when unsafe or incomplete data is accepted.
+            AssertionError: Raised when unsafe OTP-verified data is accepted.
         """
         user_id: UUID = uuid4()
         registration_id: UUID = uuid4()
         invalid_payloads: tuple[dict[str, object], ...] = (
             {
+                "registration_id": registration_id,
+                "status": "completed",
+                "message": "Email verified.",
+            },
+            {
                 "user_id": user_id,
                 "registration_id": registration_id,
                 "status": "otp_verified",
-                "message": "Registration completed successfully.",
+                "message": "Email verified.",
             },
             {
-                "user_id": user_id,
-                "registration_id": registration_id,
-                "status": "completed",
-                "message": "Registration completed successfully.",
-                "password_hash": "protected-value",
-            },
-            {
-                "registration_id": registration_id,
-                "status": "completed",
-                "message": "Registration completed successfully.",
+                "status": "otp_verified",
+                "message": "Email verified.",
             },
         )
 
         for payload in invalid_payloads:
             with self.subTest(payload=payload), self.assertRaises(ValidationError):
-                RegistrationCompletedResponse.model_validate(payload)
+                RegistrationOTPVerifiedResponse.model_validate(payload)
+
+    def test_completed_response_identifies_the_created_user(self: Self) -> None:
+        """
+        Verify final registration data identifies the newly created user.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when final response serialization fails.
+        """
+        user_id: UUID = uuid4()
+        response: RegistrationCompletedResponse = (
+            RegistrationCompletedResponse.model_validate(
+                {
+                    "user_id": user_id,
+                    "status": RegistrationStatus.COMPLETED,
+                    "message": "Registration completed successfully.",
+                },
+            )
+        )
+
+        self.assertEqual(
+            response.model_dump(mode="json"),
+            {
+                "user_id": str(user_id),
+                "status": "completed",
+                "message": "Registration completed successfully.",
+            },
+        )

@@ -3,6 +3,7 @@ from typing import Self
 from unittest.mock import patch
 from uuid import uuid4
 
+from django.contrib.auth.hashers import check_password
 from django.test import TestCase
 from django.utils import timezone
 
@@ -14,15 +15,17 @@ from apps.core.choices import RegistrationStatus
 
 
 class RegistrationCompletionServiceTests(TestCase):
-    def _create_verified_registration(self: Self) -> RegistrationChallenge:
+    def _create_otp_verified_registration(
+        self: Self,
+    ) -> RegistrationChallenge:
         """
-        Create a persisted OTP-verified registration challenge.
+        Create a persisted registration challenge awaiting its lock PIN.
 
         Args:
             self: Current test case instance.
 
         Returns:
-            The persisted verified registration challenge.
+            The persisted OTP-verified registration challenge.
 
         Raises:
             ValueError: Raised when the test credentials are invalid.
@@ -39,7 +42,7 @@ class RegistrationCompletionServiceTests(TestCase):
 
     def test_complete_registration_creates_a_permanent_user(self: Self) -> None:
         """
-        Verify a verified challenge creates one usable permanent user account.
+        Verify an OTP-verified challenge and PIN create one usable user account.
 
         Args:
             self: Current test case instance.
@@ -50,10 +53,15 @@ class RegistrationCompletionServiceTests(TestCase):
         Raises:
             AssertionError: Raised when the created user has incorrect data.
         """
-        challenge: RegistrationChallenge = self._create_verified_registration()
+        challenge: RegistrationChallenge = (
+            self._create_otp_verified_registration()
+        )
         password_hash: str = challenge.password_hash
 
-        user: User = RegistrationService.complete_registration(challenge.id)
+        user: User = RegistrationService.complete_registration(
+            challenge.id,
+            "123456",
+        )
 
         challenge.refresh_from_db()
         user.refresh_from_db()
@@ -63,11 +71,13 @@ class RegistrationCompletionServiceTests(TestCase):
         self.assertEqual(user.email, challenge.email)
         self.assertEqual(user.password, password_hash)
         self.assertTrue(user.check_password("correct horse battery staple"))
+        self.assertIsNotNone(user.pin_hash)
+        self.assertTrue(check_password("123456", user.pin_hash))
         self.assertEqual(challenge.status, RegistrationStatus.COMPLETED)
         self.assertIsNotNone(challenge.completed_at)
 
         with self.assertRaises(InvalidRegistrationStateError):
-            RegistrationService.complete_registration(challenge.id)
+            RegistrationService.complete_registration(challenge.id, "123456")
 
         self.assertEqual(User.objects.count(), 1)
 
@@ -75,7 +85,7 @@ class RegistrationCompletionServiceTests(TestCase):
         self: Self,
     ) -> None:
         """
-        Verify only an OTP-verified registration can create a permanent user.
+        Verify only an OTP-verified registration can create a user.
 
         Args:
             self: Current test case instance.
@@ -95,14 +105,17 @@ class RegistrationCompletionServiceTests(TestCase):
         for status in invalid_statuses:
             with self.subTest(status=status):
                 challenge: RegistrationChallenge = (
-                    self._create_verified_registration()
+                    self._create_otp_verified_registration()
                 )
                 challenge.status = status
                 challenge.email = f"{status}@example.com"
                 challenge.save(update_fields=["status", "email", "updated_at"])
 
                 with self.assertRaises(InvalidRegistrationStateError):
-                    RegistrationService.complete_registration(challenge.id)
+                    RegistrationService.complete_registration(
+                        challenge.id,
+                        "123456",
+                    )
 
         self.assertFalse(User.objects.exists())
 
@@ -121,15 +134,17 @@ class RegistrationCompletionServiceTests(TestCase):
         Raises:
             AssertionError: Raised when an unusable registration creates a user.
         """
-        challenge: RegistrationChallenge = self._create_verified_registration()
+        challenge: RegistrationChallenge = (
+            self._create_otp_verified_registration()
+        )
         challenge.expires_at = timezone.now() - timedelta(microseconds=1)
         challenge.save(update_fields=["expires_at", "updated_at"])
 
         with self.assertRaises(InvalidRegistrationStateError):
-            RegistrationService.complete_registration(challenge.id)
+            RegistrationService.complete_registration(challenge.id, "123456")
 
         with self.assertRaises(InvalidRegistrationStateError):
-            RegistrationService.complete_registration(uuid4())
+            RegistrationService.complete_registration(uuid4(), "123456")
 
         self.assertFalse(User.objects.exists())
 
@@ -148,7 +163,9 @@ class RegistrationCompletionServiceTests(TestCase):
         Raises:
             AssertionError: Raised when registration completion is not atomic.
         """
-        challenge: RegistrationChallenge = self._create_verified_registration()
+        challenge: RegistrationChallenge = (
+            self._create_otp_verified_registration()
+        )
 
         with (
             patch.object(
@@ -158,10 +175,40 @@ class RegistrationCompletionServiceTests(TestCase):
             ),
             self.assertRaises(RuntimeError),
         ):
-            RegistrationService.complete_registration(challenge.id)
+            RegistrationService.complete_registration(challenge.id, "123456")
 
         challenge.refresh_from_db()
-        self.assertEqual(challenge.status, RegistrationStatus.OTP_VERIFIED)
+        self.assertEqual(
+            challenge.status,
+            RegistrationStatus.OTP_VERIFIED,
+        )
         self.assertIsNone(challenge.completed_at)
         self.assertFalse(User.objects.exists())
 
+    def test_complete_registration_requires_a_lock_pin(self: Self) -> None:
+        """
+        Verify a permanent user cannot be created without a lock PIN.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when registration completes without a PIN.
+        """
+        challenge: RegistrationChallenge = (
+            self._create_otp_verified_registration()
+        )
+
+        with self.assertRaises(ValueError):
+            RegistrationService.complete_registration(challenge.id, "")
+
+        challenge.refresh_from_db()
+        self.assertEqual(
+            challenge.status,
+            RegistrationStatus.OTP_VERIFIED,
+        )
+        self.assertIsNone(challenge.completed_at)
+        self.assertFalse(User.objects.exists())

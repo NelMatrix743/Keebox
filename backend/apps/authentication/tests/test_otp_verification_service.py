@@ -13,7 +13,7 @@ from apps.authentication.exceptions import (
     InvalidRegistrationStateError,
     LockedOTPError,
 )
-from apps.authentication.models import OTPVerification, RegistrationChallenge
+from apps.authentication.models import OTPVerification, RegistrationChallenge, User
 from apps.authentication.registration_services import RegistrationService
 from apps.core.choices import OTPStatus, RegistrationStatus
 from apps.core.constants import OTP_MAX_ATTEMPTS
@@ -53,7 +53,7 @@ class OTPVerificationServiceTests(TestCase):
 
     def test_verify_registration_otp_consumes_a_valid_code(self: Self) -> None:
         """
-        Verify a valid code consumes its OTP and verifies the registration.
+        Verify a valid code consumes its OTP and advances the registration.
 
         Args:
             self: Current test case instance.
@@ -77,7 +77,11 @@ class OTPVerificationServiceTests(TestCase):
         self.assertEqual(verified_otp.status, OTPStatus.CONSUMED)
         self.assertIsNotNone(verified_otp.consumed_at)
         self.assertEqual(verified_otp.attempt_count, 0)
-        self.assertEqual(challenge.status, RegistrationStatus.OTP_VERIFIED)
+        self.assertEqual(
+            challenge.status,
+            RegistrationStatus.OTP_VERIFIED,
+        )
+        self.assertFalse(User.objects.exists())
 
     def test_verify_registration_otp_counts_an_invalid_code(self: Self) -> None:
         """
