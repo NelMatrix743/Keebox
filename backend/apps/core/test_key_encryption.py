@@ -172,3 +172,32 @@ class KeeboxKeyEncryptionTests(SimpleTestCase):
                 self.kmkey,
                 encryption_version,
             )
+
+    def test_decrypt_kbkey_rejects_invalid_metadata(self: Self) -> None:
+        """
+        Verify decryption rejects invalid ciphertext metadata and versions.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when invalid encryption metadata is accepted.
+        """
+        encrypted_kbkey, nonce, _ = encrypt_kbkey(self.kbkey, self.kmkey)
+        invalid_arguments: tuple[tuple[bytes, bytes, int], ...] = (
+            (b"", nonce, KBKEY_ENCRYPTION_VERSION),
+            (encrypted_kbkey, b"short", KBKEY_ENCRYPTION_VERSION),
+            (encrypted_kbkey, nonce, KBKEY_ENCRYPTION_VERSION + 1),
+        )
+
+        for ciphertext, candidate_nonce, version in invalid_arguments:
+            with self.subTest(version=version), self.assertRaises(ValueError):
+                decrypt_kbkey(
+                    ciphertext,
+                    candidate_nonce,
+                    self.kmkey,
+                    version,
+                )
