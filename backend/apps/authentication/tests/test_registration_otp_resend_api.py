@@ -208,3 +208,29 @@ class RegistrationOTPResendAPITests(TestCase):
         self.assertEqual(current_otp.status, OTPStatus.EXPIRED)
         self.assertEqual(registration_challenge.otp_verifications.count(), 1)
         email_delivery_service.assert_not_called()
+
+    def test_resend_otp_rejects_an_unknown_registration(self: Self) -> None:
+        """
+        Verify an unknown registration identifier returns a conflict response.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an unknown registration is accepted.
+        """
+        response: Any = self.client.post(
+            "/api/auth/register/resend-otp",
+            data={"registration_id": str(uuid4())},
+            content_type="application/json",
+        )
+        response_body: dict[str, Any] = response.json()
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(
+            response_body["error"]["code"],
+            "invalid_registration_state",
+        )
