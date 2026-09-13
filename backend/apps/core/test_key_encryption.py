@@ -201,3 +201,37 @@ class KeeboxKeyEncryptionTests(SimpleTestCase):
                     self.kmkey,
                     version,
                 )
+
+    def test_decrypt_kbkey_rejects_noncanonical_plaintext(self: Self) -> None:
+        """
+        Verify authenticated plaintext must still contain a canonical KBKey.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when invalid decrypted key data is accepted.
+        """
+        encoded_payload: str = self.kmkey[4:26] + self.kmkey[27:]
+        raw_kmkey: bytes = b64decode(
+            f"{encoded_payload}=",
+            altchars=b"-_",
+            validate=True,
+        )
+        nonce: bytes = bytes(KBKEY_NONCE_LENGTH)
+        encrypted_value: bytes = AESGCM(raw_kmkey).encrypt(
+            nonce,
+            b"not-a-formatted-kbkey",
+            None,
+        )
+
+        with self.assertRaises(KeeboxKeyDecryptionError):
+            decrypt_kbkey(
+                encrypted_value,
+                nonce,
+                self.kmkey,
+                KBKEY_ENCRYPTION_VERSION,
+            )
