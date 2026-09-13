@@ -14,12 +14,14 @@ from apps.authentication.exceptions import (
 from apps.authentication.models import OTPVerification, RegistrationChallenge
 from apps.authentication.registration_services import RegistrationService
 from apps.authentication.schemas import (
+    RegistrationOTPResendRequest,
+    RegistrationOTPResentResponse,
     RegistrationOTPVerifiedResponse,
     RegistrationRequest,
     RegistrationStartedResponse,
     RegistrationVerificationRequest,
 )
-from apps.core.constants import OTP_RESEND_COOLDOWN, OTP_TTL
+from apps.core.constants import OTP_MAX_RESENDS, OTP_RESEND_COOLDOWN, OTP_TTL
 from apps.core.email import EmailDeliveryService
 from apps.core.exceptions import EmailDeliveryError
 from apps.core.response import ErrorData, ErrorResponse, APIResponse, SuccessResponse
@@ -198,4 +200,71 @@ def verify_registration_otp(
             },
         )
     )
+    return 200, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    "/register/resend-otp",
+    response={
+        200: SuccessResponse[RegistrationOTPResentResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def resend_registration_otp(
+    request: HttpRequest,
+    payload: RegistrationOTPResendRequest,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Replace and deliver the current OTP for a pending registration.
+
+    Args:
+        request: HTTP request that initiated the OTP resend.
+        payload: Validated registration identifier for the resend.
+
+    Returns:
+        HTTP status and the standard OTP resend response envelope.
+
+    Raises:
+        InvalidRegistrationStateError: Raised when the registration cannot resend.
+        OTPResendCooldownError: Raised when the resend cooldown has not elapsed.
+        OTPResendLimitError: Raised when the resend allowance has been exhausted.
+        EmailDeliveryError: Raised when the replacement OTP cannot be delivered.
+    """
+    replacement_otp: OTPVerification
+    raw_code: str
+
+    replacement_otp, raw_code = RegistrationService.resend_registration_otp(
+        registration_challenge_id=payload.registration_id,
+    )
+    registration_challenge: RegistrationChallenge = (
+        replacement_otp.registration_challenge
+    )
+
+    EmailDeliveryService().send_otp_email(
+        recipient_email=registration_challenge.email,
+        recipient_full_name=(
+            f"{registration_challenge.first_name} "
+            f"{registration_challenge.last_name}"
+        ),
+        otp_code=raw_code,
+        expiration_minutes=int(OTP_TTL.total_seconds() // 60),
+    )
+
+    response_data: RegistrationOTPResentResponse = (
+        RegistrationOTPResentResponse.model_validate(
+            {
+                "registration_id": registration_challenge.id,
+                "status": registration_challenge.status,
+                "otp_expires_at": replacement_otp.expires_at,
+                "resend_available_at": (
+                    replacement_otp.last_sent_at + OTP_RESEND_COOLDOWN
+                ),
+                "resends_remaining": (
+                    OTP_MAX_RESENDS - registration_challenge.resend_count
+                ),
+                "message": "A new verification code has been sent.",
+            },
+        )
+    )
+    
     return 200, APIResponse.success(response_data.model_dump())
