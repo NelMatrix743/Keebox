@@ -97,3 +97,29 @@ class KeeboxKeyEncryptionTests(SimpleTestCase):
                 ValueError,
             ):
                 encrypt_kbkey(kbkey, kmkey)
+
+    def test_decrypt_kbkey_rejects_an_incorrect_master_key(self: Self) -> None:
+        """
+        Verify ciphertext cannot be opened with another valid KMKey.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an incorrect KMKey decrypts the KBKey.
+        """
+        encrypted_kbkey, nonce, encryption_version = encrypt_kbkey(
+            self.kbkey,
+            self.kmkey,
+        )
+
+        with self.assertRaises(KeeboxKeyDecryptionError):
+            decrypt_kbkey(
+                encrypted_kbkey,
+                nonce,
+                self.alternate_kmkey,
+                encryption_version,
+            )
