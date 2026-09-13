@@ -1,12 +1,15 @@
 from datetime import datetime, timedelta
-from typing import Self
+from typing import Self, cast
 from uuid import UUID, uuid4
 
 from django.test import SimpleTestCase
 from django.utils import timezone
 from pydantic import ValidationError
 
-from apps.authentication.schemas import RegistrationRequest, RegistrationStartedData
+from apps.authentication.schemas import (
+    RegistrationRequest,
+    RegistrationStartedResponse,
+)
 from apps.core.choices import RegistrationStatus
 from apps.core.response import ErrorData, ErrorResponse, APIResponse, SuccessResponse
 
@@ -99,8 +102,8 @@ class RegistrationSchemaTests(SimpleTestCase):
         """
         current_time: datetime = timezone.now()
         registration_id: UUID = uuid4()
-        response: SuccessResponse[RegistrationStartedData] = (
-            SuccessResponse[RegistrationStartedData].model_validate(
+        response: SuccessResponse[RegistrationStartedResponse] = (
+            SuccessResponse[RegistrationStartedResponse].model_validate(
                 APIResponse.success(
                     {
                         "registration_id": registration_id,
@@ -117,10 +120,14 @@ class RegistrationSchemaTests(SimpleTestCase):
             )
         )
         serialized_response: dict[str, object] = response.model_dump(mode="json")
+        serialized_data: dict[str, object] = cast(
+            dict[str, object],
+            serialized_response["data"],
+        )
 
         self.assertTrue(serialized_response["success"])
         self.assertEqual(
-            serialized_response["data"]["registration_id"],
+            serialized_data["registration_id"],
             str(registration_id),
         )
         self.assertIsNone(serialized_response["error"])
@@ -153,4 +160,3 @@ class RegistrationSchemaTests(SimpleTestCase):
         self.assertIsNone(response.data)
         self.assertEqual(response.error, error_data)
         self.assertIsNone(response.meta)
-

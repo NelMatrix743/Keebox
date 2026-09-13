@@ -9,7 +9,10 @@ from apps.authentication.exceptions import (
 )
 from apps.authentication.models import OTPVerification, RegistrationChallenge
 from apps.authentication.registration_services import RegistrationService
-from apps.authentication.schemas import RegistrationRequest, RegistrationStartedData
+from apps.authentication.schemas import (
+    RegistrationRequest,
+    RegistrationStartedResponse,
+)
 from apps.core.constants import OTP_RESEND_COOLDOWN, OTP_TTL
 from apps.core.email import EmailDeliveryService
 from apps.core.exceptions import EmailDeliveryError
@@ -22,7 +25,7 @@ router: Router = Router(tags=["Authentication"])
 @router.post(
     "/register",
     response={
-        201: SuccessResponse[RegistrationStartedData],
+        201: SuccessResponse[RegistrationStartedResponse],
         400: ErrorResponse[ErrorData],
         409: ErrorResponse[ErrorData],
         422: ErrorResponse[ErrorData],
@@ -96,18 +99,21 @@ def register(
             ).model_dump(),
         )
 
-    response_data: RegistrationStartedData = RegistrationStartedData.model_validate(
-        {
-            "registration_id": registration_challenge.id,
-            "status": registration_challenge.status,
-            "expires_at": registration_challenge.expires_at,
-            "otp_expires_at": otp_verification.expires_at,
-            "resend_available_at": (
-                otp_verification.last_sent_at + OTP_RESEND_COOLDOWN
-            ),
-            "message": (
-                "Registration started. Check your email for the verification code."
-            ),
-        },
+    response_data: RegistrationStartedResponse = (
+        RegistrationStartedResponse.model_validate(
+            {
+                "registration_id": registration_challenge.id,
+                "status": registration_challenge.status,
+                "expires_at": registration_challenge.expires_at,
+                "otp_expires_at": otp_verification.expires_at,
+                "resend_available_at": (
+                    otp_verification.last_sent_at + OTP_RESEND_COOLDOWN
+                ),
+                "message": (
+                    "Registration started. Check your email for the verification "
+                    "code."
+                ),
+            },
+        )
     )
     return 201, APIResponse.success(response_data.model_dump())

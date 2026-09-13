@@ -65,7 +65,7 @@ class RegistrationRequest(Schema):
         return value
 
 
-class RegistrationStartedData(Schema):
+class RegistrationStartedResponse(Schema):
     """Represent safe response data for a newly started registration."""
 
     model_config = ConfigDict(extra="forbid")
