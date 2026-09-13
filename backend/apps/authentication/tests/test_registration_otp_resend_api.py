@@ -234,3 +234,41 @@ class RegistrationOTPResendAPITests(TestCase):
             response_body["error"]["code"],
             "invalid_registration_state",
         )
+
+    @patch("apps.authentication.api.EmailDeliveryService")
+    def test_resend_otp_returns_a_safe_error_when_delivery_fails(
+        self: Self,
+        email_delivery_service: Mock,
+    ) -> None:
+        """
+        Verify a delivery failure returns a safe service-unavailable response.
+
+        Args:
+            self: Current test case instance.
+            email_delivery_service: Mocked failing email delivery service.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when delivery failure details are exposed.
+        """
+        registration_challenge, _ = self._create_registration_with_otp()
+        email_delivery_service.return_value.send_otp_email.side_effect = (
+            EmailDeliveryError("sensitive provider details")
+        )
+
+        response: Any = self.client.post(
+            "/api/auth/register/resend-otp",
+            data={"registration_id": str(registration_challenge.id)},
+            content_type="application/json",
+        )
+        response_body: dict[str, Any] = response.json()
+
+        registration_challenge.refresh_from_db()
+        self.assertEqual(response.status_code, 503)
+        self.assertFalse(response_body["success"])
+        self.assertEqual(response_body["error"]["code"], "email_delivery_failed")
+        self.assertNotIn("sensitive provider details", str(response_body))
+        self.assertEqual(registration_challenge.resend_count, 1)
+        self.assertEqual(registration_challenge.otp_verifications.count(), 2)
