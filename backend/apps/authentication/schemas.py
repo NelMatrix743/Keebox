@@ -97,6 +97,27 @@ class RegistrationOTPVerifiedResponse(Schema):
     message: str
 
 
+class RegistrationOTPResendRequest(Schema):
+    """Validate data submitted to resend a registration OTP."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    registration_id: UUID
+
+
+class RegistrationOTPResentResponse(Schema):
+    """Represent safe response data for a replacement registration OTP."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    registration_id: UUID
+    status: Literal["otp_pending"]
+    otp_expires_at: datetime
+    resend_available_at: datetime
+    resends_remaining: int = Field(ge=0)
+    message: str
+
+
 class RegistrationCompletedResponse(Schema):
     """Represent safe response data for a completed registration."""
 
