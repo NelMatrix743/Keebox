@@ -95,3 +95,49 @@ class RegistrationVerificationSchemaTests(SimpleTestCase):
         for payload in malformed_payloads:
             with self.subTest(payload=payload), self.assertRaises(ValidationError):
                 RegistrationVerificationRequest.model_validate(payload)
+
+    def test_completed_response_serializes_through_the_success_envelope(
+        self: Self,
+    ) -> None:
+        """
+        Verify completed registration data uses the standard success envelope.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when completed response serialization fails.
+        """
+        user_id: UUID = uuid4()
+        registration_id: UUID = uuid4()
+        response: SuccessResponse[RegistrationCompletedResponse] = (
+            SuccessResponse[RegistrationCompletedResponse].model_validate(
+                APIResponse.success(
+                    {
+                        "user_id": user_id,
+                        "registration_id": registration_id,
+                        "status": RegistrationStatus.COMPLETED,
+                        "message": "Registration completed successfully.",
+                    },
+                ),
+            )
+        )
+        serialized_response: dict[str, object] = response.model_dump(mode="json")
+
+        self.assertEqual(
+            serialized_response,
+            {
+                "success": True,
+                "data": {
+                    "user_id": str(user_id),
+                    "registration_id": str(registration_id),
+                    "status": "completed",
+                    "message": "Registration completed successfully.",
+                },
+                "error": None,
+                "meta": None,
+            },
+        )
