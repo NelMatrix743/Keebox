@@ -112,3 +112,44 @@ class RegistrationVerificationAPITests(TestCase):
         self.assertEqual(otp_verification.status, OTPStatus.CONSUMED)
         self.assertIsNotNone(otp_verification.consumed_at)
         self.assertFalse(User.objects.exists())
+
+    def test_verify_otp_rejects_an_invalid_code(self: Self) -> None:
+        """
+        Verify an invalid OTP returns a safe error and records the attempt.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when invalid OTP handling is incorrect.
+        """
+        registration_challenge, otp_verification = (
+            self._create_registration_with_otp()
+        )
+        payload: dict[str, str] = self._verification_payload(
+            registration_challenge,
+        )
+        payload["otp_code"] = "123456"
+
+        response: Any = self.client.post(
+            "/api/auth/register/verify-otp",
+            data=payload,
+            content_type="application/json",
+        )
+        response_body: dict[str, Any] = response.json()
+
+        registration_challenge.refresh_from_db()
+        otp_verification.refresh_from_db()
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response_body["success"])
+        self.assertIsNone(response_body["data"])
+        self.assertEqual(response_body["error"]["code"], "invalid_otp")
+        self.assertEqual(otp_verification.attempt_count, 1)
+        self.assertEqual(otp_verification.status, OTPStatus.PENDING)
+        self.assertEqual(
+            registration_challenge.status,
+            RegistrationStatus.OTP_PENDING,
+        )
