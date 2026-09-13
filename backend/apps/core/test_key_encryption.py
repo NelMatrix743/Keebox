@@ -71,3 +71,29 @@ class KeeboxKeyEncryptionTests(SimpleTestCase):
 
         self.assertNotEqual(first_nonce, second_nonce)
         self.assertNotEqual(first_encrypted, second_encrypted)
+
+    def test_encrypt_kbkey_rejects_malformed_keys(self: Self) -> None:
+        """
+        Verify encryption requires canonical KBKey and KMKey values.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when encryption accepts a malformed key.
+        """
+        invalid_pairs: tuple[tuple[str, str], ...] = (
+            ("not-a-kbkey", self.kmkey),
+            (self.kbkey, "not-a-kmkey"),
+            (self.kmkey, self.kmkey),
+            (self.kbkey, self.kbkey),
+        )
+
+        for kbkey, kmkey in invalid_pairs:
+            with self.subTest(kbkey=kbkey, kmkey=kmkey), self.assertRaises(
+                ValueError,
+            ):
+                encrypt_kbkey(kbkey, kmkey)
