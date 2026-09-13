@@ -7,7 +7,29 @@
       "syncValue": "http://127.0.0.1:8000",
       "type": "string",
       "isEnabled": true,
-      "rank": null,
+      "rank": "a0",
+      "valueSource": {
+        "kind": "inline"
+      },
+      "overrideMeta": null
+    },
+    "registration_id": {
+      "id": "86022835-4a77-4a15-88fa-90660d0adc8a",
+      "syncValue": "9d617523-8bd4-4f87-9b8f-17ae9376ac68",
+      "type": "string",
+      "isEnabled": true,
+      "rank": "a1",
+      "valueSource": {
+        "kind": "inline"
+      },
+      "overrideMeta": null
+    },
+    "otp_code": {
+      "id": "6f6a55d0-e27b-4053-bcbb-fdf8f144ffdc",
+      "syncValue": "402548",
+      "type": "string",
+      "isEnabled": true,
+      "rank": "a2",
       "valueSource": {
         "kind": "inline"
       },
