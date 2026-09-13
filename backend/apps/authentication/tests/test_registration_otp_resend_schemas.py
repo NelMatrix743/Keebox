@@ -122,3 +122,43 @@ class RegistrationOTPResendSchemaTests(SimpleTestCase):
                 "meta": None,
             },
         )
+
+    def test_resent_response_rejects_unsafe_or_invalid_data(self: Self) -> None:
+        """
+        Verify resend responses reject raw codes and invalid remaining counts.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when unsafe or invalid data is accepted.
+        """
+        valid_payload: dict[str, object] = {
+            "registration_id": uuid4(),
+            "status": "otp_pending",
+            "otp_expires_at": datetime.now(UTC),
+            "resend_available_at": datetime.now(UTC),
+            "resends_remaining": 2,
+            "message": "A new verification code has been sent.",
+        }
+        invalid_payloads: tuple[dict[str, object], ...] = (
+            {
+                **valid_payload,
+                "raw_otp": "482913",
+            },
+            {
+                **valid_payload,
+                "resends_remaining": -1,
+            },
+            {
+                **valid_payload,
+                "status": "otp_verified",
+            },
+        )
+
+        for payload in invalid_payloads:
+            with self.subTest(payload=payload), self.assertRaises(ValidationError):
+                RegistrationOTPResentResponse.model_validate(payload)
