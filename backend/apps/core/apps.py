@@ -1,5 +1,8 @@
 from django.apps import AppConfig
 
 
+
 class CoreConfig(AppConfig):
-    name = 'core'
+    """Configure the shared Keebox core application."""
+
+    name: str = "apps.core"

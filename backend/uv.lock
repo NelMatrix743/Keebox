@@ -677,6 +677,7 @@ dependencies = [
     { name = "django-ninja" },
     { name = "django-ninja-jwt" },
     { name = "email-validator" },
+    { name = "pyperclip" },
 ]
 
 [package.dev-dependencies]
@@ -703,6 +704,7 @@ requires-dist = [
     { name = "django-ninja", specifier = ">=1.6.3" },
     { name = "django-ninja-jwt", specifier = ">=5.4.5" },
     { name = "email-validator", specifier = ">=2.3.0" },
+    { name = "pyperclip", specifier = ">=1.11.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -997,6 +999,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/3b/3e/4dd06523d3784b9229059f8812cbed292ad36136adedf32db106796258db/pymongo-4.18.0-cp314-cp314t-win32.whl", hash = "sha256:996a87a5b9c048e3dddf497acde55c7955748572091c70e1424d3c4779171526", size = 818741, upload-time = "2026-09-03T16:00:37.27Z" },
     { url = "https://files.pythonhosted.org/packages/f5/d3/7f5ed7d37cd026b0d59b2504e4015b1370c79359f1e81ca5e3eb0428e8e1/pymongo-4.18.0-cp314-cp314t-win_amd64.whl", hash = "sha256:47627909a177036117b91a3378df8634dc8e93cf4ccd66b22086b0098d3c72de", size = 826081, upload-time = "2026-09-03T16:00:39.221Z" },
     { url = "https://files.pythonhosted.org/packages/64/02/b2606ddf52fa615d4ff3edb2aa05fb064337fa871f99ebb184a39e051cc8/pymongo-4.18.0-cp314-cp314t-win_arm64.whl", hash = "sha256:4a81d166a43e8af1e5152b6854a263ba0a8831f7dd2ca1badc716f219f4f1bc0", size = 817605, upload-time = "2026-09-03T16:00:41.547Z" },
+]
+
+[[package]]
+name = "pyperclip"
+version = "1.11.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e8/52/d87eba7cb129b81563019d1679026e7a112ef76855d6159d24754dbd2a51/pyperclip-1.11.0.tar.gz", hash = "sha256:244035963e4428530d9e3a6101a1ef97209c6825edab1567beac148ccc1db1b6", size = 12185, upload-time = "2025-09-26T14:40:37.245Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/df/80/fc9d01d5ed37ba4c42ca2b55b4339ae6e200b456be3a1aaddf4a9fa99b8c/pyperclip-1.11.0-py3-none-any.whl", hash = "sha256:299403e9ff44581cb9ba2ffeed69c7aa96a008622ad0c46cb575ca75b5b84273", size = 11063, upload-time = "2025-09-26T14:40:36.069Z" },
 ]
 
 [[package]]

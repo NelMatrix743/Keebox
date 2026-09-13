@@ -65,7 +65,7 @@ class RegistrationRequest(Schema):
         return value
 
 
-class RegistrationStartedData(Schema):
+class RegistrationStartedResponse(Schema):
     """Represent safe response data for a newly started registration."""
 
     model_config = ConfigDict(extra="forbid")
@@ -77,3 +77,31 @@ class RegistrationStartedData(Schema):
     resend_available_at: datetime
     message: str
 
+
+class RegistrationVerificationRequest(Schema):
+    """Validate data submitted to verify a registration OTP."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    registration_id: UUID
+    otp_code: str = Field(pattern=r"^[0-9]{6}$", strict=True)
+
+
+class RegistrationOTPVerifiedResponse(Schema):
+    """Represent safe response data after registration OTP verification."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    registration_id: UUID
+    status: Literal["otp_verified"]
+    message: str
+
+
+class RegistrationCompletedResponse(Schema):
+    """Represent safe response data for a completed registration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: UUID
+    status: Literal["completed"]
+    message: str

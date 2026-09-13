@@ -1,6 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
+from django.contrib.auth.hashers import make_password
 from django.db import transaction
 from django.utils import timezone
 
@@ -277,10 +278,10 @@ class RegistrationService:
         current_otp: OTPVerification,
     ) -> None:
         """
-        Consume an OTP and mark its registration challenge as verified.
+        Consume an OTP and mark its registration as OTP verified.
 
         Args:
-            registration_challenge: Registration challenge verified by the OTP.
+            registration_challenge: Registration challenge advanced by the OTP.
             current_otp: OTP verification that matched the submitted code.
 
         Returns:
@@ -331,24 +332,30 @@ class RegistrationService:
     @staticmethod
     def _create_user(
         registration_challenge: RegistrationChallenge,
+        raw_pin: str,
     ) -> User:
         """
-        Create a permanent user from a verified registration challenge.
+        Create a permanent user from an OTP-verified registration.
 
         Args:
-            registration_challenge: Verified registration data used for the user.
+            registration_challenge: Registration data used for the user.
+            raw_pin: Lock PIN to protect before storing it on the user.
 
         Returns:
             The persisted permanent user account.
 
         Raises:
-            None.
+            ValueError: Raised when the lock PIN is empty.
         """
+        if not raw_pin:
+            raise ValueError("The lock PIN is required.")
+
         user: User = User(
             first_name=registration_challenge.first_name,
             last_name=registration_challenge.last_name,
             email=registration_challenge.email,
             password=registration_challenge.password_hash,
+            pin_hash=make_password(raw_pin),
         )
         user.save()
         return user
@@ -621,12 +628,14 @@ class RegistrationService:
     @transaction.atomic
     def complete_registration(
         registration_challenge_id: UUID,
+        raw_pin: str,
     ) -> User:
         """
-        Convert an OTP-verified registration into a permanent user account.
+        Complete an OTP-verified registration with a protected lock PIN.
 
         Args:
-            registration_challenge_id: Identifier of the verified registration.
+            registration_challenge_id: Identifier of the OTP-verified registration.
+            raw_pin: Lock PIN to protect on the permanent account.
 
         Returns:
             The permanent user created from the registration challenge.
@@ -634,6 +643,7 @@ class RegistrationService:
         Raises:
             InvalidRegistrationStateError: Raised when the registration is missing,
                 expired, or not OTP-verified.
+            ValueError: Raised when the lock PIN is empty.
         """
         registration_challenge: RegistrationChallenge = (
             RegistrationService._get_locked_registration_challenge(
@@ -645,6 +655,9 @@ class RegistrationService:
             RegistrationStatus.OTP_VERIFIED,
             "be completed",
         )
-        user: User = RegistrationService._create_user(registration_challenge)
+        user: User = RegistrationService._create_user(
+            registration_challenge,
+            raw_pin,
+        )
         RegistrationService._mark_registration_completed(registration_challenge)
         return user
