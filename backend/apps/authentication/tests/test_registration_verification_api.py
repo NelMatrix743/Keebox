@@ -215,3 +215,35 @@ class RegistrationVerificationAPITests(TestCase):
         self.assertEqual(response.status_code, 423)
         self.assertEqual(response_body["error"]["code"], "locked_otp")
         self.assertEqual(otp_verification.attempt_count, 0)
+
+    def test_verify_otp_rejects_a_consumed_code(self: Self) -> None:
+        """
+        Verify a consumed OTP cannot be used to advance a pending registration.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a consumed OTP is accepted.
+        """
+        registration_challenge, otp_verification = (
+            self._create_registration_with_otp()
+        )
+        otp_verification.status = OTPStatus.CONSUMED
+        otp_verification.consumed_at = timezone.now()
+        otp_verification.save(
+            update_fields=["status", "consumed_at", "updated_at"],
+        )
+
+        response: Any = self.client.post(
+            "/api/auth/register/verify-otp",
+            data=self._verification_payload(registration_challenge),
+            content_type="application/json",
+        )
+        response_body: dict[str, Any] = response.json()
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response_body["error"]["code"], "consumed_otp")
