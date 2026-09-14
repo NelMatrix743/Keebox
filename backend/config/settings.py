@@ -25,7 +25,6 @@ ALLOWED_HOSTS = []
 
 
 # Application definition
-
 INSTALLED_APPS: list[str] = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -121,9 +120,11 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
+# Encryption
+KEEBOX_MASTER_KEY: str = env.str('KEEBOX_MASTER_KEY', default='').strip()
 
+
+# Email
 BREVO_API_KEY: str = env.str('BREVO_API_KEY', default='').strip()
 BREVO_SENDER_EMAIL: str = env.str('BREVO_SENDER_EMAIL', default='').strip()
 BREVO_SENDER_NAME: str = env.str('BREVO_SENDER_NAME', default='').strip()
