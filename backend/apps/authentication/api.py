@@ -2,6 +2,7 @@ from typing import Any
 
 from django.http import HttpRequest
 from ninja import Router
+from ninja_jwt.tokens import RefreshToken
 
 from apps.authentication.exceptions import (
     ConsumedOTPError,
@@ -13,12 +14,14 @@ from apps.authentication.exceptions import (
     OTPResendLimitError,
     RegistrationEmailConflictError,
 )
-from apps.authentication.models import OTPVerification, RegistrationChallenge
+from apps.authentication.models import OTPVerification, RegistrationChallenge, User
 from apps.authentication.registration_services import RegistrationService
 from apps.authentication.schemas import (
+    RegistrationCompletedResponse,
     RegistrationOTPResendRequest,
     RegistrationOTPResentResponse,
     RegistrationOTPVerifiedResponse,
+    RegistrationCompletionRequest,
     RegistrationRequest,
     RegistrationStartedResponse,
     RegistrationVerificationRequest,
@@ -297,3 +300,61 @@ def resend_registration_otp(
     )
 
     return 200, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    "/register/create-pin",
+    response={
+        201: SuccessResponse[RegistrationCompletedResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def create_registration_pin(
+    request: HttpRequest,
+    payload: RegistrationCompletionRequest,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Create the lock PIN and complete an OTP-verified registration.
+
+    Args:
+        request: HTTP request that initiated registration completion.
+        payload: Validated registration identifier and lock PIN.
+
+    Returns:
+        HTTP status and the completed registration response envelope.
+
+    Raises:
+        None: Expected registration failures are mapped to API responses.
+    """
+    try:
+        user: User
+        kbkey: str
+        user, kbkey = RegistrationService.complete_registration(
+            registration_challenge_id=payload.registration_id,
+            raw_pin=payload.pin,
+        )
+    except InvalidRegistrationStateError:
+        return 409, APIResponse.error(
+            ErrorData(
+                code="invalid_registration_state",
+                message="The registration cannot create a lock PIN.",
+            ).model_dump(),
+        )
+
+    refresh_token: RefreshToken = RefreshToken.for_user(user)
+    response_data: RegistrationCompletedResponse = (
+        RegistrationCompletedResponse.model_validate(
+            {
+                "user_id": user.id,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email,
+                "kbkey": kbkey,
+                "access_token": str(refresh_token.access_token),
+                "refresh_token": str(refresh_token),
+                "status": "completed",
+                "message": "Registration completed successfully.",
+            },
+        )
+    )
+    return 201, APIResponse.success(response_data.model_dump())
