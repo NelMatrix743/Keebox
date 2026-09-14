@@ -1,16 +1,11 @@
 from datetime import datetime
 from uuid import UUID
 
+from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.db import transaction
 from django.utils import timezone
 
-from apps.core.choices import OTPStatus, RegistrationStatus
-from apps.core.constants import (
-    OTP_MAX_ATTEMPTS,
-    OTP_MAX_RESENDS,
-    OTP_RESEND_COOLDOWN,
-)
 from apps.authentication.exceptions import (
     ConsumedOTPError,
     ExpiredOTPError,
@@ -24,6 +19,13 @@ from apps.authentication.exceptions import (
 )
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
 from apps.authentication.otp import generate_otp_code
+from apps.core.choices import OTPStatus, RegistrationStatus
+from apps.core.constants import (
+    OTP_MAX_ATTEMPTS,
+    OTP_MAX_RESENDS,
+    OTP_RESEND_COOLDOWN,
+)
+from apps.core.key_utils import encrypt_kbkey, generate_kbkey
 
 
 
@@ -330,10 +332,40 @@ class RegistrationService:
         return registration_challenge
 
     @staticmethod
+    def _generate_protected_kbkey() -> tuple[str, bytes, bytes, int]:
+        """
+        Generate a KBKey and protect it with the configured Keebox master key.
+
+        Args:
+            None.
+
+        Returns:
+            The plaintext KBKey, ciphertext, nonce, and encryption version.
+
+        Raises:
+            ValueError: Raised when the configured Keebox master key is invalid.
+        """
+        kbkey: str = generate_kbkey()
+        encrypted_kbkey: bytes
+        kbkey_nonce: bytes
+        kbkey_encryption_version: int
+        (
+            encrypted_kbkey,
+            kbkey_nonce,
+            kbkey_encryption_version,
+        ) = encrypt_kbkey(kbkey, settings.KEEBOX_MASTER_KEY)
+        return (
+            kbkey,
+            encrypted_kbkey,
+            kbkey_nonce,
+            kbkey_encryption_version,
+        )
+
+    @staticmethod
     def _create_user(
         registration_challenge: RegistrationChallenge,
         raw_pin: str,
-    ) -> User:
+    ) -> tuple[User, str]:
         """
         Create a permanent user from an OTP-verified registration.
 
@@ -342,23 +374,37 @@ class RegistrationService:
             raw_pin: Lock PIN to protect before storing it on the user.
 
         Returns:
-            The persisted permanent user account.
+            The persisted permanent user account and its plaintext KBKey.
 
         Raises:
-            ValueError: Raised when the lock PIN is empty.
+            ValueError: Raised when the lock PIN is empty or the configured
+                Keebox master key is invalid.
         """
         if not raw_pin:
             raise ValueError("The lock PIN is required.")
 
+        kbkey: str
+        encrypted_kbkey: bytes
+        kbkey_nonce: bytes
+        kbkey_encryption_version: int
+        (
+            kbkey,
+            encrypted_kbkey,
+            kbkey_nonce,
+            kbkey_encryption_version,
+        ) = RegistrationService._generate_protected_kbkey()
         user: User = User(
             first_name=registration_challenge.first_name,
             last_name=registration_challenge.last_name,
             email=registration_challenge.email,
             password=registration_challenge.password_hash,
             pin_hash=make_password(raw_pin),
+            encrypted_kbkey=encrypted_kbkey,
+            kbkey_nonce=kbkey_nonce,
+            kbkey_encryption_version=kbkey_encryption_version,
         )
         user.save()
-        return user
+        return user, kbkey
 
     @staticmethod
     def _mark_registration_completed(
@@ -629,7 +675,7 @@ class RegistrationService:
     def complete_registration(
         registration_challenge_id: UUID,
         raw_pin: str,
-    ) -> User:
+    ) -> tuple[User, str]:
         """
         Complete an OTP-verified registration with a protected lock PIN.
 
@@ -638,12 +684,13 @@ class RegistrationService:
             raw_pin: Lock PIN to protect on the permanent account.
 
         Returns:
-            The permanent user created from the registration challenge.
+            The permanent user and plaintext KBKey created for the registration.
 
         Raises:
             InvalidRegistrationStateError: Raised when the registration is missing,
                 expired, or not OTP-verified.
-            ValueError: Raised when the lock PIN is empty.
+            ValueError: Raised when the lock PIN is empty or the configured
+                Keebox master key is invalid.
         """
         registration_challenge: RegistrationChallenge = (
             RegistrationService._get_locked_registration_challenge(
@@ -655,9 +702,11 @@ class RegistrationService:
             RegistrationStatus.OTP_VERIFIED,
             "be completed",
         )
-        user: User = RegistrationService._create_user(
+        user: User
+        kbkey: str
+        user, kbkey = RegistrationService._create_user(
             registration_challenge,
             raw_pin,
         )
         RegistrationService._mark_registration_completed(registration_challenge)
-        return user
+        return user, kbkey
