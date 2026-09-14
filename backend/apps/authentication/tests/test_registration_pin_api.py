@@ -153,3 +153,41 @@ class RegistrationPINAPITests(TestCase):
             RegistrationStatus.OTP_PENDING,
         )
         self.assertFalse(User.objects.exists())
+
+    def test_create_pin_rejects_an_empty_pin(self: Self) -> None:
+        """
+        Verify registration cannot complete with an empty lock PIN.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an empty PIN creates a permanent user.
+        """
+        registration_challenge: RegistrationChallenge = (
+            self._create_otp_verified_registration()
+        )
+
+        response: Any = self.client.post(
+            "/api/auth/register/create-pin",
+            data={
+                "registration_id": str(registration_challenge.id),
+                "pin": "",
+            },
+            content_type="application/json",
+        )
+        response_body: dict[str, Any] = response.json()
+
+        registration_challenge.refresh_from_db()
+        self.assertEqual(response.status_code, 422)
+        self.assertFalse(response_body["success"])
+        self.assertIsNone(response_body["data"])
+        self.assertEqual(response_body["error"]["code"], "validation_error")
+        self.assertEqual(
+            registration_challenge.status,
+            RegistrationStatus.OTP_VERIFIED,
+        )
+        self.assertFalse(User.objects.exists())
