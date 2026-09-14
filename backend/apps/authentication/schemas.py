@@ -118,11 +118,26 @@ class RegistrationOTPResentResponse(Schema):
     message: str
 
 
+class RegistrationCompletionRequest(Schema):
+    """Validate lock PIN data submitted to complete registration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    registration_id: UUID
+    pin: str = Field(min_length=1, strict=True)
+
+
 class RegistrationCompletedResponse(Schema):
     """Represent safe response data for a completed registration."""
 
     model_config = ConfigDict(extra="forbid")
 
     user_id: UUID
+    first_name: str
+    last_name: str
+    email: EmailStr
+    kbkey: str
+    access_token: str
+    refresh_token: str
     status: Literal["completed"]
     message: str
