@@ -4,16 +4,20 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from django.contrib.auth.hashers import check_password
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from apps.authentication.exceptions import InvalidRegistrationStateError
 from apps.authentication.models import RegistrationChallenge, User
 from apps.authentication.registration_services import RegistrationService
 from apps.core.choices import RegistrationStatus
+from apps.core.key_utils import decrypt_kbkey, validate_kbkey
 
 
 
+@override_settings(
+    KEEBOX_MASTER_KEY="KMK-ICEiIyQlJicoKSorLC0uLz-AxMjM0NTY3ODk6Ozw9Pj8",
+)
 class RegistrationCompletionServiceTests(TestCase):
     def _create_otp_verified_registration(
         self: Self,
@@ -58,7 +62,9 @@ class RegistrationCompletionServiceTests(TestCase):
         )
         password_hash: str = challenge.password_hash
 
-        user: User = RegistrationService.complete_registration(
+        user: User
+        kbkey: str
+        user, kbkey = RegistrationService.complete_registration(
             challenge.id,
             "123456",
         )
@@ -73,6 +79,18 @@ class RegistrationCompletionServiceTests(TestCase):
         self.assertTrue(user.check_password("correct horse battery staple"))
         self.assertIsNotNone(user.pin_hash)
         self.assertTrue(check_password("123456", user.pin_hash))
+        self.assertTrue(validate_kbkey(kbkey))
+        self.assertIsNotNone(user.encrypted_kbkey)
+        self.assertIsNotNone(user.kbkey_nonce)
+        self.assertEqual(
+            decrypt_kbkey(
+                user.encrypted_kbkey,
+                user.kbkey_nonce,
+                "KMK-ICEiIyQlJicoKSorLC0uLz-AxMjM0NTY3ODk6Ozw9Pj8",
+                user.kbkey_encryption_version,
+            ),
+            kbkey,
+        )
         self.assertEqual(challenge.status, RegistrationStatus.COMPLETED)
         self.assertIsNotNone(challenge.completed_at)
 

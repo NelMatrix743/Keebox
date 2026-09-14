@@ -1,0 +1,10 @@
+{
+  "$schema": "https://assets.requestly.com/local/v1.17.0/metadata.json",
+  "type": "api",
+  "entryType": "http",
+  "id": "51e97291-9da6-4b57-80d3-8f85451cdaa5",
+  "rank": "",
+  "url": "{{base_url}}/api/auth/register/create-pin",
+  "method": "POST",
+  "contentType": "json"
+}
