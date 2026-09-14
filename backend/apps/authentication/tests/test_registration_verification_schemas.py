@@ -203,6 +203,15 @@ class RegistrationVerificationSchemaTests(SimpleTestCase):
             RegistrationCompletedResponse.model_validate(
                 {
                     "user_id": user_id,
+                    "first_name": "Nelson",
+                    "last_name": "Ubochiegbu",
+                    "email": "nelson@example.com",
+                    "kbkey": (
+                        "KBK-AAECAwQFBgcICQoLDA0ODx-"
+                        "AREhMUFRYXGBkaGxwdHh8"
+                    ),
+                    "access_token": "access-token",
+                    "refresh_token": "refresh-token",
                     "status": RegistrationStatus.COMPLETED,
                     "message": "Registration completed successfully.",
                 },
@@ -213,6 +222,15 @@ class RegistrationVerificationSchemaTests(SimpleTestCase):
             response.model_dump(mode="json"),
             {
                 "user_id": str(user_id),
+                "first_name": "Nelson",
+                "last_name": "Ubochiegbu",
+                "email": "nelson@example.com",
+                "kbkey": (
+                    "KBK-AAECAwQFBgcICQoLDA0ODx-"
+                    "AREhMUFRYXGBkaGxwdHh8"
+                ),
+                "access_token": "access-token",
+                "refresh_token": "refresh-token",
                 "status": "completed",
                 "message": "Registration completed successfully.",
             },
