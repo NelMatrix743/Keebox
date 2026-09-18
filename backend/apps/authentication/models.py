@@ -167,6 +167,13 @@ class User(AbstractUser):
 
     pin_hash: md.CharField = md.CharField(max_length=255, null=True, blank=True)
     pin_version: md.PositiveIntegerField = md.PositiveIntegerField(default=0)
+    pin_failed_attempts: md.PositiveSmallIntegerField = md.PositiveSmallIntegerField(
+        default=0,
+    )
+    pin_locked_until: md.DateTimeField = md.DateTimeField(
+        null=True,
+        blank=True,
+    )
 
     encrypted_kbkey: md.BinaryField = md.BinaryField(null=True, blank=True)
     kbkey_nonce: md.BinaryField = md.BinaryField(max_length=12, null=True, blank=True)
