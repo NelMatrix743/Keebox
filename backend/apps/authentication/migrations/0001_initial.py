@@ -54,6 +54,28 @@ class Migration(migrations.Migration):
             ],
         ),
         migrations.CreateModel(
+            name='LoginChallenge',
+            fields=[
+                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('status', models.CharField(choices=[('password_verified', 'Password verified'), ('completed', 'Completed'), ('expired', 'Expired'), ('locked', 'Locked'), ('cancelled', 'Cancelled')], default='password_verified', max_length=20)),
+                ('failed_pin_attempts', models.PositiveSmallIntegerField(default=0)),
+                ('expires_at', models.DateTimeField(default=apps.authentication.models.login_challenge_expiration)),
+                ('completed_at', models.DateTimeField(blank=True, null=True)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
+                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='login_challenges', to='authentication.user')),
+            ],
+            options={
+                'db_table': 'auth_login_challenge',
+                'ordering': ['-created_at'],
+                'indexes': [
+                    models.Index(fields=['user', 'status'], name='login_challenge_user_idx'),
+                    models.Index(fields=['expires_at'], name='login_challenge_expiry_idx'),
+                ],
+                'constraints': [models.CheckConstraint(condition=models.Q(failed_pin_attempts__lte=5), name='login_challenge_attempts_within_limit')],
+            },
+        ),
+        migrations.CreateModel(
             name='RegistrationChallenge',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
