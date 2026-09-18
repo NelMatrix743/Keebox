@@ -107,3 +107,31 @@ class LoginServiceTests(TestCase):
             )
 
         self.assertFalse(LoginChallenge.objects.exists())
+
+    def test_start_login_rejects_an_account_with_an_active_pin_lock(
+        self: Self,
+    ) -> None:
+        """
+        Verify an active PIN lock prevents a new login challenge.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a locked account can start login.
+        """
+        user: User = self._create_user()
+        user.pin_failed_attempts = 5
+        user.pin_locked_until = timezone.now() + timedelta(hours=24)
+        user.save(update_fields=["pin_failed_attempts", "pin_locked_until"])
+
+        with self.assertRaises(LoginAccountLockedError):
+            LoginService.start_login(
+                email="nelson@example.com",
+                password="correct horse battery staple",
+            )
+
+        self.assertFalse(LoginChallenge.objects.exists())
