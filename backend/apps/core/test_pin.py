@@ -27,4 +27,19 @@ class LockPINSecurityTests(SimpleTestCase):
         self.assertNotEqual(encoded_pin, "123456")
         self.assertNotIn("test-pin-pepper", encoded_pin)
 
- 
+    def test_encrypt_and_verify_lock_pin_round_trip(self: Self) -> None:
+        """
+        Verify a correctly encrypted lock PIN can be verified successfully.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a valid PIN does not verify.
+        """
+        encoded_pin: str = encrypt_lock_pin("123456")
+
+        self.assertTrue(verify_lock_pin("123456", encoded_pin))
