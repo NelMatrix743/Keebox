@@ -5,6 +5,7 @@ from django.test import SimpleTestCase
 from pydantic import ValidationError
 
 from apps.authentication.schemas import (
+    LoginCompletedResponse,
     RegistrationCompletedResponse,
     RegistrationOTPVerifiedResponse,
     RegistrationVerificationRequest,
@@ -235,3 +236,41 @@ class RegistrationVerificationSchemaTests(SimpleTestCase):
                 "message": "Registration completed successfully.",
             },
         )
+
+    def test_login_completed_response_uses_the_same_authenticated_payload(
+        self: Self,
+    ) -> None:
+        """
+        Verify login completion accepts the shared authentication response data.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the login response contract is incomplete.
+        """
+        user_id: UUID = uuid4()
+        response: LoginCompletedResponse = LoginCompletedResponse.model_validate(
+            {
+                "user_id": user_id,
+                "first_name": "Nelson",
+                "last_name": "Ubochiegbu",
+                "email": "nelson@example.com",
+                "kbkey": (
+                    "KBK-AAECAwQFBgcICQoLDA0ODx-"
+                    "AREhMUFRYXGBkaGxwdHh8"
+                ),
+                "access_token": "access-token",
+                "refresh_token": "refresh-token",
+                "status": "completed",
+                "message": "Login completed successfully.",
+            },
+        )
+
+        self.assertEqual(response.user_id, user_id)
+        self.assertEqual(response.email, "nelson@example.com")
+        self.assertEqual(response.status, "completed")
+        self.assertEqual(response.message, "Login completed successfully.")
