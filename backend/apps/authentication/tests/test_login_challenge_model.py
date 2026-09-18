@@ -92,3 +92,30 @@ class LoginChallengeModelTests(TestCase):
             (timezone.now() + AUTH_LOGIN_CHALLENGE_TTL).timestamp(),
             delta=2,
         )
+
+    def test_login_challenge_tracks_attempts_and_completion(self: Self) -> None:
+        """
+        Verify failed PIN attempts and completed state persist correctly.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when challenge state is not persisted.
+        """
+        user: User = self._create_user()
+        challenge: LoginChallenge = LoginChallenge.objects.create(
+            user=user,
+            failed_pin_attempts=AUTH_PIN_MAX_ATTEMPTS,
+            status=LoginStatus.COMPLETED,
+            completed_at=timezone.now(),
+        )
+
+        challenge.refresh_from_db()
+
+        self.assertEqual(challenge.failed_pin_attempts, AUTH_PIN_MAX_ATTEMPTS)
+        self.assertEqual(challenge.status, LoginStatus.COMPLETED)
+        self.assertIsNotNone(challenge.completed_at)
