@@ -119,3 +119,26 @@ class LoginChallengeModelTests(TestCase):
         self.assertEqual(challenge.failed_pin_attempts, AUTH_PIN_MAX_ATTEMPTS)
         self.assertEqual(challenge.status, LoginStatus.COMPLETED)
         self.assertIsNotNone(challenge.completed_at)
+
+    def test_login_challenge_reports_expiration_from_server_time(
+        self: Self,
+    ) -> None:
+        """
+        Verify an elapsed login challenge reports itself as expired.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when expiration is evaluated incorrectly.
+        """
+        user: User = self._create_user()
+        challenge: LoginChallenge = LoginChallenge.objects.create(
+            user=user,
+            expires_at=timezone.now() - timedelta(microseconds=1),
+        )
+
+        self.assertTrue(challenge.is_expired())
