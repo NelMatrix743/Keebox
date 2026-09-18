@@ -122,6 +122,7 @@ STATIC_URL = 'static/'
 
 # Encryption
 KEEBOX_MASTER_KEY: str = env.str('KEEBOX_MASTER_KEY', default='').strip()
+KEEBOX_PIN_PEPPER: str = env.str('KEEBOX_PIN_PEPPER', default='').strip()
 
 
 # Email
