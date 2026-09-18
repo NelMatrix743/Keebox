@@ -86,3 +86,24 @@ class LoginServiceTests(TestCase):
             )
 
         self.assertFalse(LoginChallenge.objects.exists())
+
+    def test_start_login_rejects_an_unknown_email(self: Self) -> None:
+        """
+        Verify an unknown email returns the same invalid-credentials failure.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an unknown account creates a challenge.
+        """
+        with self.assertRaises(InvalidLoginCredentialsError):
+            LoginService.start_login(
+                email="unknown@example.com",
+                password="correct horse battery staple",
+            )
+
+        self.assertFalse(LoginChallenge.objects.exists())
