@@ -63,3 +63,26 @@ class LoginServiceTests(TestCase):
         self.assertIsNone(challenge.completed_at)
         self.assertEqual(LoginChallenge.objects.count(), 1)
         self.assertFalse(OTPVerification.objects.exists())
+
+    def test_start_login_rejects_an_incorrect_password(self: Self) -> None:
+        """
+        Verify an incorrect password cannot create a login challenge.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when invalid credentials are accepted.
+        """
+        self._create_user()
+
+        with self.assertRaises(InvalidLoginCredentialsError):
+            LoginService.start_login(
+                email="nelson@example.com",
+                password="incorrect password",
+            )
+
+        self.assertFalse(LoginChallenge.objects.exists())
