@@ -60,3 +60,21 @@ class LockPINSecurityTests(SimpleTestCase):
         encoded_pin: str = encrypt_lock_pin("123456")
 
         self.assertFalse(verify_lock_pin("654321", encoded_pin))
+
+    def test_encrypt_lock_pin_uses_a_unique_salt(self: Self) -> None:
+        """
+        Verify repeated encryption does not produce identical verifiers.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a random salt is not used.
+        """
+        first_encoded_pin: str = encrypt_lock_pin("123456")
+        second_encoded_pin: str = encrypt_lock_pin("123456")
+
+        self.assertNotEqual(first_encoded_pin, second_encoded_pin)
