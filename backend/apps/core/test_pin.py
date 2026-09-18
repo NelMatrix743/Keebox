@@ -98,3 +98,19 @@ class LockPINSecurityTests(SimpleTestCase):
 
         with self.settings(KEEBOX_PIN_PEPPER="different-pin-pepper"):
             self.assertFalse(verify_lock_pin("123456", encoded_pin))
+
+    def test_encrypt_lock_pin_rejects_an_empty_pin(self: Self) -> None:
+        """
+        Verify an empty lock PIN cannot be encrypted.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an empty PIN is accepted.
+        """
+        with self.assertRaises(ValueError):
+            encrypt_lock_pin("")
