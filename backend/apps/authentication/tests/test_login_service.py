@@ -135,3 +135,31 @@ class LoginServiceTests(TestCase):
             )
 
         self.assertFalse(LoginChallenge.objects.exists())
+
+    def test_start_login_clears_an_expired_pin_lock(self: Self) -> None:
+        """
+        Verify an expired account lock is cleared before login continues.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an expired lock blocks login.
+        """
+        user: User = self._create_user()
+        user.pin_failed_attempts = 5
+        user.pin_locked_until = timezone.now() - timedelta(microseconds=1)
+        user.save(update_fields=["pin_failed_attempts", "pin_locked_until"])
+
+        challenge: LoginChallenge = LoginService.start_login(
+            email="nelson@example.com",
+            password="correct horse battery staple",
+        )
+
+        user.refresh_from_db()
+        self.assertEqual(challenge.status, LoginStatus.PASSWORD_VERIFIED)
+        self.assertEqual(user.pin_failed_attempts, 0)
+        self.assertIsNone(user.pin_locked_until)
