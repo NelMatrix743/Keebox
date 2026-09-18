@@ -78,3 +78,23 @@ class LockPINSecurityTests(SimpleTestCase):
         second_encoded_pin: str = encrypt_lock_pin("123456")
 
         self.assertNotEqual(first_encoded_pin, second_encoded_pin)
+
+    def test_verify_lock_pin_requires_the_configured_pepper(
+        self: Self,
+    ) -> None:
+        """
+        Verify a PIN verifier cannot be used with a different server pepper.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a different pepper still verifies a PIN.
+        """
+        encoded_pin: str = encrypt_lock_pin("123456")
+
+        with self.settings(KEEBOX_PIN_PEPPER="different-pin-pepper"):
+            self.assertFalse(verify_lock_pin("123456", encoded_pin))
