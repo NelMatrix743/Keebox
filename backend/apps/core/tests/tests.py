@@ -13,7 +13,7 @@ from brevo.transactional_emails import (
 )
 from django.test import SimpleTestCase, override_settings
 
-from apps.core.choices import OTPStatus, RegistrationStatus
+from apps.core.choices import LoginStatus, OTPStatus, RegistrationStatus
 from apps.core.constants import (
     OTP_CODE_LENGTH,
     OTP_MAX_ATTEMPTS,
@@ -80,6 +80,34 @@ class OTPStatusTests(SimpleTestCase):
                 ("consumed", "Consumed"),
                 ("expired", "Expired"),
                 ("locked", "Locked"),
+            ],
+        )
+
+
+class LoginStatusTests(SimpleTestCase):
+    def test_login_status_defines_the_login_challenge_lifecycle(
+        self: Self,
+    ) -> None:
+        """
+        Verify login challenge statuses expose the required lifecycle values.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a login lifecycle value is incorrect.
+        """
+        self.assertEqual(
+            LoginStatus.choices,
+            [
+                ("password_verified", "Password verified"),
+                ("completed", "Completed"),
+                ("expired", "Expired"),
+                ("locked", "Locked"),
+                ("cancelled", "Cancelled"),
             ],
         )
 
