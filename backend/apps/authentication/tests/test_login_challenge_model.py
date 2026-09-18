@@ -63,3 +63,32 @@ class LoginChallengeModelTests(TestCase):
             },
             {"login_challenge_attempts_within_limit"},
         )
+
+    def test_login_challenge_persists_password_verified_defaults(
+        self: Self,
+    ) -> None:
+        """
+        Verify a new login challenge starts after password verification.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when login challenge defaults are incorrect.
+        """
+        user: User = self._create_user()
+
+        challenge: LoginChallenge = LoginChallenge.objects.create(user=user)
+
+        self.assertEqual(challenge.user, user)
+        self.assertEqual(challenge.status, LoginStatus.PASSWORD_VERIFIED)
+        self.assertEqual(challenge.failed_pin_attempts, 0)
+        self.assertIsNone(challenge.completed_at)
+        self.assertAlmostEqual(
+            challenge.expires_at.timestamp(),
+            (timezone.now() + AUTH_LOGIN_CHALLENGE_TTL).timestamp(),
+            delta=2,
+        )
