@@ -1,17 +1,18 @@
 from typing import Any, Self
 
-from django.contrib.auth.hashers import check_password
 from django.test import TestCase, override_settings
 from ninja_jwt.tokens import AccessToken, RefreshToken
 
 from apps.authentication.models import RegistrationChallenge, User
 from apps.core.choices import RegistrationStatus
 from apps.core.key_utils import decrypt_kbkey, validate_kbkey
+from apps.core.pin import verify_lock_pin
 
 
 
 @override_settings(
     KEEBOX_MASTER_KEY="KMK-ICEiIyQlJicoKSorLC0uLz-AxMjM0NTY3ODk6Ozw9Pj8",
+    KEEBOX_PIN_PEPPER="test-pin-pepper",
 )
 class RegistrationPINAPITests(TestCase):
     def _create_otp_verified_registration(
@@ -93,7 +94,7 @@ class RegistrationPINAPITests(TestCase):
             ),
             response_data["kbkey"],
         )
-        self.assertTrue(check_password("123456", user.pin_hash))
+        self.assertTrue(verify_lock_pin("123456", user.pin_hash))
         self.assertTrue(user.check_password("correct horse battery staple"))
         self.assertEqual(
             str(refresh_token["user_id"]),
