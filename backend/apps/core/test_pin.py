@@ -114,3 +114,18 @@ class LockPINSecurityTests(SimpleTestCase):
         """
         with self.assertRaises(ValueError):
             encrypt_lock_pin("")
+
+    def test_verify_lock_pin_rejects_an_invalid_verifier(self: Self) -> None:
+        """
+        Verify malformed stored PIN data fails closed.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when malformed verifier data is accepted.
+        """
+        self.assertFalse(verify_lock_pin("123456", "not-an-argon2-verifier"))
