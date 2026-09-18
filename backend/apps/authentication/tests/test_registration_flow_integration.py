@@ -2,18 +2,19 @@ from typing import Any, Self
 from unittest.mock import Mock, patch
 from uuid import UUID
 
-from django.contrib.auth.hashers import check_password
 from django.test import TestCase, override_settings
 from ninja_jwt.tokens import AccessToken, RefreshToken
 
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
 from apps.core.choices import OTPStatus, RegistrationStatus
 from apps.core.key_utils import decrypt_kbkey, validate_kbkey
+from apps.core.pin import verify_lock_pin
 
 
 
 @override_settings(
     KEEBOX_MASTER_KEY="KMK-ICEiIyQlJicoKSorLC0uLz-AxMjM0NTY3ODk6Ozw9Pj8",
+    KEEBOX_PIN_PEPPER="test-pin-pepper",
 )
 class RegistrationFlowIntegrationTests(TestCase):
     @patch("apps.authentication.api.EmailDeliveryService")
@@ -126,7 +127,7 @@ class RegistrationFlowIntegrationTests(TestCase):
             completion_data["kbkey"],
         )
         self.assertTrue(user.check_password("correct horse battery staple"))
-        self.assertTrue(check_password("123456", user.pin_hash))
+        self.assertTrue(verify_lock_pin("123456", user.pin_hash))
         self.assertEqual(str(refresh_token["user_id"]), str(user.id))
         self.assertEqual(str(access_token["user_id"]), str(user.id))
         self.assertEqual(otp_verification.status, OTPStatus.CONSUMED)

@@ -2,7 +2,6 @@ from datetime import datetime
 from uuid import UUID
 
 from django.conf import settings
-from django.contrib.auth.hashers import make_password
 from django.db import transaction
 from django.utils import timezone
 
@@ -26,6 +25,7 @@ from apps.core.constants import (
     OTP_RESEND_COOLDOWN,
 )
 from apps.core.key_utils import encrypt_kbkey, generate_kbkey
+from apps.core.pin import encrypt_lock_pin
 
 
 
@@ -378,7 +378,7 @@ class RegistrationService:
 
         Raises:
             ValueError: Raised when the lock PIN is empty or the configured
-                Keebox master key is invalid.
+                Keebox master key or PIN pepper is invalid.
         """
         if not raw_pin:
             raise ValueError("The lock PIN is required.")
@@ -398,7 +398,7 @@ class RegistrationService:
             last_name=registration_challenge.last_name,
             email=registration_challenge.email,
             password=registration_challenge.password_hash,
-            pin_hash=make_password(raw_pin),
+            pin_hash=encrypt_lock_pin(raw_pin),
             encrypted_kbkey=encrypted_kbkey,
             kbkey_nonce=kbkey_nonce,
             kbkey_encryption_version=kbkey_encryption_version,
@@ -690,7 +690,7 @@ class RegistrationService:
             InvalidRegistrationStateError: Raised when the registration is missing,
                 expired, or not OTP-verified.
             ValueError: Raised when the lock PIN is empty or the configured
-                Keebox master key is invalid.
+                Keebox master key or PIN pepper is invalid.
         """
         registration_challenge: RegistrationChallenge = (
             RegistrationService._get_locked_registration_challenge(

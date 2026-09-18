@@ -3,7 +3,6 @@ from typing import Self
 from unittest.mock import patch
 from uuid import uuid4
 
-from django.contrib.auth.hashers import check_password
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
@@ -12,11 +11,13 @@ from apps.authentication.models import RegistrationChallenge, User
 from apps.authentication.registration_services import RegistrationService
 from apps.core.choices import RegistrationStatus
 from apps.core.key_utils import decrypt_kbkey, validate_kbkey
+from apps.core.pin import verify_lock_pin
 
 
 
 @override_settings(
     KEEBOX_MASTER_KEY="KMK-ICEiIyQlJicoKSorLC0uLz-AxMjM0NTY3ODk6Ozw9Pj8",
+    KEEBOX_PIN_PEPPER="test-pin-pepper",
 )
 class RegistrationCompletionServiceTests(TestCase):
     def _create_otp_verified_registration(
@@ -78,7 +79,7 @@ class RegistrationCompletionServiceTests(TestCase):
         self.assertEqual(user.password, password_hash)
         self.assertTrue(user.check_password("correct horse battery staple"))
         self.assertIsNotNone(user.pin_hash)
-        self.assertTrue(check_password("123456", user.pin_hash))
+        self.assertTrue(verify_lock_pin("123456", user.pin_hash))
         self.assertTrue(validate_kbkey(kbkey))
         self.assertIsNotNone(user.encrypted_kbkey)
         self.assertIsNotNone(user.kbkey_nonce)
