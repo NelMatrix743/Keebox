@@ -43,3 +43,20 @@ class LockPINSecurityTests(SimpleTestCase):
         encoded_pin: str = encrypt_lock_pin("123456")
 
         self.assertTrue(verify_lock_pin("123456", encoded_pin))
+
+    def test_verify_lock_pin_rejects_an_incorrect_pin(self: Self) -> None:
+        """
+        Verify an incorrect lock PIN does not pass verification.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an incorrect PIN is accepted.
+        """
+        encoded_pin: str = encrypt_lock_pin("123456")
+
+        self.assertFalse(verify_lock_pin("654321", encoded_pin))
