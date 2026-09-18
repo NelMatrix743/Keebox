@@ -34,6 +34,8 @@ class Migration(migrations.Migration):
                 ('last_name', models.CharField(max_length=150)),
                 ('pin_hash', models.CharField(blank=True, max_length=255, null=True)),
                 ('pin_version', models.PositiveIntegerField(default=0)),
+                ('pin_failed_attempts', models.PositiveSmallIntegerField(default=0)),
+                ('pin_locked_until', models.DateTimeField(blank=True, null=True)),
                 ('encrypted_kbkey', models.BinaryField(blank=True, null=True)),
                 ('kbkey_nonce', models.BinaryField(blank=True, max_length=12, null=True)),
                 ('kbkey_encryption_version', models.PositiveSmallIntegerField(default=1)),
