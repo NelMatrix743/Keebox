@@ -9,6 +9,22 @@ from pydantic import ConfigDict, EmailStr, Field, field_validator
 
 
 
+class AuthenticationSuccessResponse(Schema):
+    """Represent the shared payload returned after complete authentication."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: UUID
+    first_name: str
+    last_name: str
+    email: EmailStr
+    kbkey: str
+    access_token: str
+    refresh_token: str
+    status: Literal["completed"]
+    message: str
+
+
 class RegistrationRequest(Schema):
     """Validate data submitted to begin a Keebox registration."""
 
@@ -127,17 +143,9 @@ class RegistrationCompletionRequest(Schema):
     pin: str = Field(min_length=1, strict=True)
 
 
-class RegistrationCompletedResponse(Schema):
+class RegistrationCompletedResponse(AuthenticationSuccessResponse):
     """Represent safe response data for a completed registration."""
 
-    model_config = ConfigDict(extra="forbid")
 
-    user_id: UUID
-    first_name: str
-    last_name: str
-    email: EmailStr
-    kbkey: str
-    access_token: str
-    refresh_token: str
-    status: Literal["completed"]
-    message: str
+class LoginCompletedResponse(AuthenticationSuccessResponse):
+    """Represent safe response data for a completed login."""
