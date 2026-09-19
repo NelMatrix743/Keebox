@@ -166,4 +166,25 @@ class LoginPINServiceTests(TestCase):
             timezone.now() + timedelta(hours=23, minutes=59),
         )
 
-    
+    def test_verify_pin_rejects_an_expired_challenge(self: Self) -> None:
+        """
+        Verify an expired challenge cannot be used for PIN authentication.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an expired challenge is accepted.
+        """
+        challenge: LoginChallenge = self._create_login_challenge()
+        challenge.expires_at = timezone.now() - timedelta(microseconds=1)
+        challenge.save(update_fields=["expires_at", "updated_at"])
+
+        with self.assertRaises(ExpiredLoginChallengeError):
+            LoginService.verify_pin(challenge.id, "123456")
+
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.status, LoginStatus.EXPIRED)
