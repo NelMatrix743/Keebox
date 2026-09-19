@@ -130,3 +130,40 @@ class LoginPINServiceTests(TestCase):
         self.assertEqual(challenge.status, LoginStatus.PASSWORD_VERIFIED)
         self.assertEqual(challenge.failed_pin_attempts, 1)
         self.assertEqual(user.pin_failed_attempts, 1)
+
+    def test_verify_pin_locks_account_after_fifth_failed_attempt(
+        self: Self,
+    ) -> None:
+        """
+        Verify the fifth invalid PIN locks the account for twenty-four hours.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the PIN attempt limit does not lock the account.
+        """
+        challenge: LoginChallenge = self._create_login_challenge()
+
+        for _ in range(4):
+            with self.assertRaises(InvalidLoginPINError):
+                LoginService.verify_pin(challenge.id, "654321")
+
+        with self.assertRaises(LoginPINAttemptLimitError):
+            LoginService.verify_pin(challenge.id, "654321")
+
+        challenge.refresh_from_db()
+        user: User = User.objects.get(pk=challenge.user_id)
+        self.assertEqual(challenge.failed_pin_attempts, 5)
+        self.assertEqual(challenge.status, LoginStatus.LOCKED)
+        self.assertEqual(user.pin_failed_attempts, 5)
+        self.assertIsNotNone(user.pin_locked_until)
+        self.assertGreater(
+            user.pin_locked_until,
+            timezone.now() + timedelta(hours=23, minutes=59),
+        )
+
+    
