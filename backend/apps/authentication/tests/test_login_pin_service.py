@@ -106,3 +106,27 @@ class LoginPINServiceTests(TestCase):
         self.assertIsNotNone(challenge.completed_at)
         self.assertEqual(user.pin_failed_attempts, 0)
         self.assertIsNone(user.pin_locked_until)
+
+    def test_verify_pin_records_an_invalid_pin_attempt(self: Self) -> None:
+        """
+        Verify an incorrect PIN increments challenge and account counters.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an invalid PIN is not recorded.
+        """
+        challenge: LoginChallenge = self._create_login_challenge()
+
+        with self.assertRaises(InvalidLoginPINError):
+            LoginService.verify_pin(challenge.id, "654321")
+
+        challenge.refresh_from_db()
+        user: User = User.objects.get(pk=challenge.user_id)
+        self.assertEqual(challenge.status, LoginStatus.PASSWORD_VERIFIED)
+        self.assertEqual(challenge.failed_pin_attempts, 1)
+        self.assertEqual(user.pin_failed_attempts, 1)
