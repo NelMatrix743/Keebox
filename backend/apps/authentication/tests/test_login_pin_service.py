@@ -77,4 +77,32 @@ class LoginPINServiceTests(TestCase):
             password="correct horse battery staple",
         )
 
- 
+    def test_verify_pin_completes_challenge_and_returns_user_key(
+        self: Self,
+    ) -> None:
+        """
+        Verify a correct PIN completes the challenge and recovers the KBKey.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when successful PIN verification is incomplete.
+        """
+        challenge: LoginChallenge = self._create_login_challenge()
+
+        user: User
+        kbkey: str
+        user, kbkey = LoginService.verify_pin(challenge.id, "123456")
+
+        challenge.refresh_from_db()
+        user.refresh_from_db()
+        self.assertEqual(user.email, "nelson@example.com")
+        self.assertTrue(kbkey.startswith("KBK-"))
+        self.assertEqual(challenge.status, LoginStatus.COMPLETED)
+        self.assertIsNotNone(challenge.completed_at)
+        self.assertEqual(user.pin_failed_attempts, 0)
+        self.assertIsNone(user.pin_locked_until)
