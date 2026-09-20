@@ -19,7 +19,7 @@ from apps.core.pin import verify_lock_pin
 class RegistrationFlowIntegrationTests(TestCase):
     @patch("apps.authentication.api.EmailDeliveryService")
     @patch(
-        "apps.authentication.registration_services.generate_otp_code",
+        "apps.authentication.services.registration_services.generate_otp_code",
         return_value="482913",
     )
     def test_registration_flow_creates_an_authenticated_keebox_user(

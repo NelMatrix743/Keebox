@@ -32,7 +32,7 @@ class RegistrationAPITests(TestCase):
 
     @patch("apps.authentication.api.EmailDeliveryService")
     @patch(
-        "apps.authentication.registration_services.generate_otp_code",
+        "apps.authentication.services.registration_services.generate_otp_code",
         return_value="482913",
     )
     def test_register_starts_registration_and_delivers_the_otp(

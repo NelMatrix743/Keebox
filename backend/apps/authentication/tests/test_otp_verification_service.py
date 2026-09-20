@@ -14,7 +14,7 @@ from apps.authentication.exceptions import (
     LockedOTPError,
 )
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
-from apps.authentication.registration_services import RegistrationService
+from apps.authentication.services.registration_services import RegistrationService
 from apps.core.choices import OTPStatus, RegistrationStatus
 from apps.core.constants import OTP_MAX_ATTEMPTS
 

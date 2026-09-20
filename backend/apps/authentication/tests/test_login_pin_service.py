@@ -9,7 +9,7 @@ from apps.authentication.exceptions import (
     InvalidLoginPINError,
     LoginPINAttemptLimitError,
 )
-from apps.authentication.login_services import LoginService
+from apps.authentication.services.login_services import LoginService
 from apps.authentication.models import LoginChallenge, User
 from apps.core.choices import LoginStatus
 from apps.core.key_utils import encrypt_kbkey, generate_kbkey

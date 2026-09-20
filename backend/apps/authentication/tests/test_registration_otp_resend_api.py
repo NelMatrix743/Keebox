@@ -46,7 +46,7 @@ class RegistrationOTPResendAPITests(TestCase):
 
     @patch("apps.authentication.api.EmailDeliveryService")
     @patch(
-        "apps.authentication.registration_services.generate_otp_code",
+        "apps.authentication.services.registration_services.generate_otp_code",
         return_value="482913",
     )
     def test_resend_otp_replaces_and_delivers_the_current_code(

@@ -9,7 +9,7 @@ from apps.authentication.exceptions import (
     LoginAccountLockedError,
 )
 from apps.authentication.models import LoginChallenge, OTPVerification, User
-from apps.authentication.login_services import LoginService
+from apps.authentication.services.login_services import LoginService
 from apps.core.choices import LoginStatus
 
 

@@ -11,7 +11,7 @@ from apps.authentication.exceptions import (
     OTPResendLimitError,
 )
 from apps.authentication.models import OTPVerification, RegistrationChallenge
-from apps.authentication.registration_services import RegistrationService
+from apps.authentication.services.registration_services import RegistrationService
 from apps.core.choices import OTPStatus, RegistrationStatus
 from apps.core.constants import OTP_MAX_RESENDS, OTP_RESEND_COOLDOWN
 
@@ -65,7 +65,7 @@ class OTPResendServiceTests(TestCase):
         challenge, previous_otp = self._create_registration_with_otp()
 
         with patch(
-            "apps.authentication.registration_services.generate_otp_code",
+            "apps.authentication.services.registration_services.generate_otp_code",
             return_value="222222",
         ):
             replacement_otp, raw_code = RegistrationService.resend_registration_otp(
