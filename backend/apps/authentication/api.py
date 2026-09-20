@@ -15,7 +15,7 @@ from apps.authentication.exceptions import (
     RegistrationEmailConflictError,
 )
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
-from apps.authentication.registration_services import RegistrationService
+from apps.authentication.services.registration_services import RegistrationService
 from apps.authentication.schemas import (
     RegistrationCompletedResponse,
     RegistrationOTPResendRequest,
