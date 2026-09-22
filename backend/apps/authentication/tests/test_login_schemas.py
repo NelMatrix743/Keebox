@@ -121,3 +121,55 @@ class LoginSchemaTests(SimpleTestCase):
             serialized_data["status"],
             LoginStatus.PASSWORD_VERIFIED,
         )
+
+    def test_login_pin_verification_request_validates_the_pin_challenge(
+        self: Self,
+    ) -> None:
+        """
+        Verify a PIN-verification request requires a UUID and nonempty PIN.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when valid or invalid PIN request data is mishandled.
+        """
+        login_challenge_id: UUID = uuid4()
+        request: LoginPINVerificationRequest = (
+            LoginPINVerificationRequest.model_validate(
+                {
+                    "login_challenge_id": login_challenge_id,
+                    "pin": "123456",
+                },
+            )
+        )
+
+        self.assertEqual(request.login_challenge_id, login_challenge_id)
+        self.assertEqual(request.pin, "123456")
+
+        invalid_payloads: tuple[dict[str, object], ...] = (
+            {
+                "login_challenge_id": "not-a-uuid",
+                "pin": "123456",
+            },
+            {
+                "login_challenge_id": login_challenge_id,
+                "pin": "",
+            },
+            {
+                "login_challenge_id": login_challenge_id,
+                "pin": 123456,
+            },
+            {
+                "login_challenge_id": login_challenge_id,
+                "pin": "123456",
+                "unexpected": "value",
+            },
+        )
+
+        for payload in invalid_payloads:
+            with self.subTest(payload=payload), self.assertRaises(ValidationError):
+                LoginPINVerificationRequest.model_validate(payload)
