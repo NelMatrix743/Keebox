@@ -26,6 +26,7 @@ from apps.authentication.models import (
     RegistrationChallenge,
     User,
 )
+from apps.authentication.routes import Routes
 from apps.authentication.services.login_services import LoginService
 from apps.authentication.services.registration_services import RegistrationService
 from apps.authentication.schemas import (
@@ -52,7 +53,7 @@ from apps.core.response import ErrorData, ErrorResponse, APIResponse, SuccessRes
 router: Router = Router(tags=["Authentication"])
 
 @router.post(
-    "/register",
+    Routes.Registration.BASE,
     response={
         201: SuccessResponse[RegistrationStartedResponse],
         Ellipsis: ErrorResponse[ErrorData],
@@ -146,7 +147,7 @@ def register(
 
 
 @router.post(
-    "/register/verify-otp",
+    Routes.Registration.VERIFY_OTP,
     response={
         200: SuccessResponse[RegistrationOTPVerifiedResponse],
         Ellipsis: ErrorResponse[ErrorData],
@@ -225,7 +226,7 @@ def verify_registration_otp(
 
 
 @router.post(
-    "/register/resend-otp",
+    Routes.Registration.RESEND_OTP,
     response={
         200: SuccessResponse[RegistrationOTPResentResponse],
         Ellipsis: ErrorResponse[ErrorData],
@@ -319,7 +320,7 @@ def resend_registration_otp(
 
 
 @router.post(
-    "/register/create-pin",
+    Routes.Registration.CREATE_PIN,
     response={
         201: SuccessResponse[RegistrationCompletedResponse],
         Ellipsis: ErrorResponse[ErrorData],
@@ -377,7 +378,7 @@ def create_registration_pin(
 
 
 @router.post(
-    "/login",
+    Routes.Login.BASE,
     response={
         200: SuccessResponse[LoginStartedResponse],
         Ellipsis: ErrorResponse[ErrorData],
@@ -432,7 +433,7 @@ def login(
 
 
 @router.post(
-    "/login/verify-pin",
+    Routes.Login.VERIFY_PIN,
     response={
         200: SuccessResponse[LoginCompletedResponse],
         Ellipsis: ErrorResponse[ErrorData],

@@ -4,6 +4,7 @@ from django.test import TestCase, override_settings
 from ninja_jwt.tokens import AccessToken, RefreshToken
 
 from apps.authentication.models import RegistrationChallenge, User
+from apps.authentication.routes import Routes
 from apps.core.choices import RegistrationStatus
 from apps.core.key_utils import decrypt_kbkey, validate_kbkey
 from apps.core.pin import verify_lock_pin
@@ -60,7 +61,7 @@ class RegistrationPINAPITests(TestCase):
         )
 
         response: Any = self.client.post(
-            "/api/auth/register/create-pin",
+            f"/api/auth{Routes.Registration.CREATE_PIN}",
             data={
                 "registration_id": str(registration_challenge.id),
                 "pin": "123456",
@@ -132,7 +133,7 @@ class RegistrationPINAPITests(TestCase):
         registration_challenge.save(update_fields=["status", "updated_at"])
 
         response: Any = self.client.post(
-            "/api/auth/register/create-pin",
+            f"/api/auth{Routes.Registration.CREATE_PIN}",
             data={
                 "registration_id": str(registration_challenge.id),
                 "pin": "123456",
@@ -173,7 +174,7 @@ class RegistrationPINAPITests(TestCase):
         )
 
         response: Any = self.client.post(
-            "/api/auth/register/create-pin",
+            f"/api/auth{Routes.Registration.CREATE_PIN}",
             data={
                 "registration_id": str(registration_challenge.id),
                 "pin": "",

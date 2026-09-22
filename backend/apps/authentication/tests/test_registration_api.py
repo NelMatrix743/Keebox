@@ -5,6 +5,7 @@ from django.http import HttpResponse
 from django.test import TestCase
 
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
+from apps.authentication.routes import Routes
 from apps.core.exceptions import EmailDeliveryError
 
 
@@ -59,7 +60,7 @@ class RegistrationAPITests(TestCase):
         )
 
         response: HttpResponse = self.client.post(
-            "/api/auth/register",
+            f"/api/auth{Routes.Registration.BASE}",
             data=self._registration_payload(),
             content_type="application/json",
         )
@@ -108,7 +109,7 @@ class RegistrationAPITests(TestCase):
         )
 
         response: HttpResponse = self.client.post(
-            "/api/auth/register",
+            f"/api/auth{Routes.Registration.BASE}",
             data=self._registration_payload(),
             content_type="application/json",
         )
@@ -148,7 +149,7 @@ class RegistrationAPITests(TestCase):
         )
 
         response: HttpResponse = self.client.post(
-            "/api/auth/register",
+            f"/api/auth{Routes.Registration.BASE}",
             data=self._registration_payload(),
             content_type="application/json",
         )
@@ -178,7 +179,7 @@ class RegistrationAPITests(TestCase):
         invalid_payload["email"] = "not-an-email"
 
         response: HttpResponse = self.client.post(
-            "/api/auth/register",
+            f"/api/auth{Routes.Registration.BASE}",
             data=invalid_payload,
             content_type="application/json",
         )

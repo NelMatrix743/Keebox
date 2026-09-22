@@ -6,6 +6,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.authentication.models import LoginChallenge, User
+from apps.authentication.routes import Routes
 from apps.core.choices import LoginStatus
 
 
@@ -66,7 +67,7 @@ class LoginAPITests(TestCase):
         user: User = self._create_user()
 
         response: HttpResponse = self.client.post(
-            "/api/auth/login",
+            f"/api/auth{Routes.Login.BASE}",
             data=self._login_payload("correct horse battery staple"),
             content_type="application/json",
         )
@@ -110,7 +111,7 @@ class LoginAPITests(TestCase):
         responses: list[dict[str, Any]] = []
         for payload in invalid_requests:
             response: HttpResponse = self.client.post(
-                "/api/auth/login",
+                f"/api/auth{Routes.Login.BASE}",
                 data=payload,
                 content_type="application/json",
             )
@@ -147,7 +148,7 @@ class LoginAPITests(TestCase):
         user.save(update_fields=["pin_failed_attempts", "pin_locked_until"])
 
         response: HttpResponse = self.client.post(
-            "/api/auth/login",
+            f"/api/auth{Routes.Login.BASE}",
             data=self._login_payload("correct horse battery staple"),
             content_type="application/json",
         )

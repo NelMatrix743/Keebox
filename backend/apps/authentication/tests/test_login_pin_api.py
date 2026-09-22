@@ -6,6 +6,7 @@ from django.utils import timezone
 from ninja_jwt.tokens import AccessToken, RefreshToken
 
 from apps.authentication.models import LoginChallenge, User
+from apps.authentication.routes import Routes
 from apps.core.choices import LoginStatus
 from apps.core.key_utils import encrypt_kbkey, generate_kbkey
 from apps.core.pin import encrypt_lock_pin
@@ -88,7 +89,7 @@ class LoginPINAPITests(TestCase):
             None.
         """
         return self.client.post(
-            "/api/auth/login/verify-pin",
+            f"/api/auth{Routes.Login.VERIFY_PIN}",
             data={
                 "login_challenge_id": login_challenge_id,
                 "pin": pin,

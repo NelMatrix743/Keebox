@@ -3,10 +3,10 @@ from typing import Final
 
 
 class Routes:
-	"""Authentication-related route definitions"""
+	"""Define route paths exposed by the authentication application."""
 
 	class Registration:
-		"""Registration-related routes."""
+		"""Define registration-related route paths."""
 
 		BASE: Final[str] = "/register"
 
@@ -16,7 +16,7 @@ class Routes:
 
 	
 	class Login:
-		"""Login-related routes"""
+		"""Define login-related route paths."""
 
 		BASE: Final[str] = "/login"
 
@@ -24,7 +24,7 @@ class Routes:
 
 
 	class Reset:
-		"""Account reset routes"""
+		"""Define account-reset route paths."""
 
 		BASE: Final[str] = "/reset"
 
@@ -35,7 +35,7 @@ class Routes:
 
 
 	class UpdatePin:
-		"""PIN update routes"""
+		"""Define lock-PIN update route paths."""
 
 		BASE: Final[str] = "/update-pin"
 
