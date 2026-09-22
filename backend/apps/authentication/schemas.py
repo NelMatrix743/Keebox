@@ -187,5 +187,14 @@ class LoginStartedResponse(Schema):
     message: str
 
 
+class LoginPINVerificationRequest(Schema):
+    """Validate lock PIN data submitted to complete a Keebox login."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    login_challenge_id: UUID
+    pin: str = Field(min_length=1, strict=True)
+
+
 class LoginCompletedResponse(AuthenticationSuccessResponse):
     """Represent safe response data for a completed login."""
