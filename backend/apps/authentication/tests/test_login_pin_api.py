@@ -130,3 +130,29 @@ class LoginPINAPITests(TestCase):
         self.assertEqual(login_challenge.status, LoginStatus.COMPLETED)
         self.assertEqual(str(refresh_token["user_id"]), str(login_challenge.user_id))
         self.assertEqual(str(access_token["user_id"]), str(login_challenge.user_id))
+
+    def test_login_pin_verification_rejects_an_invalid_pin(self: Self) -> None:
+        """
+        Verify an invalid PIN returns a safe error without authentication tokens.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an invalid PIN appears authenticated.
+        """
+        login_challenge: LoginChallenge
+        _expected_kbkey: str
+        login_challenge, _expected_kbkey = self._create_login_challenge()
+
+        response: Any = self._verify_pin(str(login_challenge.id), "654321")
+        response_body: dict[str, Any] = response.json()
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response_body["success"])
+        self.assertIsNone(response_body["data"])
+        self.assertEqual(response_body["error"]["code"], "invalid_login_pin")
+        self.assertNotIn("access_token", str(response_body))
