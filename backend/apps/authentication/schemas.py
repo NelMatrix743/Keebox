@@ -176,5 +176,16 @@ class LoginRequest(Schema):
         return value
 
 
+class LoginStartedResponse(Schema):
+    """Represent safe response data for a password-verified login challenge."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    login_challenge_id: UUID
+    status: Literal["password_verified"]
+    expires_at: datetime
+    message: str
+
+
 class LoginCompletedResponse(AuthenticationSuccessResponse):
     """Represent safe response data for a completed login."""
