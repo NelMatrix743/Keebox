@@ -83,4 +83,47 @@ class LoginAPITests(TestCase):
         self.assertEqual(login_challenge.user, user)
         self.assertEqual(login_challenge.status, LoginStatus.PASSWORD_VERIFIED)
 
- 
+    def test_login_returns_the_same_safe_response_for_invalid_credentials(
+        self: Self,
+    ) -> None:
+        """
+        Verify unknown emails and invalid passwords do not reveal account existence.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when invalid credentials leak account information.
+        """
+        self._create_user()
+        invalid_requests: tuple[dict[str, str], ...] = (
+            self._login_payload("incorrect password"),
+            {
+                "email": "unknown@example.com",
+                "password": "correct horse battery staple",
+            },
+        )
+
+        responses: list[dict[str, Any]] = []
+        for payload in invalid_requests:
+            response: HttpResponse = self.client.post(
+                "/api/auth/login",
+                data=payload,
+                content_type="application/json",
+            )
+            response_body: dict[str, Any] = response.json()
+            responses.append(response_body)
+
+            self.assertEqual(response.status_code, 401)
+            self.assertFalse(response_body["success"])
+            self.assertIsNone(response_body["data"])
+            self.assertEqual(
+                response_body["error"]["code"],
+                "invalid_login_credentials",
+            )
+
+        self.assertEqual(responses[0], responses[1])
+        self.assertFalse(LoginChallenge.objects.exists())
