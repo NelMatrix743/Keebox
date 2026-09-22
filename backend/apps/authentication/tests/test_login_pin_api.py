@@ -156,3 +156,37 @@ class LoginPINAPITests(TestCase):
         self.assertIsNone(response_body["data"])
         self.assertEqual(response_body["error"]["code"], "invalid_login_pin")
         self.assertNotIn("access_token", str(response_body))
+
+    def test_login_pin_verification_locks_after_the_fifth_invalid_pin(
+        self: Self,
+    ) -> None:
+        """
+        Verify the fifth invalid PIN locks the login and account for twenty-four hours.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the PIN attempt limit is not enforced.
+        """
+        login_challenge: LoginChallenge
+        _expected_kbkey: str
+        login_challenge, _expected_kbkey = self._create_login_challenge()
+
+        for _ in range(4):
+            response: Any = self._verify_pin(str(login_challenge.id), "654321")
+            self.assertEqual(response.status_code, 400)
+
+        response = self._verify_pin(str(login_challenge.id), "654321")
+        response_body: dict[str, Any] = response.json()
+
+        login_challenge.refresh_from_db()
+        user: User = User.objects.get(pk=login_challenge.user_id)
+        self.assertEqual(response.status_code, 423)
+        self.assertEqual(response_body["error"]["code"], "login_pin_attempt_limit")
+        self.assertEqual(login_challenge.status, LoginStatus.LOCKED)
+        self.assertIsNotNone(user.pin_locked_until)
+        self.assertGreater(user.pin_locked_until, timezone.now() + timedelta(hours=23))
