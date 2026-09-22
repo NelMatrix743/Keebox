@@ -76,3 +76,48 @@ class LoginSchemaTests(SimpleTestCase):
         for payload in invalid_payloads:
             with self.subTest(payload=payload), self.assertRaises(ValidationError):
                 LoginRequest.model_validate(payload)
+
+    def test_login_started_response_serializes_the_pending_challenge(
+        self: Self,
+    ) -> None:
+        """
+        Verify login initiation serializes its challenge through the API envelope.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when login-start response data is incomplete.
+        """
+        current_time: datetime = timezone.now()
+        login_challenge_id: UUID = uuid4()
+        response: SuccessResponse[LoginStartedResponse] = (
+            SuccessResponse[LoginStartedResponse].model_validate(
+                APIResponse.success(
+                    {
+                        "login_challenge_id": login_challenge_id,
+                        "status": LoginStatus.PASSWORD_VERIFIED,
+                        "expires_at": current_time + timedelta(minutes=10),
+                        "message": "Password verified. Enter your lock PIN.",
+                    },
+                ),
+            )
+        )
+        serialized_response: dict[str, object] = response.model_dump(mode="json")
+        serialized_data: dict[str, object] = cast(
+            dict[str, object],
+            serialized_response["data"],
+        )
+
+        self.assertTrue(serialized_response["success"])
+        self.assertEqual(
+            serialized_data["login_challenge_id"],
+            str(login_challenge_id),
+        )
+        self.assertEqual(
+            serialized_data["status"],
+            LoginStatus.PASSWORD_VERIFIED,
+        )
