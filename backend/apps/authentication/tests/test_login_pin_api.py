@@ -190,3 +190,33 @@ class LoginPINAPITests(TestCase):
         self.assertEqual(login_challenge.status, LoginStatus.LOCKED)
         self.assertIsNotNone(user.pin_locked_until)
         self.assertGreater(user.pin_locked_until, timezone.now() + timedelta(hours=23))
+
+    def test_login_pin_verification_rejects_an_expired_challenge(
+        self: Self,
+    ) -> None:
+        """
+        Verify an expired login challenge cannot issue authentication tokens.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an expired challenge completes login.
+        """
+        login_challenge: LoginChallenge
+        _expected_kbkey: str
+        login_challenge, _expected_kbkey = self._create_login_challenge()
+        login_challenge.expires_at = timezone.now() - timedelta(microseconds=1)
+        login_challenge.save(update_fields=["expires_at", "updated_at"])
+
+        response: Any = self._verify_pin(str(login_challenge.id), "123456")
+        response_body: dict[str, Any] = response.json()
+
+        login_challenge.refresh_from_db()
+        self.assertEqual(response.status_code, 410)
+        self.assertFalse(response_body["success"])
+        self.assertEqual(response_body["error"]["code"], "expired_login_challenge")
+        self.assertEqual(login_challenge.status, LoginStatus.EXPIRED)
