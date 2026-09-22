@@ -127,3 +127,34 @@ class LoginAPITests(TestCase):
 
         self.assertEqual(responses[0], responses[1])
         self.assertFalse(LoginChallenge.objects.exists())
+
+    def test_login_rejects_an_account_with_an_active_pin_lock(self: Self) -> None:
+        """
+        Verify a temporarily locked account cannot begin another login challenge.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an active account lock is bypassed.
+        """
+        user: User = self._create_user()
+        user.pin_failed_attempts = 5
+        user.pin_locked_until = timezone.now() + timedelta(hours=24)
+        user.save(update_fields=["pin_failed_attempts", "pin_locked_until"])
+
+        response: HttpResponse = self.client.post(
+            "/api/auth/login",
+            data=self._login_payload("correct horse battery staple"),
+            content_type="application/json",
+        )
+        response_body: dict[str, Any] = response.json()
+
+        self.assertEqual(response.status_code, 423)
+        self.assertFalse(response_body["success"])
+        self.assertIsNone(response_body["data"])
+        self.assertEqual(response_body["error"]["code"], "login_account_locked")
+        self.assertFalse(LoginChallenge.objects.exists())
