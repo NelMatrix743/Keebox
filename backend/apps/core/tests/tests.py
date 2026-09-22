@@ -13,13 +13,16 @@ from brevo.transactional_emails import (
 )
 from django.test import SimpleTestCase, override_settings
 
-from apps.core.choices import OTPStatus, RegistrationStatus
+from apps.core.choices import LoginStatus, OTPStatus, RegistrationStatus
 from apps.core.constants import (
     OTP_CODE_LENGTH,
     OTP_MAX_ATTEMPTS,
     OTP_MAX_RESENDS,
     OTP_RESEND_COOLDOWN,
     OTP_TTL,
+    AUTH_LOGIN_CHALLENGE_TTL,
+    AUTH_PIN_LOCKOUT_DURATION,
+    AUTH_PIN_MAX_ATTEMPTS,
     REGISTRATION_CHALLENGE_TTL,
 )
 from apps.core.email import EmailDeliveryService
@@ -84,6 +87,34 @@ class OTPStatusTests(SimpleTestCase):
         )
 
 
+class LoginStatusTests(SimpleTestCase):
+    def test_login_status_defines_the_login_challenge_lifecycle(
+        self: Self,
+    ) -> None:
+        """
+        Verify login challenge statuses expose the required lifecycle values.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a login lifecycle value is incorrect.
+        """
+        self.assertEqual(
+            LoginStatus.choices,
+            [
+                ("password_verified", "Password verified"),
+                ("completed", "Completed"),
+                ("expired", "Expired"),
+                ("locked", "Locked"),
+                ("cancelled", "Cancelled"),
+            ],
+        )
+
+
 class AuthenticationConstantTests(SimpleTestCase):
     def test_registration_challenge_ttl_is_thirty_minutes(
         self: Self,
@@ -123,6 +154,28 @@ class AuthenticationConstantTests(SimpleTestCase):
         self.assertEqual(OTP_RESEND_COOLDOWN, timedelta(seconds=60))
         self.assertEqual(OTP_MAX_ATTEMPTS, 5)
         self.assertEqual(OTP_MAX_RESENDS, 3)
+
+    def test_login_policy_constants_define_challenge_and_lockout_limits(
+        self: Self,
+    ) -> None:
+        """
+        Verify login challenge and account PIN lockout policy values.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a login policy constant changes.
+        """
+        self.assertEqual(AUTH_LOGIN_CHALLENGE_TTL, timedelta(minutes=10))
+        self.assertEqual(AUTH_PIN_MAX_ATTEMPTS, 5)
+        self.assertEqual(
+            AUTH_PIN_LOCKOUT_DURATION,
+            timedelta(hours=24),
+        )
 
 
 class APIResponseTests(SimpleTestCase):

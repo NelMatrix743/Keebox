@@ -19,3 +19,13 @@ class OTPStatus(md.TextChoices):
     CONSUMED: tuple[str, str] = "consumed", "Consumed"
     EXPIRED: tuple[str, str] = "expired", "Expired"
     LOCKED: tuple[str, str] = "locked", "Locked"
+
+
+class LoginStatus(md.TextChoices):
+    """Define the permitted states of a Keebox login challenge."""
+
+    PASSWORD_VERIFIED: tuple[str, str] = "password_verified", "Password verified"
+    COMPLETED: tuple[str, str] = "completed", "Completed"
+    EXPIRED: tuple[str, str] = "expired", "Expired"
+    LOCKED: tuple[str, str] = "locked", "Locked"
+    CANCELLED: tuple[str, str] = "cancelled", "Cancelled"

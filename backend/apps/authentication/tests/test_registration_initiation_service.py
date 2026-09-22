@@ -5,7 +5,7 @@ from django.test import TestCase
 
 from apps.authentication.exceptions import RegistrationEmailConflictError
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
-from apps.authentication.registration_services import RegistrationService
+from apps.authentication.services.registration_services import RegistrationService
 from apps.core.choices import RegistrationStatus
 
 
@@ -91,7 +91,7 @@ class RegistrationInitiationServiceTests(TestCase):
             AssertionError: Raised when registration initiation is incomplete.
         """
         with patch(
-            "apps.authentication.registration_services.generate_otp_code",
+            "apps.authentication.services.registration_services.generate_otp_code",
             return_value="012345",
         ):
             challenge, otp_verification, raw_code = (

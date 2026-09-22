@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from apps.authentication.exceptions import InvalidRegistrationStateError
 from apps.authentication.models import RegistrationChallenge, User
-from apps.authentication.registration_services import RegistrationService
+from apps.authentication.services.registration_services import RegistrationService
 from apps.core.choices import RegistrationStatus
 from apps.core.key_utils import decrypt_kbkey, validate_kbkey
 from apps.core.pin import verify_lock_pin

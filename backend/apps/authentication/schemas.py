@@ -147,5 +147,54 @@ class RegistrationCompletedResponse(AuthenticationSuccessResponse):
     """Represent safe response data for a completed registration."""
 
 
+class LoginRequest(Schema):
+    """Validate credentials submitted to begin a Keebox login."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr = Field(max_length=254)
+    password: str = Field(min_length=1, strict=True)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def strip_login_email(cls: type[Self], value: Any) -> Any:
+        """
+        Remove surrounding whitespace from the submitted login email address.
+
+        Args:
+            cls: Login request schema class.
+            value: Unvalidated email value submitted by the client.
+
+        Returns:
+            The stripped email string or the original non-string value.
+
+        Raises:
+            None.
+        """
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
+
+class LoginStartedResponse(Schema):
+    """Represent safe response data for a password-verified login challenge."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    login_challenge_id: UUID
+    status: Literal["password_verified"]
+    expires_at: datetime
+    message: str
+
+
+class LoginPINVerificationRequest(Schema):
+    """Validate lock PIN data submitted to complete a Keebox login."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    login_challenge_id: UUID
+    pin: str = Field(min_length=1, strict=True)
+
+
 class LoginCompletedResponse(AuthenticationSuccessResponse):
     """Represent safe response data for a completed login."""

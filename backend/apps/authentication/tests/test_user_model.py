@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from typing import Self
 from uuid import UUID
 
@@ -5,6 +6,7 @@ from django.apps import AppConfig, apps
 from django.conf import settings
 from django.core.exceptions import FieldDoesNotExist
 from django.test import TestCase
+from django.utils import timezone
 
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
 
@@ -194,7 +196,41 @@ class UserModelTests(TestCase):
         self.assertIsInstance(user.id, UUID)
         self.assertEqual(user.pin_hash, "encoded-pin-hash")
         self.assertEqual(user.pin_version, 0)
+        self.assertEqual(user.pin_failed_attempts, 0)
+        self.assertIsNone(user.pin_locked_until)
         self.assertEqual(user.encrypted_kbkey, b"encrypted-kbkey")
         self.assertEqual(user.kbkey_nonce, b"twelve-bytes")
         self.assertEqual(user.kbkey_encryption_version, 1)
 
+    def test_user_persists_pin_lock_state(self: Self) -> None:
+        """
+        Verify account-level PIN failures and lock expiry persist on the user.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when PIN lock state is not persisted correctly.
+        """
+        locked_until: datetime = timezone.now() + timedelta(hours=24)
+        user: User = User.objects.create_user(
+            email="locked@example.com",
+            password="valid-password",
+            first_name="Locked",
+            last_name="User",
+            pin_failed_attempts=5,
+            pin_locked_until=locked_until,
+        )
+
+        user.refresh_from_db()
+
+        self.assertEqual(user.pin_failed_attempts, 5)
+        self.assertIsNotNone(user.pin_locked_until)
+        self.assertAlmostEqual(
+            user.pin_locked_until.timestamp(),
+            locked_until.timestamp(),
+            delta=0.001,
+        )

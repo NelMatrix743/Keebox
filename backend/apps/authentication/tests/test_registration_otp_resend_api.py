@@ -6,6 +6,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
+from apps.authentication.routes import Routes
 from apps.core.choices import OTPStatus, RegistrationStatus
 from apps.core.constants import OTP_MAX_RESENDS, OTP_RESEND_COOLDOWN
 from apps.core.exceptions import EmailDeliveryError
@@ -46,7 +47,7 @@ class RegistrationOTPResendAPITests(TestCase):
 
     @patch("apps.authentication.api.EmailDeliveryService")
     @patch(
-        "apps.authentication.registration_services.generate_otp_code",
+        "apps.authentication.services.registration_services.generate_otp_code",
         return_value="482913",
     )
     def test_resend_otp_replaces_and_delivers_the_current_code(
@@ -76,7 +77,7 @@ class RegistrationOTPResendAPITests(TestCase):
         )
 
         response: Any = self.client.post(
-            "/api/auth/register/resend-otp",
+            f"/api/auth{Routes.Registration.RESEND_OTP}",
             data={"registration_id": str(registration_challenge.id)},
             content_type="application/json",
         )
@@ -145,7 +146,7 @@ class RegistrationOTPResendAPITests(TestCase):
         current_otp.save(update_fields=["last_sent_at", "updated_at"])
 
         response: Any = self.client.post(
-            "/api/auth/register/resend-otp",
+            f"/api/auth{Routes.Registration.RESEND_OTP}",
             data={"registration_id": str(registration_challenge.id)},
             content_type="application/json",
         )
@@ -188,7 +189,7 @@ class RegistrationOTPResendAPITests(TestCase):
         registration_challenge.save(update_fields=["resend_count", "updated_at"])
 
         response: Any = self.client.post(
-            "/api/auth/register/resend-otp",
+            f"/api/auth{Routes.Registration.RESEND_OTP}",
             data={"registration_id": str(registration_challenge.id)},
             content_type="application/json",
         )
@@ -223,7 +224,7 @@ class RegistrationOTPResendAPITests(TestCase):
             AssertionError: Raised when an unknown registration is accepted.
         """
         response: Any = self.client.post(
-            "/api/auth/register/resend-otp",
+            f"/api/auth{Routes.Registration.RESEND_OTP}",
             data={"registration_id": str(uuid4())},
             content_type="application/json",
         )
@@ -259,7 +260,7 @@ class RegistrationOTPResendAPITests(TestCase):
         )
 
         response: Any = self.client.post(
-            "/api/auth/register/resend-otp",
+            f"/api/auth{Routes.Registration.RESEND_OTP}",
             data={"registration_id": str(registration_challenge.id)},
             content_type="application/json",
         )
@@ -287,7 +288,7 @@ class RegistrationOTPResendAPITests(TestCase):
             AssertionError: Raised when validation uses another response shape.
         """
         response: Any = self.client.post(
-            "/api/auth/register/resend-otp",
+            f"/api/auth{Routes.Registration.RESEND_OTP}",
             data={"registration_id": "not-a-uuid"},
             content_type="application/json",
         )

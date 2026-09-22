@@ -6,6 +6,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
+from apps.authentication.routes import Routes
 from apps.core.choices import OTPStatus, RegistrationStatus
 
 
@@ -83,7 +84,7 @@ class RegistrationVerificationAPITests(TestCase):
         )
 
         response: Any = self.client.post(
-            "/api/auth/register/verify-otp",
+            f"/api/auth{Routes.Registration.VERIFY_OTP}",
             data=self._verification_payload(registration_challenge),
             content_type="application/json",
         )
@@ -135,7 +136,7 @@ class RegistrationVerificationAPITests(TestCase):
         payload["otp_code"] = "123456"
 
         response: Any = self.client.post(
-            "/api/auth/register/verify-otp",
+            f"/api/auth{Routes.Registration.VERIFY_OTP}",
             data=payload,
             content_type="application/json",
         )
@@ -174,7 +175,7 @@ class RegistrationVerificationAPITests(TestCase):
         otp_verification.save(update_fields=["expires_at", "updated_at"])
 
         response: Any = self.client.post(
-            "/api/auth/register/verify-otp",
+            f"/api/auth{Routes.Registration.VERIFY_OTP}",
             data=self._verification_payload(registration_challenge),
             content_type="application/json",
         )
@@ -205,7 +206,7 @@ class RegistrationVerificationAPITests(TestCase):
         otp_verification.save(update_fields=["status", "updated_at"])
 
         response: Any = self.client.post(
-            "/api/auth/register/verify-otp",
+            f"/api/auth{Routes.Registration.VERIFY_OTP}",
             data=self._verification_payload(registration_challenge),
             content_type="application/json",
         )
@@ -239,7 +240,7 @@ class RegistrationVerificationAPITests(TestCase):
         )
 
         response: Any = self.client.post(
-            "/api/auth/register/verify-otp",
+            f"/api/auth{Routes.Registration.VERIFY_OTP}",
             data=self._verification_payload(registration_challenge),
             content_type="application/json",
         )
@@ -262,7 +263,7 @@ class RegistrationVerificationAPITests(TestCase):
             AssertionError: Raised when an unknown registration is accepted.
         """
         response: Any = self.client.post(
-            "/api/auth/register/verify-otp",
+            f"/api/auth{Routes.Registration.VERIFY_OTP}",
             data={
                 "registration_id": str(uuid4()),
                 "otp_code": "482913",
@@ -297,7 +298,7 @@ class RegistrationVerificationAPITests(TestCase):
         payload["otp_code"] = "48291"
 
         response: Any = self.client.post(
-            "/api/auth/register/verify-otp",
+            f"/api/auth{Routes.Registration.VERIFY_OTP}",
             data=payload,
             content_type="application/json",
         )

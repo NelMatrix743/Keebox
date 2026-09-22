@@ -10,8 +10,10 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models as md
 from django.utils import timezone
 
-from apps.core.choices import OTPStatus, RegistrationStatus
+from apps.core.choices import LoginStatus, OTPStatus, RegistrationStatus
 from apps.core.constants import (
+    AUTH_LOGIN_CHALLENGE_TTL,
+    AUTH_PIN_MAX_ATTEMPTS,
     OTP_MAX_ATTEMPTS,
     OTP_MAX_RESENDS,
     OTP_TTL,
@@ -50,6 +52,22 @@ def otp_verification_expiration() -> datetime:
         None.
     """
     return timezone.now() + OTP_TTL
+
+
+def login_challenge_expiration() -> datetime:
+    """
+    Calculate the expiration time for a new login challenge.
+
+    Args:
+        None.
+
+    Returns:
+        The server timestamp ten minutes after challenge creation.
+
+    Raises:
+        None.
+    """
+    return timezone.now() + AUTH_LOGIN_CHALLENGE_TTL
 
 
 class UserManager(BaseUserManager):
@@ -167,6 +185,13 @@ class User(AbstractUser):
 
     pin_hash: md.CharField = md.CharField(max_length=255, null=True, blank=True)
     pin_version: md.PositiveIntegerField = md.PositiveIntegerField(default=0)
+    pin_failed_attempts: md.PositiveSmallIntegerField = md.PositiveSmallIntegerField(
+        default=0,
+    )
+    pin_locked_until: md.DateTimeField = md.DateTimeField(
+        null=True,
+        blank=True,
+    )
 
     encrypted_kbkey: md.BinaryField = md.BinaryField(null=True, blank=True)
     kbkey_nonce: md.BinaryField = md.BinaryField(max_length=12, null=True, blank=True)
@@ -424,5 +449,73 @@ class OTPVerification(md.Model):
                     )
                 ),
                 name="otp_consumed_state_consistent",
+            ),
+        ]
+
+
+
+class LoginChallenge(md.Model):
+    """Represent one password-verified login awaiting PIN verification."""
+
+    id: md.UUIDField = md.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    user: md.ForeignKey = md.ForeignKey(
+        User,
+        on_delete=md.CASCADE,
+        related_name="login_challenges",
+    )
+
+    status: md.CharField = md.CharField(
+        max_length=20,
+        choices=LoginStatus.choices,
+        default=LoginStatus.PASSWORD_VERIFIED,
+    )
+
+    failed_pin_attempts: md.PositiveSmallIntegerField = md.PositiveSmallIntegerField(
+        default=0,
+    )
+    
+    expires_at: md.DateTimeField = md.DateTimeField(
+        default=login_challenge_expiration,
+    )
+    completed_at: md.DateTimeField = md.DateTimeField(null=True, blank=True)
+
+    created_at: md.DateTimeField = md.DateTimeField(auto_now_add=True)
+    updated_at: md.DateTimeField = md.DateTimeField(auto_now=True)
+
+    def is_expired(self: Self) -> bool:
+        """
+        Determine whether the login challenge has reached its expiration.
+
+        Args:
+            self: Current login challenge instance.
+
+        Returns:
+            True when the server time is at or beyond the expiration time.
+
+        Raises:
+            None.
+        """
+        return timezone.now() >= self.expires_at
+
+    class Meta:
+        db_table: str = "auth_login_challenge"
+        ordering: ClassVar[list[str]] = ["-created_at"]
+        indexes: ClassVar[list[md.Index]] = [
+            md.Index(
+                fields=["user", "status"],
+                name="login_challenge_user_idx",
+            ),
+            md.Index(
+                fields=["expires_at"],
+                name="login_challenge_expiry_idx",
+            ),
+        ]
+        constraints: ClassVar[list[md.CheckConstraint]] = [
+            md.CheckConstraint(
+                condition=md.Q(
+                    failed_pin_attempts__lte=AUTH_PIN_MAX_ATTEMPTS,
+                ),
+                name="login_challenge_attempts_within_limit",
             ),
         ]

@@ -6,6 +6,7 @@ from django.test import TestCase, override_settings
 from ninja_jwt.tokens import AccessToken, RefreshToken
 
 from apps.authentication.models import OTPVerification, RegistrationChallenge, User
+from apps.authentication.routes import Routes
 from apps.core.choices import OTPStatus, RegistrationStatus
 from apps.core.key_utils import decrypt_kbkey, validate_kbkey
 from apps.core.pin import verify_lock_pin
@@ -19,7 +20,7 @@ from apps.core.pin import verify_lock_pin
 class RegistrationFlowIntegrationTests(TestCase):
     @patch("apps.authentication.api.EmailDeliveryService")
     @patch(
-        "apps.authentication.registration_services.generate_otp_code",
+        "apps.authentication.services.registration_services.generate_otp_code",
         return_value="482913",
     )
     def test_registration_flow_creates_an_authenticated_keebox_user(
@@ -46,7 +47,7 @@ class RegistrationFlowIntegrationTests(TestCase):
         )
 
         registration_response: Any = self.client.post(
-            "/api/auth/register",
+            f"/api/auth{Routes.Registration.BASE}",
             data={
                 "first_name": "Nelson",
                 "last_name": "Ubochiegbu",
@@ -61,7 +62,7 @@ class RegistrationFlowIntegrationTests(TestCase):
         )
 
         verification_response: Any = self.client.post(
-            "/api/auth/register/verify-otp",
+            f"/api/auth{Routes.Registration.VERIFY_OTP}",
             data={
                 "registration_id": str(registration_id),
                 "otp_code": "482913",
@@ -71,7 +72,7 @@ class RegistrationFlowIntegrationTests(TestCase):
         verification_body: dict[str, Any] = verification_response.json()
 
         completion_response: Any = self.client.post(
-            "/api/auth/register/create-pin",
+            f"/api/auth{Routes.Registration.CREATE_PIN}",
             data={
                 "registration_id": str(registration_id),
                 "pin": "123456",

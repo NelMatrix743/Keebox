@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from apps.authentication.exceptions import InvalidRegistrationStateError
 from apps.authentication.models import OTPVerification, RegistrationChallenge
-from apps.authentication.registration_services import RegistrationService
+from apps.authentication.services.registration_services import RegistrationService
 from apps.core.choices import OTPStatus, RegistrationStatus
 
 
@@ -54,7 +54,7 @@ class OTPIssuanceServiceTests(TestCase):
         challenge: RegistrationChallenge = self._create_registration_challenge()
 
         with patch(
-            "apps.authentication.registration_services.generate_otp_code",
+            "apps.authentication.services.registration_services.generate_otp_code",
             return_value="012345",
         ):
             otp_verification, raw_code = RegistrationService.issue_registration_otp(
@@ -93,7 +93,7 @@ class OTPIssuanceServiceTests(TestCase):
         previous_otp.save()
 
         with patch(
-            "apps.authentication.registration_services.generate_otp_code",
+            "apps.authentication.services.registration_services.generate_otp_code",
             return_value="222222",
         ):
             current_otp, raw_code = RegistrationService.issue_registration_otp(
@@ -180,7 +180,7 @@ class OTPIssuanceServiceTests(TestCase):
 
         with (
             patch(
-                "apps.authentication.registration_services.generate_otp_code",
+                "apps.authentication.services.registration_services.generate_otp_code",
                 return_value="222222",
             ),
             patch.object(

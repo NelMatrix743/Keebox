@@ -6,17 +6,34 @@ from ninja_jwt.tokens import RefreshToken
 
 from apps.authentication.exceptions import (
     ConsumedOTPError,
+    ExpiredLoginChallengeError,
     ExpiredOTPError,
+    InvalidLoginChallengeError,
+    InvalidLoginCredentialsError,
+    InvalidLoginPINError,
     InvalidOTPError,
     InvalidRegistrationStateError,
     LockedOTPError,
+    LoginAccountLockedError,
+    LoginPINAttemptLimitError,
     OTPResendCooldownError,
     OTPResendLimitError,
     RegistrationEmailConflictError,
 )
-from apps.authentication.models import OTPVerification, RegistrationChallenge, User
-from apps.authentication.registration_services import RegistrationService
+from apps.authentication.models import (
+    LoginChallenge,
+    OTPVerification,
+    RegistrationChallenge,
+    User,
+)
+from apps.authentication.routes import Routes
+from apps.authentication.services.login_services import LoginService
+from apps.authentication.services.registration_services import RegistrationService
 from apps.authentication.schemas import (
+    LoginCompletedResponse,
+    LoginPINVerificationRequest,
+    LoginRequest,
+    LoginStartedResponse,
     RegistrationCompletedResponse,
     RegistrationOTPResendRequest,
     RegistrationOTPResentResponse,
@@ -36,7 +53,7 @@ from apps.core.response import ErrorData, ErrorResponse, APIResponse, SuccessRes
 router: Router = Router(tags=["Authentication"])
 
 @router.post(
-    "/register",
+    Routes.Registration.BASE,
     response={
         201: SuccessResponse[RegistrationStartedResponse],
         Ellipsis: ErrorResponse[ErrorData],
@@ -130,7 +147,7 @@ def register(
 
 
 @router.post(
-    "/register/verify-otp",
+    Routes.Registration.VERIFY_OTP,
     response={
         200: SuccessResponse[RegistrationOTPVerifiedResponse],
         Ellipsis: ErrorResponse[ErrorData],
@@ -209,7 +226,7 @@ def verify_registration_otp(
 
 
 @router.post(
-    "/register/resend-otp",
+    Routes.Registration.RESEND_OTP,
     response={
         200: SuccessResponse[RegistrationOTPResentResponse],
         Ellipsis: ErrorResponse[ErrorData],
@@ -303,7 +320,7 @@ def resend_registration_otp(
 
 
 @router.post(
-    "/register/create-pin",
+    Routes.Registration.CREATE_PIN,
     response={
         201: SuccessResponse[RegistrationCompletedResponse],
         Ellipsis: ErrorResponse[ErrorData],
@@ -358,3 +375,142 @@ def create_registration_pin(
         )
     )
     return 201, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    Routes.Login.BASE,
+    response={
+        200: SuccessResponse[LoginStartedResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def login(
+    request: HttpRequest,
+    payload: LoginRequest,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Authenticate credentials and begin the lock-PIN login challenge.
+
+    Args:
+        request: HTTP request that initiated the login.
+        payload: Validated email and password credentials.
+
+    Returns:
+        HTTP status and the standard login-challenge response envelope.
+
+    Raises:
+        None: Expected login failures are mapped to API responses.
+    """
+    try:
+        login_challenge: LoginChallenge = LoginService.start_login(
+            email=str(payload.email),
+            password=payload.password,
+        )
+    except InvalidLoginCredentialsError:
+        return 401, APIResponse.error(
+            ErrorData(
+                code="invalid_login_credentials",
+                message="The email or password is invalid.",
+            ).model_dump(),
+        )
+    except LoginAccountLockedError:
+        return 423, APIResponse.error(
+            ErrorData(
+                code="login_account_locked",
+                message="The account is temporarily locked. Try again later.",
+            ).model_dump(),
+        )
+
+    response_data: LoginStartedResponse = LoginStartedResponse.model_validate(
+        {
+            "login_challenge_id": login_challenge.id,
+            "status": login_challenge.status,
+            "expires_at": login_challenge.expires_at,
+            "message": "Password verified. Enter your lock PIN.",
+        },
+    )
+    return 200, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    Routes.Login.VERIFY_PIN,
+    response={
+        200: SuccessResponse[LoginCompletedResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def verify_login_pin(
+    request: HttpRequest,
+    payload: LoginPINVerificationRequest,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Verify a login lock PIN and return the completed authentication payload.
+
+    Args:
+        request: HTTP request that submitted the login lock PIN.
+        payload: Validated login challenge identifier and lock PIN.
+
+    Returns:
+        HTTP status and the standard completed-login response envelope.
+
+    Raises:
+        None: Expected login failures are mapped to API responses.
+    """
+    try:
+        user: User
+        kbkey: str
+        user, kbkey = LoginService.verify_pin(
+            login_challenge_id=payload.login_challenge_id,
+            raw_pin=payload.pin,
+        )
+    except InvalidLoginChallengeError:
+        return 409, APIResponse.error(
+            ErrorData(
+                code="invalid_login_challenge",
+                message="The login challenge cannot verify a lock PIN.",
+            ).model_dump(),
+        )
+    except ExpiredLoginChallengeError:
+        return 410, APIResponse.error(
+            ErrorData(
+                code="expired_login_challenge",
+                message="The login challenge has expired.",
+            ).model_dump(),
+        )
+    except LoginAccountLockedError:
+        return 423, APIResponse.error(
+            ErrorData(
+                code="login_account_locked",
+                message="The account is temporarily locked. Try again later.",
+            ).model_dump(),
+        )
+    except InvalidLoginPINError:
+        return 400, APIResponse.error(
+            ErrorData(
+                code="invalid_login_pin",
+                message="The lock PIN is invalid.",
+            ).model_dump(),
+        )
+    except LoginPINAttemptLimitError:
+        return 423, APIResponse.error(
+            ErrorData(
+                code="login_pin_attempt_limit",
+                message="The PIN attempt limit has been reached. Try again later.",
+            ).model_dump(),
+        )
+
+    refresh_token: RefreshToken = RefreshToken.for_user(user)
+    response_data: LoginCompletedResponse = LoginCompletedResponse.model_validate(
+        {
+            "user_id": user.id,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email,
+            "kbkey": kbkey,
+            "access_token": str(refresh_token.access_token),
+            "refresh_token": str(refresh_token),
+            "status": "completed",
+            "message": "Login completed successfully.",
+        },
+    )
+    return 200, APIResponse.success(response_data.model_dump())

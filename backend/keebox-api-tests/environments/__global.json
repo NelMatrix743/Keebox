@@ -45,6 +45,39 @@
         "kind": "inline"
       },
       "overrideMeta": null
+    },
+    "email": {
+      "id": "3d8da592-b492-407c-9ce6-9d92a9a5ba94",
+      "syncValue": "nelmatrix155@gmail.com",
+      "type": "string",
+      "isEnabled": true,
+      "rank": "a4",
+      "valueSource": {
+        "kind": "inline"
+      },
+      "overrideMeta": null
+    },
+    "password": {
+      "id": "6948955b-82c7-44b2-a16d-6f7665f76892",
+      "syncValue": "correct horse battery staple",
+      "type": "string",
+      "isEnabled": true,
+      "rank": "a5",
+      "valueSource": {
+        "kind": "inline"
+      },
+      "overrideMeta": null
+    },
+    "login_challenge_id": {
+      "id": "f5ff90fc-7ddc-4bec-bdd7-43dffed78be9",
+      "syncValue": "",
+      "type": "string",
+      "isEnabled": true,
+      "rank": "a6",
+      "valueSource": {
+        "kind": "inline"
+      },
+      "overrideMeta": null
     }
   }
 }
