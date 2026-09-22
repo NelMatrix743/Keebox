@@ -7,16 +7,26 @@ from ninja_jwt.tokens import RefreshToken
 from apps.authentication.exceptions import (
     ConsumedOTPError,
     ExpiredOTPError,
+    InvalidLoginCredentialsError,
     InvalidOTPError,
     InvalidRegistrationStateError,
     LockedOTPError,
+    LoginAccountLockedError,
     OTPResendCooldownError,
     OTPResendLimitError,
     RegistrationEmailConflictError,
 )
-from apps.authentication.models import OTPVerification, RegistrationChallenge, User
+from apps.authentication.models import (
+    LoginChallenge,
+    OTPVerification,
+    RegistrationChallenge,
+    User,
+)
+from apps.authentication.services.login_services import LoginService
 from apps.authentication.services.registration_services import RegistrationService
 from apps.authentication.schemas import (
+    LoginRequest,
+    LoginStartedResponse,
     RegistrationCompletedResponse,
     RegistrationOTPResendRequest,
     RegistrationOTPResentResponse,
@@ -358,3 +368,58 @@ def create_registration_pin(
         )
     )
     return 201, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    "/login",
+    response={
+        200: SuccessResponse[LoginStartedResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def login(
+    request: HttpRequest,
+    payload: LoginRequest,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Authenticate credentials and begin the lock-PIN login challenge.
+
+    Args:
+        request: HTTP request that initiated the login.
+        payload: Validated email and password credentials.
+
+    Returns:
+        HTTP status and the standard login-challenge response envelope.
+
+    Raises:
+        None: Expected login failures are mapped to API responses.
+    """
+    try:
+        login_challenge: LoginChallenge = LoginService.start_login(
+            email=str(payload.email),
+            password=payload.password,
+        )
+    except InvalidLoginCredentialsError:
+        return 401, APIResponse.error(
+            ErrorData(
+                code="invalid_login_credentials",
+                message="The email or password is invalid.",
+            ).model_dump(),
+        )
+    except LoginAccountLockedError:
+        return 423, APIResponse.error(
+            ErrorData(
+                code="login_account_locked",
+                message="The account is temporarily locked. Try again later.",
+            ).model_dump(),
+        )
+
+    response_data: LoginStartedResponse = LoginStartedResponse.model_validate(
+        {
+            "login_challenge_id": login_challenge.id,
+            "status": login_challenge.status,
+            "expires_at": login_challenge.expires_at,
+            "message": "Password verified. Enter your lock PIN.",
+        },
+    )
+    return 200, APIResponse.success(response_data.model_dump())
