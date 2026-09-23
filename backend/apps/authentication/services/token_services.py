@@ -52,3 +52,35 @@ class TokenService:
             type(token_version) is not int or token_version != user.token_version
         ):
             raise InvalidToken("The session is no longer valid.")
+
+    @staticmethod
+    def refresh_access_token(raw_refresh_token: str) -> str:
+        """
+        Renew access only when a refresh token belongs to the active session.
+
+        Args:
+            raw_refresh_token: Signed refresh token submitted by the client.
+
+        Returns:
+            A newly signed access token for the active login generation.
+
+        Raises:
+            InvalidToken: Raised for malformed, expired, inactive, missing-user,
+                or superseded refresh tokens.
+        """
+        try:
+            refresh_token: RefreshToken = RefreshToken(raw_refresh_token)
+        except TokenError as exception:
+            raise InvalidToken("The refresh token is invalid.") from exception
+
+        user_id: object = refresh_token.get("user_id")
+        if not isinstance(user_id, str):
+            raise InvalidToken("The refresh token has no valid user.")
+        
+        try:
+            user: User = User.objects.get(pk=user_id)
+        except (User.DoesNotExist, ValueError, DjangoValidationError) as exception:
+            raise InvalidToken("The refresh token has no valid user.") from exception
+
+        TokenService.validate_token_version(user, refresh_token)
+        return str(refresh_token.access_token)
