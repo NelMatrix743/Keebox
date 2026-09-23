@@ -162,7 +162,14 @@ class LoginService:
                 )
                 user.pin_failed_attempts = 0
                 user.pin_locked_until = None
-                user.save(update_fields=["pin_failed_attempts", "pin_locked_until"])
+                user.token_version += 1
+                user.save(
+                    update_fields=[
+                        "pin_failed_attempts",
+                        "pin_locked_until",
+                        "token_version",
+                    ],
+                )
                 completed_login = (user, kbkey)
             else:
                 login_challenge.failed_pin_attempts += 1
