@@ -311,3 +311,12 @@ class PINResetCompletionRequest(Schema):
     reset_id: UUID
     new_pin: str = Field(min_length=1, strict=True)
 
+
+class ResetCompletedResponse(Schema):
+    """Represent a completed credential reset without authenticating the user."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reset_id: UUID
+    status: Literal["completed"]
+    message: str
