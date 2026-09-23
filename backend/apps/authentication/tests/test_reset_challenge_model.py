@@ -117,3 +117,36 @@ class ResetChallengeModelTests(TestCase):
             )
 
         self.assertFalse(OTPVerification.objects.exists())
+
+    def test_reset_completion_expires_only_after_otp_verification(
+        self: Self,
+    ) -> None:
+        """
+        Verify OTP expiry and the post-verification deadline remain separate.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the completion deadline is misinterpreted.
+        """
+        reset: ResetChallenge = ResetChallenge.objects.create(
+            user=self._create_user(),
+            reset_type=ResetType.PIN,
+        )
+        self.assertEqual(reset.status, ResetStatus.OTP_PENDING)
+        self.assertIsNone(reset.completion_expires_at)
+        self.assertFalse(reset.is_expired())
+
+        reset.status = ResetStatus.OTP_VERIFIED
+        reset.verified_at = timezone.now()
+        reset.completion_expires_at = (
+            reset.verified_at + RESET_CHALLENGE_COMPLETION_TTL
+        )
+        self.assertFalse(reset.is_expired())
+
+        reset.completion_expires_at = timezone.now() - timedelta(microseconds=1)
+        self.assertTrue(reset.is_expired())
