@@ -87,3 +87,33 @@ class TokenServiceTests(TestCase):
             authentication.authenticate(HttpRequest(), new_access),
             self.user,
         )
+
+    def test_refresh_rejects_an_older_or_unversioned_token(self: Self) -> None:
+        """
+        Verify an older login cannot mint new access tokens by refreshing.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an obsolete refresh token is accepted.
+        """
+        old_refresh: str
+        _, old_refresh = TokenService.issue_tokens(self.user)
+        unversioned_refresh: RefreshToken = RefreshToken.for_user(self.user)
+        self.user.token_version += 1
+        self.user.save(update_fields=["token_version"])
+        new_refresh: str
+        _, new_refresh = TokenService.issue_tokens(self.user)
+
+        with self.assertRaises(InvalidToken):
+            TokenService.refresh_access_token(old_refresh)
+        with self.assertRaises(InvalidToken):
+            TokenService.refresh_access_token(str(unversioned_refresh))
+        refreshed_access: AccessToken = AccessToken(
+            TokenService.refresh_access_token(new_refresh),
+        )
+        self.assertEqual(refreshed_access["token_version"], 1)
