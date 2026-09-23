@@ -247,3 +247,7 @@ class ResetOTPResendRequest(Schema):
 
     reset_id: UUID
 
+
+class ResetOTPResentResponse(ResetStartedResponse):
+    """Represent generic response data after requesting a replacement OTP."""
+
