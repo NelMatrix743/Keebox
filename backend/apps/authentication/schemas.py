@@ -227,3 +227,15 @@ class ResetStartRequest(Schema):
             return value.strip()
         return value
 
+
+class ResetStartedResponse(Schema):
+    """Represent generic response data after a reset request is submitted."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reset_id: UUID
+    status: Literal["otp_pending"]
+    otp_expires_at: datetime
+    resend_available_at: datetime
+    message: str
+
