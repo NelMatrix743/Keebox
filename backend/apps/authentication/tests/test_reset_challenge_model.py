@@ -150,3 +150,31 @@ class ResetChallengeModelTests(TestCase):
 
         reset.completion_expires_at = timezone.now() - timedelta(microseconds=1)
         self.assertTrue(reset.is_expired())
+
+    def test_one_active_reset_per_user_and_credential(self: Self) -> None:
+        """
+        Verify active password and PIN resets do not conflict with each other.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the active reset scope is incorrect.
+        """
+        user: User = self._create_user()
+        password_reset: ResetChallenge = ResetChallenge.objects.create(
+            user=user,
+            reset_type=ResetType.PASSWORD,
+        )
+        ResetChallenge.objects.create(user=user, reset_type=ResetType.PIN)
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            ResetChallenge.objects.create(user=user, reset_type=ResetType.PASSWORD)
+
+        password_reset.status = ResetStatus.CANCELLED
+        password_reset.save(update_fields=["status", "updated_at"])
+        ResetChallenge.objects.create(user=user, reset_type=ResetType.PASSWORD)
+        self.assertEqual(ResetChallenge.objects.count(), 3)
