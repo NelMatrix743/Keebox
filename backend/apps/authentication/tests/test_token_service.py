@@ -117,3 +117,27 @@ class TokenServiceTests(TestCase):
             TokenService.refresh_access_token(new_refresh),
         )
         self.assertEqual(refreshed_access["token_version"], 1)
+
+    def test_refresh_rejects_a_missing_or_inactive_account(self: Self) -> None:
+        """
+        Verify token renewal requires an existing active account.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a disabled or deleted account refreshes.
+        """
+        refresh_raw: str
+        _, refresh_raw = TokenService.issue_tokens(self.user)
+        self.user.is_active = False
+        self.user.save(update_fields=["is_active"])
+        with self.assertRaises(InvalidToken):
+            TokenService.refresh_access_token(refresh_raw)
+
+        self.user.delete()
+        with self.assertRaises(InvalidToken):
+            TokenService.refresh_access_token(refresh_raw)
