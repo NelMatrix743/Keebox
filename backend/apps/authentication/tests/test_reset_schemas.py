@@ -135,3 +135,43 @@ class ResetSchemaTests(SimpleTestCase):
             ResetOTPResendRequest.model_validate(
                 {"reset_id": reset_id, "otp_code": "048291"},
             )
+
+    def test_verified_response_exposes_the_completion_deadline(self: Self) -> None:
+        """
+        Verify a successful OTP check returns the limited completion window.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the verification response is incomplete.
+        """
+        reset_id: UUID = uuid4()
+        response: SuccessResponse[ResetOTPVerifiedResponse] = (
+            SuccessResponse[ResetOTPVerifiedResponse].model_validate(
+                APIResponse.success(
+                    {
+                        "reset_id": reset_id,
+                        "status": "otp_verified",
+                        "completion_expires_at": datetime(
+                            2026,
+                            9,
+                            23,
+                            10,
+                            10,
+                            tzinfo=UTC,
+                        ),
+                        "message": "Verification complete. Set your new credential.",
+                    },
+                ),
+            )
+        )
+        self.assertEqual(response.data.reset_id, reset_id)
+        self.assertEqual(response.data.status, "otp_verified")
+        self.assertEqual(
+            response.model_dump(mode="json")["data"]["completion_expires_at"],
+            "2026-09-23T10:10:00Z",
+        )
