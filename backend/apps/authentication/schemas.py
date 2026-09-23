@@ -251,3 +251,12 @@ class ResetOTPResendRequest(Schema):
 class ResetOTPResentResponse(ResetStartedResponse):
     """Represent generic response data after requesting a replacement OTP."""
 
+
+class ResetOTPVerificationRequest(Schema):
+    """Validate the reset identifier and six-digit email OTP."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reset_id: UUID
+    otp_code: str = Field(pattern=r"^[0-9]{6}$", strict=True)
+
