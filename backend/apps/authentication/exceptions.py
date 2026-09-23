@@ -42,6 +42,18 @@ class LoginPINAttemptLimitError(LoginServiceError):
     """Indicate that the login PIN failure limit has been reached."""
 
 
+class ResetServiceError(AuthenticationServiceError):
+    """Represent a failure raised by a Keebox credential reset service."""
+
+
+class InvalidResetChallengeError(ResetServiceError):
+    """Indicate that a reset challenge is missing or cannot continue."""
+
+
+class ExpiredResetChallengeError(ResetServiceError):
+    """Indicate that the post-OTP reset completion window has elapsed."""
+
+
 class OTPServiceError(AuthenticationServiceError):
     """Represent a failure raised by the Keebox OTP service."""
 
@@ -67,4 +79,4 @@ class OTPResendCooldownError(OTPServiceError):
 
 
 class OTPResendLimitError(OTPServiceError):
-    """Indicate that a registration challenge reached its OTP resend limit."""
+    """Indicate that an authentication challenge reached its OTP resend limit."""
