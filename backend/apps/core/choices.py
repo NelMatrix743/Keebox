@@ -39,3 +39,10 @@ class ResetStatus(md.TextChoices):
     COMPLETED: tuple[str, str] = "completed", "Completed"
     EXPIRED: tuple[str, str] = "expired", "Expired"
     CANCELLED: tuple[str, str] = "cancelled", "Cancelled"
+
+
+class ResetType(md.TextChoices):
+    """Define which account credential a reset challenge may replace."""
+
+    PASSWORD: tuple[str, str] = "password", "Password"
+    PIN: tuple[str, str] = "pin", "PIN"
