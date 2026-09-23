@@ -57,3 +57,33 @@ class TokenServiceTests(TestCase):
         self.assertEqual(refresh["token_version"], 0)
         self.assertEqual(str(access["user_id"]), str(self.user.id))
         self.assertEqual(str(refresh["user_id"]), str(self.user.id))
+
+    def test_authentication_rejects_an_access_token_from_an_older_login(
+        self: Self,
+    ) -> None:
+        """
+        Verify a newer login invalidates the previous access token.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a stale access token authenticates.
+        """
+        old_access: str
+        old_access, _ = TokenService.issue_tokens(self.user)
+        self.user.token_version += 1
+        self.user.save(update_fields=["token_version"])
+        new_access: str
+        new_access, _ = TokenService.issue_tokens(self.user)
+        authentication: VersionedJWTAuth = VersionedJWTAuth()
+
+        with self.assertRaises(InvalidToken):
+            authentication.authenticate(HttpRequest(), old_access)
+        self.assertEqual(
+            authentication.authenticate(HttpRequest(), new_access),
+            self.user,
+        )
