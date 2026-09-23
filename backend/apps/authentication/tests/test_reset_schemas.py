@@ -49,3 +49,46 @@ class ResetSchemaTests(SimpleTestCase):
         for payload in invalid_payloads:
             with self.subTest(payload=payload), self.assertRaises(ValidationError):
                 ResetStartRequest.model_validate(payload)
+
+    def test_start_and_resend_responses_share_a_safe_envelope(self: Self) -> None:
+        """
+        Verify reset initiation and resend data serialize without secrets.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when reset response data is invalid.
+        """
+        reset_id: UUID = uuid4()
+        current_time: datetime = datetime(2026, 9, 23, 10, 0, tzinfo=UTC)
+        data: dict[str, object] = {
+            "reset_id": reset_id,
+            "status": "otp_pending",
+            "otp_expires_at": current_time + timedelta(minutes=5),
+            "resend_available_at": current_time + timedelta(minutes=1),
+            "message": "If an account exists, a verification code has been sent.",
+        }
+
+        for response_type in (ResetStartedResponse, ResetOTPResentResponse):
+            with self.subTest(response_type=response_type):
+                response = SuccessResponse[response_type].model_validate(
+                    APIResponse.success(data),
+                )
+                serialized: dict[str, object] = response.model_dump(mode="json")
+                self.assertEqual(serialized["success"], True)
+                self.assertEqual(serialized["error"], None)
+                self.assertEqual(
+                    serialized["data"],
+                    {
+                        **data,
+                        "reset_id": str(reset_id),
+                        "otp_expires_at": "2026-09-23T10:05:00Z",
+                        "resend_available_at": "2026-09-23T10:01:00Z",
+                    },
+                )
+                with self.assertRaises(ValidationError):
+                    response_type.model_validate({**data, "otp_code": "482913"})
