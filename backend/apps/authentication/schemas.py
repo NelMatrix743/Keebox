@@ -260,3 +260,14 @@ class ResetOTPVerificationRequest(Schema):
     reset_id: UUID
     otp_code: str = Field(pattern=r"^[0-9]{6}$", strict=True)
 
+
+class ResetOTPVerifiedResponse(Schema):
+    """Represent the limited reset-completion window after OTP verification."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reset_id: UUID
+    status: Literal["otp_verified"]
+    completion_expires_at: datetime
+    message: str
+
