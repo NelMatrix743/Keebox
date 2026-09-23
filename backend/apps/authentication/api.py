@@ -2,7 +2,6 @@ from typing import Any
 
 from django.http import HttpRequest
 from ninja import Router
-from ninja_jwt.tokens import RefreshToken
 
 from apps.authentication.exceptions import (
     ConsumedOTPError,
@@ -29,6 +28,7 @@ from apps.authentication.models import (
 from apps.authentication.routes import Routes
 from apps.authentication.services.login_services import LoginService
 from apps.authentication.services.registration_services import RegistrationService
+from apps.authentication.services.token_services import TokenService
 from apps.authentication.schemas import (
     LoginCompletedResponse,
     LoginPINVerificationRequest,
@@ -358,7 +358,9 @@ def create_registration_pin(
             ).model_dump(),
         )
 
-    refresh_token: RefreshToken = RefreshToken.for_user(user)
+    access_token: str
+    refresh_token: str
+    access_token, refresh_token = TokenService.issue_tokens(user)
     response_data: RegistrationCompletedResponse = (
         RegistrationCompletedResponse.model_validate(
             {
@@ -367,8 +369,8 @@ def create_registration_pin(
                 "last_name": user.last_name,
                 "email": user.email,
                 "kbkey": kbkey,
-                "access_token": str(refresh_token.access_token),
-                "refresh_token": str(refresh_token),
+                "access_token": access_token,
+                "refresh_token": refresh_token,
                 "status": "completed",
                 "message": "Registration completed successfully.",
             },
@@ -499,7 +501,9 @@ def verify_login_pin(
             ).model_dump(),
         )
 
-    refresh_token: RefreshToken = RefreshToken.for_user(user)
+    access_token: str
+    refresh_token: str
+    access_token, refresh_token = TokenService.issue_tokens(user)
     response_data: LoginCompletedResponse = LoginCompletedResponse.model_validate(
         {
             "user_id": user.id,
@@ -507,8 +511,8 @@ def verify_login_pin(
             "last_name": user.last_name,
             "email": user.email,
             "kbkey": kbkey,
-            "access_token": str(refresh_token.access_token),
-            "refresh_token": str(refresh_token),
+            "access_token": access_token,
+            "refresh_token": refresh_token,
             "status": "completed",
             "message": "Login completed successfully.",
         },
