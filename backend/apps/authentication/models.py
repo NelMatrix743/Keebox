@@ -189,6 +189,8 @@ class User(AbstractUser):
 
     email: md.EmailField = md.EmailField(unique=True)
 
+    token_version: md.PositiveIntegerField = md.PositiveIntegerField(default=0)
+
     pin_hash: md.CharField = md.CharField(max_length=255, null=True, blank=True)
     pin_version: md.PositiveIntegerField = md.PositiveIntegerField(default=0)
     pin_failed_attempts: md.PositiveSmallIntegerField = md.PositiveSmallIntegerField(
