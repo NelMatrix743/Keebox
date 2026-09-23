@@ -233,3 +233,41 @@ class ResetSchemaTests(SimpleTestCase):
         ):
             with self.subTest(payload=payload), self.assertRaises(ValidationError):
                 PINResetCompletionRequest.model_validate(payload)
+
+    def test_completed_response_contains_no_login_tokens(self: Self) -> None:
+        """
+        Verify reset completion confirms success without logging the user in.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when reset completion exposes token data.
+        """
+        reset_id: UUID = uuid4()
+        response: SuccessResponse[ResetCompletedResponse] = (
+            SuccessResponse[ResetCompletedResponse].model_validate(
+                APIResponse.success(
+                    {
+                        "reset_id": reset_id,
+                        "status": "completed",
+                        "message": "Credential reset completed. Sign in again.",
+                    },
+                ),
+            )
+        )
+        self.assertEqual(response.data.status, "completed")
+        self.assertNotIn("access_token", response.model_dump(mode="json")["data"])
+
+        with self.assertRaises(ValidationError):
+            ResetCompletedResponse.model_validate(
+                {
+                    "reset_id": reset_id,
+                    "status": "completed",
+                    "message": "Credential reset completed. Sign in again.",
+                    "refresh_token": "not-allowed",
+                },
+            )
