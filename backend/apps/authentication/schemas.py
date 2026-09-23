@@ -198,3 +198,32 @@ class LoginPINVerificationRequest(Schema):
 
 class LoginCompletedResponse(AuthenticationSuccessResponse):
     """Represent safe response data for a completed login."""
+
+
+class ResetStartRequest(Schema):
+    """Validate an email submitted to begin password or PIN recovery."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr = Field(max_length=254)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def strip_reset_email(cls: type[Self], value: Any) -> Any:
+        """
+        Remove surrounding whitespace from a submitted reset email address.
+
+        Args:
+            cls: Reset start request schema class.
+            value: Unvalidated email value submitted by the client.
+
+        Returns:
+            The stripped email string or the original non-string value.
+
+        Raises:
+            None.
+        """
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
