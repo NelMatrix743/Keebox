@@ -32,4 +32,23 @@ class TokenService:
         refresh_token[TOKEN_VERSION_CLAIM] = user.token_version
         return str(refresh_token.access_token), str(refresh_token)
 
- 
+    @staticmethod
+    def validate_token_version(user: User, token: Token) -> None:
+        """
+        Require a token to belong to the user's current login generation.
+
+        Args:
+            user: Account identified by the token.
+            token: Decoded access or refresh token being checked.
+
+        Returns:
+            None: A valid token permits the calling operation to continue.
+
+        Raises:
+            InvalidToken: Raised when the account or token version is invalid.
+        """
+        token_version: object = token.get(TOKEN_VERSION_CLAIM)
+        if not user.is_active or (
+            type(token_version) is not int or token_version != user.token_version
+        ):
+            raise InvalidToken("The session is no longer valid.")
