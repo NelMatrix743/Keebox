@@ -10,7 +10,13 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models as md
 from django.utils import timezone
 
-from apps.core.choices import LoginStatus, OTPStatus, RegistrationStatus
+from apps.core.choices import (
+    LoginStatus,
+    OTPStatus,
+    RegistrationStatus,
+    ResetStatus,
+    ResetType,
+)
 from apps.core.constants import (
     AUTH_LOGIN_CHALLENGE_TTL,
     AUTH_PIN_MAX_ATTEMPTS,
@@ -326,6 +332,15 @@ class OTPVerification(md.Model):
         RegistrationChallenge,
         on_delete=md.CASCADE,
         related_name="otp_verifications",
+        null=True,
+        blank=True,
+    )
+    reset_challenge: md.ForeignKey = md.ForeignKey(
+        ResetChallenge,
+        on_delete=md.CASCADE,
+        related_name="otp_verifications",
+        null=True,
+        blank=True,
     )
 
     email: md.EmailField = md.EmailField()
@@ -436,6 +451,13 @@ class OTPVerification(md.Model):
         db_table: str = "otp_verifications"
         ordering: ClassVar[list[str]] = ["-created_at"]
         constraints: ClassVar[list[md.CheckConstraint]] = [
+            md.CheckConstraint(
+                condition=(
+                    md.Q(registration_challenge__isnull=False, reset_challenge__isnull=True)
+                    | md.Q(registration_challenge__isnull=True, reset_challenge__isnull=False)
+                ),
+                name="otp_exactly_one_challenge_owner",
+            ),
             md.CheckConstraint(
                 condition=md.Q(attempt_count__lte=OTP_MAX_ATTEMPTS),
                 name="otp_attempt_count_within_limit",
