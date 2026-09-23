@@ -239,3 +239,11 @@ class ResetStartedResponse(Schema):
     resend_available_at: datetime
     message: str
 
+
+class ResetOTPResendRequest(Schema):
+    """Validate the reset identifier submitted to request another OTP."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reset_id: UUID
+
