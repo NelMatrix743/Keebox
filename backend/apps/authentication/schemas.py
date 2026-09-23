@@ -271,3 +271,34 @@ class ResetOTPVerifiedResponse(Schema):
     completion_expires_at: datetime
     message: str
 
+
+class PasswordResetCompletionRequest(Schema):
+    """Validate a new password submitted for a verified reset challenge."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reset_id: UUID
+    new_password: str = Field(min_length=1, strict=True)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls: type[Self], value: str) -> str:
+        """
+        Apply the configured account-password policy to a reset password.
+
+        Args:
+            cls: Password reset completion request schema class.
+            value: New raw password submitted by the client.
+
+        Returns:
+            The password after successful policy validation.
+
+        Raises:
+            ValueError: Raised when the password violates the configured policy.
+        """
+        try:
+            validate_password(value)
+        except DjangoValidationError as exception:
+            raise ValueError(" ".join(exception.messages)) from exception
+        return value
+
