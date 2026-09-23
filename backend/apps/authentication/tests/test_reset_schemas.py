@@ -175,3 +175,61 @@ class ResetSchemaTests(SimpleTestCase):
             response.model_dump(mode="json")["data"]["completion_expires_at"],
             "2026-09-23T10:10:00Z",
         )
+
+    def test_completion_requests_validate_new_credentials_without_a_token(
+        self: Self,
+    ) -> None:
+        """
+        Verify credential completion accepts only the reset ID and new value.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when completion request validation is incorrect.
+        """
+        reset_id: UUID = uuid4()
+        password_request: PasswordResetCompletionRequest = (
+            PasswordResetCompletionRequest.model_validate(
+                {
+                    "reset_id": reset_id,
+                    "new_password": "a sufficiently strong new password",
+                },
+            )
+        )
+        pin_request: PINResetCompletionRequest = (
+            PINResetCompletionRequest.model_validate(
+                {"reset_id": reset_id, "new_pin": "123456"},
+            )
+        )
+        self.assertEqual(password_request.reset_id, reset_id)
+        self.assertEqual(pin_request.new_pin, "123456")
+
+        invalid_password_payloads: tuple[dict[str, object], ...] = (
+            {"reset_id": reset_id, "new_password": ""},
+            {"reset_id": reset_id, "new_password": "password"},
+            {"reset_id": reset_id, "new_password": 123456},
+            {
+                "reset_id": reset_id,
+                "new_password": "a sufficiently strong new password",
+                "completion_token": "not-used",
+            },
+        )
+        for payload in invalid_password_payloads:
+            with self.subTest(payload=payload), self.assertRaises(ValidationError):
+                PasswordResetCompletionRequest.model_validate(payload)
+
+        for payload in (
+            {"reset_id": reset_id, "new_pin": ""},
+            {"reset_id": reset_id, "new_pin": 123456},
+            {
+                "reset_id": reset_id,
+                "new_pin": "123456",
+                "completion_token": "not-used",
+            },
+        ):
+            with self.subTest(payload=payload), self.assertRaises(ValidationError):
+                PINResetCompletionRequest.model_validate(payload)
