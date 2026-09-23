@@ -75,3 +75,45 @@ class ResetChallengeModelTests(TestCase):
         self.assertIsNone(registration_otp.reset_challenge)
         self.assertEqual(reset.otp_verifications.count(), 1)
         self.assertEqual(registration.otp_verifications.count(), 1)
+
+    def test_otp_requires_exactly_one_challenge_owner(self: Self) -> None:
+        """
+        Verify the database rejects OTPs with no owner or two owners.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when invalid OTP ownership is accepted.
+        """
+        user: User = self._create_user()
+        reset: ResetChallenge = ResetChallenge.objects.create(
+            user=user,
+            reset_type=ResetType.PASSWORD,
+        )
+        registration: RegistrationChallenge = RegistrationChallenge(
+            first_name="Other",
+            last_name="Person",
+            email="other@example.com",
+        )
+        registration.set_password("another secure password")
+        registration.save()
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            OTPVerification.objects.create(
+                email=user.email,
+                code_hash="missing-owner",
+            )
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            OTPVerification.objects.create(
+                registration_challenge=registration,
+                reset_challenge=reset,
+                email=user.email,
+                code_hash="two-owners",
+            )
+
+        self.assertFalse(OTPVerification.objects.exists())
