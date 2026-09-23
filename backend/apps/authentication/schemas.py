@@ -302,3 +302,12 @@ class PasswordResetCompletionRequest(Schema):
             raise ValueError(" ".join(exception.messages)) from exception
         return value
 
+
+class PINResetCompletionRequest(Schema):
+    """Validate a new lock PIN submitted for a verified reset challenge."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reset_id: UUID
+    new_pin: str = Field(min_length=1, strict=True)
+
