@@ -92,3 +92,46 @@ class ResetSchemaTests(SimpleTestCase):
                 )
                 with self.assertRaises(ValidationError):
                     response_type.model_validate({**data, "otp_code": "482913"})
+
+    def test_resend_and_verify_requests_validate_the_identifier_and_otp(
+        self: Self,
+    ) -> None:
+        """
+        Verify reset OTP requests require a UUID and a six-digit code.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when reset OTP request validation fails.
+        """
+        reset_id: UUID = uuid4()
+        resend: ResetOTPResendRequest = ResetOTPResendRequest.model_validate(
+            {"reset_id": reset_id},
+        )
+        verification: ResetOTPVerificationRequest = (
+            ResetOTPVerificationRequest.model_validate(
+                {"reset_id": reset_id, "otp_code": "048291"},
+            )
+        )
+        self.assertEqual(resend.reset_id, reset_id)
+        self.assertEqual(verification.otp_code, "048291")
+
+        invalid_payloads: tuple[dict[str, object], ...] = (
+            {"reset_id": "not-a-uuid", "otp_code": "048291"},
+            {"reset_id": reset_id, "otp_code": "48291"},
+            {"reset_id": reset_id, "otp_code": "48A913"},
+            {"reset_id": reset_id, "otp_code": 482913},
+            {"reset_id": reset_id, "otp_code": "048291", "extra": True},
+        )
+        for payload in invalid_payloads:
+            with self.subTest(payload=payload), self.assertRaises(ValidationError):
+                ResetOTPVerificationRequest.model_validate(payload)
+
+        with self.assertRaises(ValidationError):
+            ResetOTPResendRequest.model_validate(
+                {"reset_id": reset_id, "otp_code": "048291"},
+            )
