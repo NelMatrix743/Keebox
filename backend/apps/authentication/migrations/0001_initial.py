@@ -32,6 +32,7 @@ class Migration(migrations.Migration):
                 ('email', models.EmailField(max_length=254, unique=True)),
                 ('first_name', models.CharField(max_length=150)),
                 ('last_name', models.CharField(max_length=150)),
+                ('token_version', models.PositiveIntegerField(default=0)),
                 ('pin_hash', models.CharField(blank=True, max_length=255, null=True)),
                 ('pin_version', models.PositiveIntegerField(default=0)),
                 ('pin_failed_attempts', models.PositiveSmallIntegerField(default=0)),
