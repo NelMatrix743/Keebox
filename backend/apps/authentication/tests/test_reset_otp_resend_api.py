@@ -129,3 +129,33 @@ class ResetOTPResendAPITests(TestCase):
                     self.email_delivery_service.return_value.send_otp_email.call_count,
                     ResetChallenge.objects.count() * 2,
                 )
+
+    def test_resend_during_cooldown_returns_error_without_replacing_otp(
+        self: Self,
+    ) -> None:
+        """
+        Verify the cooldown rejects an early replacement request.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when cooldown enforcement fails.
+        """
+        challenge, otp = self._start_reset(ResetType.PASSWORD)
+
+        response: HttpResponse = self._post_resend(str(challenge.id))
+        body: dict[str, Any] = response.json()
+        challenge.refresh_from_db()
+        otp.refresh_from_db()
+
+        self.assertEqual(response.status_code, 429)
+        self.assertFalse(body["success"])
+        self.assertIsNone(body["data"])
+        self.assertEqual(body["error"]["code"], "otp_resend_cooldown")
+        self.assertEqual(challenge.resend_count, 0)
+        self.assertEqual(otp.status, OTPStatus.PENDING)
+        self.assertEqual(OTPVerification.objects.count(), 1)
