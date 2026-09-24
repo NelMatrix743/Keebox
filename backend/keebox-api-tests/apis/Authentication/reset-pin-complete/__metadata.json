@@ -1,0 +1,10 @@
+{
+  "$schema": "https://assets.requestly.com/local/v1.17.0/metadata.json",
+  "type": "api",
+  "entryType": "http",
+  "id": "16d3a8f6-94aa-4d93-9192-d38f40032295",
+  "rank": "",
+  "url": "{{base_url}}/api/auth/reset/pin/complete",
+  "method": "POST",
+  "contentType": "json"
+}
