@@ -179,3 +179,37 @@ class PasswordResetCompletionServiceTests(TestCase):
         self.assertIsNone(challenge.completed_at)
         self.assertTrue(self.user.check_password("original strong password 5821"))
         self.assertEqual(self.user.token_version, 0)
+
+    def test_completed_or_missing_challenge_cannot_be_replayed(self: Self) -> None:
+        """
+        Verify a reset identifier can change the password only once.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an absent or completed reset works.
+        """
+        with self.assertRaises(InvalidResetChallengeError):
+            ResetService.complete_password_reset(
+                uuid4(),
+                "replacement strong password 7349",
+            )
+
+        challenge: ResetChallenge = self._start_and_verify(ResetType.PASSWORD)
+        ResetService.complete_password_reset(
+            challenge.id,
+            "replacement strong password 7349",
+        )
+        with self.assertRaises(InvalidResetChallengeError):
+            ResetService.complete_password_reset(
+                challenge.id,
+                "another strong password 9047",
+            )
+
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("replacement strong password 7349"))
+        self.assertEqual(self.user.token_version, 1)
