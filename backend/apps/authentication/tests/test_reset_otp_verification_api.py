@@ -87,3 +87,52 @@ class ResetOTPVerificationAPITests(TestCase):
             data={"reset_id": reset_id, "otp_code": otp_code},
             content_type="application/json",
         )
+
+    def test_valid_code_verifies_password_and_pin_resets(self: Self) -> None:
+        """
+        Verify either reset type consumes its OTP and opens completion.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when OTP or response state is incorrect.
+        """
+        for reset_type in (ResetType.PASSWORD, ResetType.PIN):
+            with self.subTest(reset_type=reset_type):
+                challenge: ResetChallenge = self._start_reset(reset_type)
+
+                response: HttpResponse = self._post_verification(
+                    str(challenge.id),
+                    "048291",
+                )
+                body: dict[str, Any] = response.json()
+                challenge.refresh_from_db()
+                otp: OTPVerification = OTPVerification.objects.get(
+                    reset_challenge=challenge,
+                )
+
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(body["success"])
+                self.assertIsNone(body["error"])
+                self.assertIsNone(body["meta"])
+                self.assertEqual(body["data"]["reset_id"], str(challenge.id))
+                self.assertEqual(body["data"]["status"], ResetStatus.OTP_VERIFIED)
+                self.assertLess(
+                    abs(
+                        datetime.fromisoformat(
+                            body["data"]["completion_expires_at"],
+                        ) - challenge.completion_expires_at,
+                    ),
+                    timedelta(milliseconds=1),
+                )
+                self.assertEqual(challenge.status, ResetStatus.OTP_VERIFIED)
+                self.assertEqual(
+                    challenge.completion_expires_at,
+                    challenge.verified_at + RESET_CHALLENGE_COMPLETION_TTL,
+                )
+                self.assertEqual(otp.status, OTPStatus.CONSUMED)
+                self.assertNotIn("048291", str(body))
