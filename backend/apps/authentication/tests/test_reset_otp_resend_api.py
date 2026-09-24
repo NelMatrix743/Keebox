@@ -213,3 +213,22 @@ class ResetOTPResendAPITests(TestCase):
         self.assertEqual(response.json()["error"]["code"], "otp_resend_limit_reached")
         self.assertEqual(challenge.status, ResetStatus.CANCELLED)
         self.assertEqual(otp.status, OTPStatus.EXPIRED)
+
+    def test_unknown_reset_id_returns_an_error(self: Self) -> None:
+        """
+        Verify a missing challenge cannot trigger OTP delivery.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an unknown reset is accepted.
+        """
+        response: HttpResponse = self._post_resend(str(uuid4()))
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["error"]["code"], "invalid_reset_challenge")
+        self.email_delivery_service.assert_not_called()
