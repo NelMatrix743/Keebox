@@ -3,11 +3,14 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID, uuid4
 
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.utils import timezone
 
 from apps.authentication.exceptions import (
     ConsumedOTPError,
+    ExpiredResetChallengeError,
     ExpiredOTPError,
     InvalidOTPError,
     InvalidResetChallengeError,
@@ -162,19 +165,18 @@ class ResetService:
         return otp_verification, raw_code
 
     @staticmethod
-    def _get_locked_pending_challenge(reset_id: UUID) -> ResetChallenge:
+    def _get_locked_challenge(reset_id: UUID) -> ResetChallenge:
         """
-        Lock an account before loading its pending reset challenge.
+        Lock an account before loading its reset challenge.
 
         Args:
-            reset_id: Identifier of the reset challenge to inspect.
+            reset_id: Identifier of the reset challenge to load.
 
         Returns:
-            Locked reset challenge in the OTP-pending state.
+            Locked reset challenge and its associated account.
 
         Raises:
-            InvalidResetChallengeError: Raised when the challenge or user is
-                missing or the challenge is not awaiting OTP verification.
+            InvalidResetChallengeError: Raised when the challenge or user is missing.
         """
         try:
             challenge_owner_id: UUID = ResetChallenge.objects.values_list(
@@ -192,9 +194,27 @@ class ResetService:
                 "The reset challenge is unavailable.",
             ) from exception
 
+        return challenge
+
+    @staticmethod
+    def _get_locked_pending_challenge(reset_id: UUID) -> ResetChallenge:
+        """
+        Require an account reset that is still awaiting OTP verification.
+
+        Args:
+            reset_id: Identifier of the reset challenge to inspect.
+
+        Returns:
+            Locked reset challenge in the OTP-pending state.
+
+        Raises:
+            InvalidResetChallengeError: Raised when the challenge cannot
+                accept another OTP operation.
+        """
+        challenge: ResetChallenge = ResetService._get_locked_challenge(reset_id)
         if challenge.status != ResetStatus.OTP_PENDING:
             raise InvalidResetChallengeError(
-                "The reset challenge cannot resend an OTP.",
+                "The reset challenge is not awaiting OTP verification.",
             )
         return challenge
 
@@ -529,3 +549,69 @@ class ResetService:
                 "The reset OTP verification could not be completed.",
             )
         return verified_challenge
+
+    @staticmethod
+    def complete_password_reset(reset_id: UUID, raw_password: str) -> ResetChallenge:
+        """
+        Replace a password after OTP verification and revoke older sessions.
+
+        Args:
+            reset_id: Identifier of the OTP-verified password reset challenge.
+            raw_password: New password selected for the account.
+
+        Returns:
+            The reset challenge advanced to the completed state.
+
+        Raises:
+            InvalidResetChallengeError: Raised when the challenge is absent,
+                not a password reset, or not ready for completion.
+            ExpiredResetChallengeError: Raised after expiring a completion
+                window that has elapsed.
+            ValueError: Raised when the new password violates account policy.
+        """
+        pending_error: ExpiredResetChallengeError | None = None
+        completed_challenge: ResetChallenge | None = None
+
+        with transaction.atomic():
+            challenge: ResetChallenge = ResetService._get_locked_challenge(reset_id)
+            if (
+                challenge.reset_type != ResetType.PASSWORD
+                or challenge.status != ResetStatus.OTP_VERIFIED
+                or challenge.verified_at is None
+                or challenge.completion_expires_at is None
+            ):
+                raise InvalidResetChallengeError(
+                    "The password reset cannot be completed.",
+                )
+
+            if challenge.is_expired():
+                challenge.status = ResetStatus.EXPIRED
+                challenge.save(update_fields=["status", "updated_at"])
+                pending_error = ExpiredResetChallengeError(
+                    "The password reset completion window has expired.",
+                )
+            else:
+                user: User = challenge.user
+                try:
+                    validate_password(raw_password, user=user)
+                except DjangoValidationError as exception:
+                    raise ValueError(" ".join(exception.messages)) from exception
+
+                user.set_password(raw_password)
+                user.token_version += 1
+                user.save(update_fields=["password", "token_version"])
+
+                challenge.status = ResetStatus.COMPLETED
+                challenge.completed_at = timezone.now()
+                challenge.save(
+                    update_fields=["status", "completed_at", "updated_at"],
+                )
+                completed_challenge = challenge
+
+        if pending_error is not None:
+            raise pending_error
+        if completed_challenge is None:
+            raise InvalidResetChallengeError(
+                "The password reset could not be completed.",
+            )
+        return completed_challenge
