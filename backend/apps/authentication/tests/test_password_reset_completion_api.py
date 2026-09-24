@@ -232,3 +232,29 @@ class PasswordResetCompletionAPITests(TestCase):
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password("replacement strong password 7349"))
         self.assertEqual(self.user.token_version, 1)
+
+    def test_weak_password_is_rejected_without_consuming_challenge(
+        self: Self,
+    ) -> None:
+        """
+        Verify password policy failure leaves the verified reset available.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when invalid input changes reset state.
+        """
+        challenge: ResetChallenge = self._verified_challenge(ResetType.PASSWORD)
+
+        response: HttpResponse = self._post_completion(str(challenge.id), "password")
+        challenge.refresh_from_db()
+        self.user.refresh_from_db()
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(challenge.status, ResetStatus.OTP_VERIFIED)
+        self.assertTrue(self.user.check_password("original strong password 5821"))
+        self.assertEqual(self.user.token_version, 0)
