@@ -159,3 +159,29 @@ class ResetOTPResendAPITests(TestCase):
         self.assertEqual(challenge.resend_count, 0)
         self.assertEqual(otp.status, OTPStatus.PENDING)
         self.assertEqual(OTPVerification.objects.count(), 1)
+
+    def test_expired_otp_cancels_the_reset(self: Self) -> None:
+        """
+        Verify an expired code cannot be replaced through the API.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an expired reset stays usable.
+        """
+        challenge, otp = self._start_reset(ResetType.PIN)
+        otp.expires_at = timezone.now() - timedelta(seconds=1)
+        otp.save(update_fields=["expires_at"])
+
+        response: HttpResponse = self._post_resend(str(challenge.id))
+        challenge.refresh_from_db()
+        otp.refresh_from_db()
+
+        self.assertEqual(response.status_code, 410)
+        self.assertEqual(response.json()["error"]["code"], "expired_otp")
+        self.assertEqual(challenge.status, ResetStatus.CANCELLED)
+        self.assertEqual(otp.status, OTPStatus.EXPIRED)
