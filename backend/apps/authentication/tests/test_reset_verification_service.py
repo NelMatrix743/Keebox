@@ -161,3 +161,36 @@ class ResetVerificationServiceTests(TestCase):
         self.assertEqual(otp.attempt_count, OTP_MAX_ATTEMPTS)
         with self.assertRaises(InvalidResetChallengeError):
             ResetService.verify_reset_otp(started.reset_id, "048291")
+
+    def test_expired_otp_cancels_the_reset(self: Self) -> None:
+        """
+        Verify an expired OTP ends the challenge before code comparison.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an expired challenge remains active.
+        """
+        started: ResetStartResult = ResetService.start_reset(
+            self.user.email,
+            ResetType.PASSWORD,
+        )
+        otp: OTPVerification = OTPVerification.objects.get(
+            reset_challenge_id=started.reset_id,
+        )
+        otp.expires_at = timezone.now() - timedelta(seconds=1)
+        otp.save(update_fields=["expires_at"])
+
+        with self.assertRaises(ExpiredOTPError):
+            ResetService.verify_reset_otp(started.reset_id, "048291")
+
+        otp.refresh_from_db()
+        self.assertEqual(otp.status, OTPStatus.EXPIRED)
+        self.assertEqual(
+            ResetChallenge.objects.get(pk=started.reset_id).status,
+            ResetStatus.CANCELLED,
+        )
