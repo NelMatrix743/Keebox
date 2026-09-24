@@ -213,3 +213,45 @@ class ResetResendServiceTests(TestCase):
             email_delivery_service.return_value.send_otp_email.call_count,
             OTP_MAX_RESENDS + 1,
         )
+
+    @patch("apps.authentication.services.reset_services.EmailDeliveryService")
+    def test_expired_otp_cancels_the_reset_before_resending(
+        self: Self,
+        email_delivery_service: Mock,
+    ) -> None:
+        """
+        Verify OTP expiry ends a reset instead of granting a resend.
+
+        Args:
+            self: Current test case instance.
+            email_delivery_service: Mocked external email boundary.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an expired reset is not cancelled.
+        """
+        started: ResetStartResult = ResetService.start_reset(
+            self.user.email,
+            ResetType.PASSWORD,
+        )
+        otp: OTPVerification = OTPVerification.objects.get(
+            reset_challenge_id=started.reset_id,
+        )
+        otp.expires_at = timezone.now() - timedelta(seconds=1)
+        otp.save(update_fields=["expires_at"])
+
+        with self.assertRaises(ExpiredOTPError):
+            ResetService.resend_reset_otp(started.reset_id)
+
+        otp.refresh_from_db()
+        self.assertEqual(otp.status, OTPStatus.EXPIRED)
+        self.assertEqual(
+            ResetChallenge.objects.get(pk=started.reset_id).status,
+            ResetStatus.CANCELLED,
+        )
+        self.assertEqual(
+            email_delivery_service.return_value.send_otp_email.call_count,
+            1,
+        )
