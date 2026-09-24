@@ -39,6 +39,7 @@ from apps.authentication.schemas import (
     LoginRequest,
     LoginStartedResponse,
     PasswordResetCompletionRequest,
+    PINResetCompletionRequest,
     RegistrationCompletedResponse,
     RegistrationOTPResendRequest,
     RegistrationOTPResentResponse,
@@ -843,6 +844,60 @@ def complete_password_reset(
             "reset_id": challenge.id,
             "status": challenge.status,
             "message": "Password reset completed. Sign in again.",
+        },
+    )
+    return 200, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    Routes.Reset.PIN_COMPLETE,
+    response={
+        200: SuccessResponse[ResetCompletedResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def complete_pin_reset(
+    request: HttpRequest,
+    payload: PINResetCompletionRequest,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Replace a lock PIN after reset OTP verification without signing in.
+
+    Args:
+        request: HTTP request that submitted the new lock PIN.
+        payload: Validated reset identifier and replacement PIN.
+
+    Returns:
+        HTTP status and the standard reset completion response envelope.
+
+    Raises:
+        None: Expected reset failures are mapped to API responses.
+    """
+    try:
+        challenge: ResetChallenge = ResetService.complete_pin_reset(
+            reset_id=payload.reset_id,
+            raw_pin=payload.new_pin,
+        )
+    except ExpiredResetChallengeError:
+        return 410, APIResponse.error(
+            ErrorData(
+                code="expired_reset_challenge",
+                message="The reset completion window has expired. Start a new reset.",
+            ).model_dump(),
+        )
+    except InvalidResetChallengeError:
+        return 409, APIResponse.error(
+            ErrorData(
+                code="invalid_reset_challenge",
+                message="The PIN reset cannot be completed.",
+            ).model_dump(),
+        )
+
+    response_data: ResetCompletedResponse = ResetCompletedResponse.model_validate(
+        {
+            "reset_id": challenge.id,
+            "status": challenge.status,
+            "message": "PIN reset completed. Sign in again.",
         },
     )
     return 200, APIResponse.success(response_data.model_dump())
