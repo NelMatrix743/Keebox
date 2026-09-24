@@ -28,6 +28,7 @@ from apps.authentication.models import (
 from apps.authentication.routes import Routes
 from apps.authentication.services.login_services import LoginService
 from apps.authentication.services.registration_services import RegistrationService
+from apps.authentication.services.reset_services import ResetService, ResetStartResult
 from apps.authentication.services.token_services import TokenService
 from apps.authentication.schemas import (
     LoginCompletedResponse,
@@ -42,7 +43,10 @@ from apps.authentication.schemas import (
     RegistrationRequest,
     RegistrationStartedResponse,
     RegistrationVerificationRequest,
+    ResetStartRequest,
+    ResetStartedResponse,
 )
+from apps.core.choices import ResetType
 from apps.core.constants import OTP_MAX_RESENDS, OTP_RESEND_COOLDOWN, OTP_TTL
 from apps.core.email import EmailDeliveryService
 from apps.core.exceptions import EmailDeliveryError
@@ -515,6 +519,58 @@ def verify_login_pin(
             "refresh_token": refresh_token,
             "status": "completed",
             "message": "Login completed successfully.",
+        },
+    )
+    return 200, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    Routes.Reset.PASSWORD,
+    response={
+        200: SuccessResponse[ResetStartedResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def start_password_reset(
+    request: HttpRequest,
+    payload: ResetStartRequest,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Begin password recovery without disclosing account existence.
+
+    Args:
+        request: HTTP request that initiated password recovery.
+        payload: Validated email address for the reset request.
+
+    Returns:
+        HTTP status and the standard password-reset response envelope.
+
+    Raises:
+        None: Invalid reset requests are mapped to API responses.
+    """
+    try:
+        started: ResetStartResult = ResetService.start_reset(
+            email=str(payload.email),
+            reset_type=ResetType.PASSWORD,
+        )
+    except ValueError:
+        return 400, APIResponse.error(
+            ErrorData(
+                code="invalid_reset_request",
+                message="The password reset request is invalid.",
+            ).model_dump(),
+        )
+
+    response_data: ResetStartedResponse = ResetStartedResponse.model_validate(
+        {
+            "reset_id": started.reset_id,
+            "status": "otp_pending",
+            "otp_expires_at": started.otp_expires_at,
+            "resend_available_at": started.resend_available_at,
+            "message": (
+                "If an account exists for this email, a verification code "
+                "has been sent."
+            ),
         },
     )
     return 200, APIResponse.success(response_data.model_dump())
