@@ -7,6 +7,7 @@ from apps.authentication.exceptions import (
     ConsumedOTPError,
     ExpiredLoginChallengeError,
     ExpiredOTPError,
+    ExpiredResetChallengeError,
     InvalidLoginChallengeError,
     InvalidLoginCredentialsError,
     InvalidLoginPINError,
@@ -37,6 +38,7 @@ from apps.authentication.schemas import (
     LoginPINVerificationRequest,
     LoginRequest,
     LoginStartedResponse,
+    PasswordResetCompletionRequest,
     RegistrationCompletedResponse,
     RegistrationOTPResendRequest,
     RegistrationOTPResentResponse,
@@ -49,6 +51,7 @@ from apps.authentication.schemas import (
     ResetOTPResentResponse,
     ResetOTPVerificationRequest,
     ResetOTPVerifiedResponse,
+    ResetCompletedResponse,
     ResetStartRequest,
     ResetStartedResponse,
 )
@@ -779,6 +782,67 @@ def verify_reset_otp(
             "status": challenge.status,
             "completion_expires_at": challenge.completion_expires_at,
             "message": "Code verified. Complete your credential reset.",
+        },
+    )
+    return 200, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    Routes.Reset.PASSWORD_COMPLETE,
+    response={
+        200: SuccessResponse[ResetCompletedResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def complete_password_reset(
+    request: HttpRequest,
+    payload: PasswordResetCompletionRequest,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Replace a password after reset OTP verification without signing in.
+
+    Args:
+        request: HTTP request that submitted the new password.
+        payload: Validated reset identifier and replacement password.
+
+    Returns:
+        HTTP status and the standard reset completion response envelope.
+
+    Raises:
+        None: Expected reset and password failures are mapped to API responses.
+    """
+    try:
+        challenge: ResetChallenge = ResetService.complete_password_reset(
+            reset_id=payload.reset_id,
+            raw_password=payload.new_password,
+        )
+    except ExpiredResetChallengeError:
+        return 410, APIResponse.error(
+            ErrorData(
+                code="expired_reset_challenge",
+                message="The reset completion window has expired. Start a new reset.",
+            ).model_dump(),
+        )
+    except InvalidResetChallengeError:
+        return 409, APIResponse.error(
+            ErrorData(
+                code="invalid_reset_challenge",
+                message="The password reset cannot be completed.",
+            ).model_dump(),
+        )
+    except ValueError:
+        return 400, APIResponse.error(
+            ErrorData(
+                code="invalid_password",
+                message="The new password does not meet account requirements.",
+            ).model_dump(),
+        )
+
+    response_data: ResetCompletedResponse = ResetCompletedResponse.model_validate(
+        {
+            "reset_id": challenge.id,
+            "status": challenge.status,
+            "message": "Password reset completed. Sign in again.",
         },
     )
     return 200, APIResponse.success(response_data.model_dump())
