@@ -111,3 +111,39 @@ class PasswordResetCompletionServiceTests(TestCase):
             VersionedJWTAuth().authenticate(HttpRequest(), old_access)
         with self.assertRaises(InvalidToken):
             TokenService.refresh_access_token(old_refresh)
+
+    def test_pending_or_wrong_type_challenge_cannot_change_the_password(
+        self: Self,
+    ) -> None:
+        """
+        Verify password completion requires OTP verification of password reset.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when invalid reset state changes credentials.
+        """
+        pending: ResetStartResult = ResetService.start_reset(
+            email=self.user.email,
+            reset_type=ResetType.PASSWORD,
+        )
+        with self.assertRaises(InvalidResetChallengeError):
+            ResetService.complete_password_reset(
+                pending.reset_id,
+                "replacement strong password 7349",
+            )
+
+        pin_challenge: ResetChallenge = self._start_and_verify(ResetType.PIN)
+        with self.assertRaises(InvalidResetChallengeError):
+            ResetService.complete_password_reset(
+                pin_challenge.id,
+                "replacement strong password 7349",
+            )
+
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("original strong password 5821"))
+        self.assertEqual(self.user.token_version, 0)
