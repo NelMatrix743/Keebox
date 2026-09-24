@@ -94,3 +94,36 @@ class ResetVerificationServiceTests(TestCase):
         self.assertEqual(otp.attempt_count, 0)
         self.assertEqual(self.user.token_version, 0)
         self.assertTrue(self.user.check_password("correct horse battery staple"))
+
+    def test_wrong_otp_records_an_attempt_without_advancing_the_reset(
+        self: Self,
+    ) -> None:
+        """
+        Verify an incorrect code leaves the reset pending until its limit.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an incorrect code advances the reset.
+        """
+        started: ResetStartResult = ResetService.start_reset(
+            self.user.email,
+            ResetType.PIN,
+        )
+
+        with self.assertRaises(InvalidOTPError):
+            ResetService.verify_reset_otp(started.reset_id, "999999")
+
+        challenge: ResetChallenge = ResetChallenge.objects.get(pk=started.reset_id)
+        otp: OTPVerification = OTPVerification.objects.get(
+            reset_challenge=challenge,
+        )
+        self.assertEqual(challenge.status, ResetStatus.OTP_PENDING)
+        self.assertIsNone(challenge.verified_at)
+        self.assertIsNone(challenge.completion_expires_at)
+        self.assertEqual(otp.status, OTPStatus.PENDING)
+        self.assertEqual(otp.attempt_count, 1)
