@@ -291,3 +291,76 @@ class ResetService:
             otp_expires_at=otp_verification.expires_at,
             resend_available_at=otp_verification.last_sent_at + OTP_RESEND_COOLDOWN,
         )
+
+    @staticmethod
+    def resend_reset_otp(reset_id: UUID) -> ResetStartResult:
+        """
+        Replace the current OTP while keeping its reset challenge identifier.
+
+        Args:
+            reset_id: Identifier of the pending credential reset challenge.
+
+        Returns:
+            The unchanged reset identifier and replacement OTP timing.
+
+        Raises:
+            InvalidResetChallengeError: Raised when the challenge or its OTP
+                is unavailable for resending.
+            ExpiredOTPError: Raised after cancelling a reset with an expired OTP.
+            LockedOTPError: Raised after cancelling a reset with a locked OTP.
+            OTPResendLimitError: Raised after cancelling a reset that exhausted
+                its resend allowance.
+            OTPResendCooldownError: Raised while the resend cooldown is active.
+            ValueError: Raised if OTP generation produces an empty code.
+        """
+        pending_error: OTPServiceError | None = None
+        replacement_otp: OTPVerification | None = None
+        raw_code: str = ""
+
+        with transaction.atomic():
+            challenge: ResetChallenge = ResetService._get_locked_pending_challenge(
+                reset_id,
+            )
+            current_otp: OTPVerification = ResetService._get_locked_current_otp(
+                challenge,
+            )
+
+            if current_otp.status == OTPStatus.EXPIRED or current_otp.is_expired():
+                ResetService._cancel_challenge(challenge)
+                pending_error = ExpiredOTPError("The reset OTP has expired.")
+            elif current_otp.status == OTPStatus.LOCKED:
+                ResetService._cancel_challenge(challenge)
+                pending_error = LockedOTPError("The reset OTP is locked.")
+            elif current_otp.status != OTPStatus.PENDING:
+                raise InvalidResetChallengeError(
+                    "The reset OTP cannot be resent.",
+                )
+            elif challenge.resend_count >= OTP_MAX_RESENDS:
+                ResetService._cancel_challenge(challenge)
+                pending_error = OTPResendLimitError(
+                    "The reset challenge reached its OTP resend limit.",
+                )
+            elif timezone.now() < current_otp.last_sent_at + OTP_RESEND_COOLDOWN:
+                raise OTPResendCooldownError(
+                    "The reset OTP resend cooldown has not elapsed.",
+                )
+            else:
+                current_otp.status = OTPStatus.EXPIRED
+                current_otp.save(update_fields=["status", "updated_at"])
+                challenge.resend_count += 1
+                challenge.save(update_fields=["resend_count", "updated_at"])
+                replacement_otp, raw_code = ResetService._create_otp(challenge)
+
+        if pending_error is not None:
+            raise pending_error
+        if replacement_otp is None:
+            raise InvalidResetChallengeError(
+                "The replacement reset OTP could not be created.",
+            )
+
+        ResetService._deliver_otp(challenge.user, ResetType(challenge.reset_type), raw_code)
+        return ResetStartResult(
+            reset_id=challenge.id,
+            otp_expires_at=replacement_otp.expires_at,
+            resend_available_at=replacement_otp.last_sent_at + OTP_RESEND_COOLDOWN,
+        )
