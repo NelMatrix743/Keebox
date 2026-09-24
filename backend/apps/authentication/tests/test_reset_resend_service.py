@@ -108,3 +108,44 @@ class ResetResendServiceTests(TestCase):
             email_delivery_service.return_value.send_otp_email.call_count,
             2,
         )
+
+    @patch("apps.authentication.services.reset_services.EmailDeliveryService")
+    @patch(
+        "apps.authentication.services.reset_services.generate_otp_code",
+        return_value="048291",
+    )
+    def test_resend_before_cooldown_does_not_issue_or_deliver_another_otp(
+        self: Self,
+        generate_otp: Mock,
+        email_delivery_service: Mock,
+    ) -> None:
+        """
+        Verify the resend cooldown prevents a second OTP from being issued.
+
+        Args:
+            self: Current test case instance.
+            generate_otp: Mocked secure OTP generator.
+            email_delivery_service: Mocked external email boundary.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a premature resend changes state.
+        """
+        started: ResetStartResult = ResetService.start_reset(
+            self.user.email,
+            ResetType.PASSWORD,
+        )
+
+        with self.assertRaises(OTPResendCooldownError):
+            ResetService.resend_reset_otp(started.reset_id)
+
+        challenge: ResetChallenge = ResetChallenge.objects.get(pk=started.reset_id)
+        self.assertEqual(challenge.resend_count, 0)
+        self.assertEqual(OTPVerification.objects.count(), 1)
+        generate_otp.assert_called_once_with()
+        self.assertEqual(
+            email_delivery_service.return_value.send_otp_email.call_count,
+            1,
+        )
