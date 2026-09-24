@@ -174,3 +174,34 @@ class PINResetCompletionAPITests(TestCase):
         self.assertTrue(verify_lock_pin("123456", self.user.pin_hash))
         self.assertEqual(self.user.pin_version, 2)
         self.assertEqual(self.user.token_version, 0)
+
+    def test_expired_completion_window_does_not_replace_the_pin(self: Self) -> None:
+        """
+        Verify a late PIN reset marks the challenge expired.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an expired reset changes the PIN.
+        """
+        challenge: ResetChallenge = self._verified_challenge(ResetType.PIN)
+        challenge.completion_expires_at = timezone.now() - timedelta(seconds=1)
+        challenge.save(update_fields=["completion_expires_at"])
+
+        response: HttpResponse = self._post_completion(str(challenge.id), "654321")
+        challenge.refresh_from_db()
+        self.user.refresh_from_db()
+
+        self.assertEqual(response.status_code, 410)
+        self.assertEqual(
+            response.json()["error"]["code"],
+            "expired_reset_challenge",
+        )
+        self.assertEqual(challenge.status, ResetStatus.EXPIRED)
+        self.assertTrue(verify_lock_pin("123456", self.user.pin_hash))
+        self.assertEqual(self.user.pin_failed_attempts, 5)
+        self.assertIsNotNone(self.user.pin_locked_until)
