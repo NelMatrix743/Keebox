@@ -239,3 +239,36 @@ class ResetVerificationServiceTests(TestCase):
             ).attempt_count,
             1,
         )
+
+    def test_missing_replaced_or_verified_challenge_cannot_verify_again(
+        self: Self,
+    ) -> None:
+        """
+        Verify only an active OTP-pending reset accepts verification.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an invalid reset challenge is accepted.
+        """
+        with self.assertRaises(InvalidResetChallengeError):
+            ResetService.verify_reset_otp(uuid4(), "048291")
+
+        first: ResetStartResult = ResetService.start_reset(
+            self.user.email,
+            ResetType.PASSWORD,
+        )
+        second: ResetStartResult = ResetService.start_reset(
+            self.user.email,
+            ResetType.PASSWORD,
+        )
+        with self.assertRaises(InvalidResetChallengeError):
+            ResetService.verify_reset_otp(first.reset_id, "048291")
+
+        ResetService.verify_reset_otp(second.reset_id, "048291")
+        with self.assertRaises(InvalidResetChallengeError):
+            ResetService.verify_reset_otp(second.reset_id, "048291")
