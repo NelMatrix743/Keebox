@@ -120,3 +120,52 @@ class ResetStartServiceTests(TestCase):
         self.assertEqual(ResetChallenge.objects.count(), 0)
         self.assertEqual(OTPVerification.objects.count(), 0)
         email_delivery_service.assert_not_called()
+
+    @patch("apps.authentication.services.reset_services.EmailDeliveryService")
+    @patch(
+        "apps.authentication.services.reset_services.generate_otp_code",
+        return_value="048291",
+    )
+    def test_new_reset_cancels_the_prior_same_type_and_its_pending_otp(
+        self: Self,
+        generate_otp: Mock,
+        email_delivery_service: Mock,
+    ) -> None:
+        """
+        Verify a replacement challenge invalidates the older password flow.
+
+        Args:
+            self: Current test case instance.
+            generate_otp: Mocked secure OTP generator.
+            email_delivery_service: Mocked external email delivery boundary.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when old challenge state remains active.
+        """
+        first = ResetService.start_reset(
+            email=self.user.email,
+            reset_type=ResetType.PASSWORD,
+        )
+        old_challenge: ResetChallenge = ResetChallenge.objects.get(pk=first.reset_id)
+        old_otp: OTPVerification = OTPVerification.objects.get(
+            reset_challenge=old_challenge,
+        )
+
+        second = ResetService.start_reset(
+            email=self.user.email,
+            reset_type=ResetType.PASSWORD,
+        )
+        old_challenge.refresh_from_db()
+        old_otp.refresh_from_db()
+
+        self.assertNotEqual(first.reset_id, second.reset_id)
+        self.assertEqual(old_challenge.status, ResetStatus.CANCELLED)
+        self.assertEqual(old_otp.status, OTPStatus.EXPIRED)
+        self.assertEqual(
+            ResetChallenge.objects.get(pk=second.reset_id).status,
+            ResetStatus.OTP_PENDING,
+        )
+        self.assertEqual(email_delivery_service.return_value.send_otp_email.call_count, 2)
