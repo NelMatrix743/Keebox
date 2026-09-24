@@ -194,3 +194,48 @@ class ResetVerificationServiceTests(TestCase):
             ResetChallenge.objects.get(pk=started.reset_id).status,
             ResetStatus.CANCELLED,
         )
+
+    def test_only_the_latest_resend_code_can_verify_the_reset(self: Self) -> None:
+        """
+        Verify a replaced OTP cannot complete a reset after resending.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the superseded code remains usable.
+        """
+        self.generate_otp.side_effect = ["048291", "193847"]
+        started: ResetStartResult = ResetService.start_reset(
+            self.user.email,
+            ResetType.PIN,
+        )
+        old_otp: OTPVerification = OTPVerification.objects.get(
+            reset_challenge_id=started.reset_id,
+        )
+        old_otp.last_sent_at = (
+            timezone.now() - OTP_RESEND_COOLDOWN - timedelta(seconds=1)
+        )
+        old_otp.save(update_fields=["last_sent_at"])
+        ResetService.resend_reset_otp(started.reset_id)
+
+        with self.assertRaises(InvalidOTPError):
+            ResetService.verify_reset_otp(started.reset_id, "048291")
+        verified: ResetChallenge = ResetService.verify_reset_otp(
+            started.reset_id,
+            "193847",
+        )
+
+        old_otp.refresh_from_db()
+        self.assertEqual(old_otp.status, OTPStatus.EXPIRED)
+        self.assertEqual(verified.status, ResetStatus.OTP_VERIFIED)
+        self.assertEqual(
+            OTPVerification.objects.get(
+                reset_challenge=verified,
+                status=OTPStatus.CONSUMED,
+            ).attempt_count,
+            1,
+        )
