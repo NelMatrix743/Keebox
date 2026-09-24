@@ -168,3 +168,36 @@ class PasswordResetCompletionAPITests(TestCase):
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password("original strong password 5821"))
         self.assertEqual(self.user.token_version, 0)
+
+    def test_expired_completion_window_is_rejected(self: Self) -> None:
+        """
+        Verify a late request marks the challenge expired without password loss.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an expired challenge remains usable.
+        """
+        challenge: ResetChallenge = self._verified_challenge(ResetType.PASSWORD)
+        challenge.completion_expires_at = timezone.now() - timedelta(seconds=1)
+        challenge.save(update_fields=["completion_expires_at"])
+
+        response: HttpResponse = self._post_completion(
+            str(challenge.id),
+            "replacement strong password 7349",
+        )
+        challenge.refresh_from_db()
+        self.user.refresh_from_db()
+
+        self.assertEqual(response.status_code, 410)
+        self.assertEqual(
+            response.json()["error"]["code"],
+            "expired_reset_challenge",
+        )
+        self.assertEqual(challenge.status, ResetStatus.EXPIRED)
+        self.assertTrue(self.user.check_password("original strong password 5821"))
+        self.assertEqual(self.user.token_version, 0)
