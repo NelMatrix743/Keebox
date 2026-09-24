@@ -262,6 +262,38 @@ class ResetService:
         return None
 
     @staticmethod
+    def _record_failed_otp_attempt(
+        challenge: ResetChallenge,
+        current_otp: OTPVerification,
+    ) -> OTPServiceError:
+        """
+        Count a wrong code and cancel the reset when attempts are exhausted.
+
+        Args:
+            challenge: Reset challenge receiving the failed verification.
+            current_otp: OTP verification whose attempt count is increased.
+
+        Returns:
+            Deferred invalid-code or locked-OTP error for the caller.
+
+        Raises:
+            None.
+        """
+        current_otp.attempt_count += 1
+        if current_otp.attempt_count >= OTP_MAX_ATTEMPTS:
+            current_otp.status = OTPStatus.LOCKED
+            pending_error: OTPServiceError = LockedOTPError(
+                "The reset OTP is locked.",
+            )
+        else:
+            pending_error = InvalidOTPError("The reset OTP code is invalid.")
+
+        current_otp.save(update_fields=["attempt_count", "status", "updated_at"])
+        if current_otp.status == OTPStatus.LOCKED:
+            ResetService._cancel_challenge(challenge)
+        return pending_error
+
+    @staticmethod
     def _deliver_otp(user: User, reset_type: ResetType, raw_code: str) -> None:
         """
         Submit the reset OTP email without revealing delivery failures publicly.
