@@ -215,3 +215,26 @@ class ResetOTPVerificationAPITests(TestCase):
         self.assertEqual(response.json()["error"]["code"], "expired_otp")
         self.assertEqual(challenge.status, ResetStatus.CANCELLED)
         self.assertEqual(otp.status, OTPStatus.EXPIRED)
+
+    def test_unknown_or_verified_reset_cannot_verify_again(self: Self) -> None:
+        """
+        Verify a missing or already-used reset identifier is rejected.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a reset can be verified twice.
+        """
+        missing: HttpResponse = self._post_verification(str(uuid4()), "048291")
+        challenge: ResetChallenge = self._start_reset(ResetType.PIN)
+        self._post_verification(str(challenge.id), "048291")
+        replay: HttpResponse = self._post_verification(str(challenge.id), "048291")
+
+        self.assertEqual(missing.status_code, 409)
+        self.assertEqual(missing.json()["error"]["code"], "invalid_reset_challenge")
+        self.assertEqual(replay.status_code, 409)
+        self.assertEqual(replay.json()["error"]["code"], "invalid_reset_challenge")
