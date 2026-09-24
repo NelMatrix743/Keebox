@@ -205,3 +205,29 @@ class PINResetCompletionAPITests(TestCase):
         self.assertTrue(verify_lock_pin("123456", self.user.pin_hash))
         self.assertEqual(self.user.pin_failed_attempts, 5)
         self.assertIsNotNone(self.user.pin_locked_until)
+
+    def test_completed_or_unknown_reset_cannot_be_reused(self: Self) -> None:
+        """
+        Verify a reset identifier authorizes at most one PIN replacement.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an unusable reset changes the PIN.
+        """
+        missing: HttpResponse = self._post_completion(str(uuid4()), "654321")
+        challenge: ResetChallenge = self._verified_challenge(ResetType.PIN)
+        self._post_completion(str(challenge.id), "654321")
+        replay: HttpResponse = self._post_completion(str(challenge.id), "987654")
+
+        self.assertEqual(missing.status_code, 409)
+        self.assertEqual(replay.status_code, 409)
+        self.assertEqual(replay.json()["error"]["code"], "invalid_reset_challenge")
+        self.user.refresh_from_db()
+        self.assertTrue(verify_lock_pin("654321", self.user.pin_hash))
+        self.assertEqual(self.user.pin_version, 3)
+        self.assertEqual(self.user.token_version, 1)
