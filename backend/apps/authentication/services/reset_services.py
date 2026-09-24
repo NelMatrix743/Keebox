@@ -191,6 +191,32 @@ class ResetService:
         return challenge
 
     @staticmethod
+    def _get_locked_current_otp(challenge: ResetChallenge) -> OTPVerification:
+        """
+        Retrieve the newest OTP issued for a pending reset challenge.
+
+        Args:
+            challenge: Reset challenge whose OTP must be inspected.
+
+        Returns:
+            Locked most recently issued OTP verification.
+
+        Raises:
+            InvalidResetChallengeError: Raised when the challenge has no OTP.
+        """
+        current_otp: OTPVerification | None = (
+            OTPVerification.objects.select_for_update()
+            .filter(reset_challenge=challenge)
+            .order_by("-created_at", "-id")
+            .first()
+        )
+        if current_otp is None:
+            raise InvalidResetChallengeError(
+                "The reset challenge has no OTP to resend.",
+            )
+        return current_otp
+
+    @staticmethod
     def _deliver_otp(user: User, reset_type: ResetType, raw_code: str) -> None:
         """
         Submit the reset OTP email without revealing delivery failures publicly.
