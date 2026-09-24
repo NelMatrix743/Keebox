@@ -154,6 +154,43 @@ class ResetService:
         return otp_verification, raw_code
 
     @staticmethod
+    def _get_locked_pending_challenge(reset_id: UUID) -> ResetChallenge:
+        """
+        Lock an account before loading its pending reset challenge.
+
+        Args:
+            reset_id: Identifier of the reset challenge to resend.
+
+        Returns:
+            Locked reset challenge in the OTP-pending state.
+
+        Raises:
+            InvalidResetChallengeError: Raised when the challenge or user is
+                missing or the challenge cannot resend an OTP.
+        """
+        try:
+            challenge_owner_id: UUID = ResetChallenge.objects.values_list(
+                "user_id",
+                flat=True,
+            ).get(pk=reset_id)
+            User.objects.select_for_update().get(pk=challenge_owner_id)
+            challenge: ResetChallenge = (
+                ResetChallenge.objects.select_for_update()
+                .select_related("user")
+                .get(pk=reset_id)
+            )
+        except (ResetChallenge.DoesNotExist, User.DoesNotExist) as exception:
+            raise InvalidResetChallengeError(
+                "The reset challenge is unavailable.",
+            ) from exception
+
+        if challenge.status != ResetStatus.OTP_PENDING:
+            raise InvalidResetChallengeError(
+                "The reset challenge cannot resend an OTP.",
+            )
+        return challenge
+
+    @staticmethod
     def _deliver_otp(user: User, reset_type: ResetType, raw_code: str) -> None:
         """
         Submit the reset OTP email without revealing delivery failures publicly.
