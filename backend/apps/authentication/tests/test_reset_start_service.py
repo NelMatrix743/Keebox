@@ -108,7 +108,7 @@ class ResetStartServiceTests(TestCase):
         Raises:
             AssertionError: Raised when an unknown address reveals account state.
         """
-        started = ResetService.start_reset(
+        started: ResetStartResult = ResetService.start_reset(
             email="missing@example.com",
             reset_type=ResetType.PASSWORD,
         )
@@ -145,7 +145,7 @@ class ResetStartServiceTests(TestCase):
         Raises:
             AssertionError: Raised when old challenge state remains active.
         """
-        first = ResetService.start_reset(
+        first: ResetStartResult = ResetService.start_reset(
             email=self.user.email,
             reset_type=ResetType.PASSWORD,
         )
@@ -154,7 +154,7 @@ class ResetStartServiceTests(TestCase):
             reset_challenge=old_challenge,
         )
 
-        second = ResetService.start_reset(
+        second: ResetStartResult = ResetService.start_reset(
             email=self.user.email,
             reset_type=ResetType.PASSWORD,
         )
@@ -194,11 +194,11 @@ class ResetStartServiceTests(TestCase):
         Raises:
             AssertionError: Raised when independent reset types interfere.
         """
-        password_reset = ResetService.start_reset(
+        password_reset: ResetStartResult = ResetService.start_reset(
             email=self.user.email,
             reset_type=ResetType.PASSWORD,
         )
-        pin_reset = ResetService.start_reset(
+        pin_reset: ResetStartResult = ResetService.start_reset(
             email=self.user.email,
             reset_type=ResetType.PIN,
         )
@@ -251,7 +251,7 @@ class ResetStartServiceTests(TestCase):
             "apps.authentication.services.reset_services",
             level="ERROR",
         ):
-            started = ResetService.start_reset(
+            started: ResetStartResult = ResetService.start_reset(
                 email=self.user.email,
                 reset_type=ResetType.PASSWORD,
             )
