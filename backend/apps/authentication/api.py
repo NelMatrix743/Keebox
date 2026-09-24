@@ -12,6 +12,7 @@ from apps.authentication.exceptions import (
     InvalidLoginPINError,
     InvalidOTPError,
     InvalidRegistrationStateError,
+    InvalidResetChallengeError,
     LockedOTPError,
     LoginAccountLockedError,
     LoginPINAttemptLimitError,
@@ -43,6 +44,8 @@ from apps.authentication.schemas import (
     RegistrationRequest,
     RegistrationStartedResponse,
     RegistrationVerificationRequest,
+    ResetOTPResendRequest,
+    ResetOTPResentResponse,
     ResetStartRequest,
     ResetStartedResponse,
 )
@@ -623,6 +626,80 @@ def start_pin_reset(
                 "If an account exists for this email, a verification code "
                 "has been sent."
             ),
+        },
+    )
+    return 200, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    Routes.Reset.RESEND_OTP,
+    response={
+        200: SuccessResponse[ResetOTPResentResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def resend_reset_otp(
+    request: HttpRequest,
+    payload: ResetOTPResendRequest,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Replace the current OTP for a pending password or PIN reset.
+
+    Args:
+        request: HTTP request that initiated the reset OTP resend.
+        payload: Validated reset identifier requesting a replacement OTP.
+
+    Returns:
+        HTTP status and the standard reset OTP resend response envelope.
+
+    Raises:
+        None: Expected reset and OTP failures are mapped to API responses.
+    """
+    try:
+        resent: ResetStartResult = ResetService.resend_reset_otp(payload.reset_id)
+    except OTPResendCooldownError:
+        return 429, APIResponse.error(
+            ErrorData(
+                code="otp_resend_cooldown",
+                message="A new OTP cannot be requested yet.",
+            ).model_dump(),
+        )
+    except OTPResendLimitError:
+        return 429, APIResponse.error(
+            ErrorData(
+                code="otp_resend_limit_reached",
+                message="The OTP resend limit has been reached. Start a new reset.",
+            ).model_dump(),
+        )
+    except ExpiredOTPError:
+        return 410, APIResponse.error(
+            ErrorData(
+                code="expired_otp",
+                message="The OTP code has expired. Start a new reset.",
+            ).model_dump(),
+        )
+    except LockedOTPError:
+        return 423, APIResponse.error(
+            ErrorData(
+                code="locked_otp",
+                message="The OTP code is locked. Start a new reset.",
+            ).model_dump(),
+        )
+    except InvalidResetChallengeError:
+        return 409, APIResponse.error(
+            ErrorData(
+                code="invalid_reset_challenge",
+                message="The reset cannot resend an OTP.",
+            ).model_dump(),
+        )
+
+    response_data: ResetOTPResentResponse = ResetOTPResentResponse.model_validate(
+        {
+            "reset_id": resent.reset_id,
+            "status": "otp_pending",
+            "otp_expires_at": resent.otp_expires_at,
+            "resend_available_at": resent.resend_available_at,
+            "message": "A new verification code has been sent.",
         },
     )
     return 200, APIResponse.success(response_data.model_dump())
