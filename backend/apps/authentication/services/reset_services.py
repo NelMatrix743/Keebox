@@ -294,6 +294,42 @@ class ResetService:
         return pending_error
 
     @staticmethod
+    def _consume_otp(
+        challenge: ResetChallenge,
+        current_otp: OTPVerification,
+    ) -> None:
+        """
+        Consume a valid OTP and open the reset completion window.
+
+        Args:
+            challenge: Pending reset challenge advanced by verification.
+            current_otp: OTP verification matched by the submitted code.
+
+        Returns:
+            None: Both successful state transitions are persisted.
+
+        Raises:
+            None.
+        """
+        verified_at: datetime = timezone.now()
+        current_otp.status = OTPStatus.CONSUMED
+        current_otp.consumed_at = verified_at
+        current_otp.save(update_fields=["status", "consumed_at", "updated_at"])
+        challenge.status = ResetStatus.OTP_VERIFIED
+        challenge.verified_at = verified_at
+        challenge.completion_expires_at = (
+            verified_at + RESET_CHALLENGE_COMPLETION_TTL
+        )
+        challenge.save(
+            update_fields=[
+                "status",
+                "verified_at",
+                "completion_expires_at",
+                "updated_at",
+            ],
+        )
+
+    @staticmethod
     def _deliver_otp(user: User, reset_type: ResetType, raw_code: str) -> None:
         """
         Submit the reset OTP email without revealing delivery failures publicly.
