@@ -149,3 +149,67 @@ class ResetResendServiceTests(TestCase):
             email_delivery_service.return_value.send_otp_email.call_count,
             1,
         )
+
+    @patch("apps.authentication.services.reset_services.EmailDeliveryService")
+    @patch(
+        "apps.authentication.services.reset_services.generate_otp_code",
+        return_value="048291",
+    )
+    def test_resend_limit_cancels_the_reset_and_invalidates_its_otp(
+        self: Self,
+        generate_otp: Mock,
+        email_delivery_service: Mock,
+    ) -> None:
+        """
+        Verify an exhausted resend allowance ends the current reset flow.
+
+        Args:
+            self: Current test case instance.
+            generate_otp: Mocked secure OTP generator.
+            email_delivery_service: Mocked external email boundary.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an exhausted flow remains usable.
+        """
+        started: ResetStartResult = ResetService.start_reset(
+            self.user.email,
+            ResetType.PASSWORD,
+        )
+        challenge: ResetChallenge = ResetChallenge.objects.get(pk=started.reset_id)
+        for _ in range(OTP_MAX_RESENDS):
+            current_otp: OTPVerification = OTPVerification.objects.get(
+                reset_challenge=challenge,
+                status=OTPStatus.PENDING,
+            )
+            current_otp.last_sent_at = (
+                timezone.now() - OTP_RESEND_COOLDOWN - timedelta(seconds=1)
+            )
+            current_otp.save(update_fields=["last_sent_at"])
+            ResetService.resend_reset_otp(started.reset_id)
+
+        otp: OTPVerification = OTPVerification.objects.get(
+            reset_challenge=challenge,
+            status=OTPStatus.PENDING,
+        )
+        otp.last_sent_at = timezone.now() - OTP_RESEND_COOLDOWN - timedelta(
+            seconds=1,
+        )
+        otp.save(update_fields=["last_sent_at"])
+
+        with self.assertRaises(OTPResendLimitError):
+            ResetService.resend_reset_otp(started.reset_id)
+
+        challenge.refresh_from_db()
+        otp.refresh_from_db()
+        self.assertEqual(challenge.status, ResetStatus.CANCELLED)
+        self.assertEqual(challenge.resend_count, OTP_MAX_RESENDS)
+        self.assertEqual(otp.status, OTPStatus.EXPIRED)
+        self.assertEqual(OTPVerification.objects.count(), OTP_MAX_RESENDS + 1)
+        self.assertEqual(generate_otp.call_count, OTP_MAX_RESENDS + 1)
+        self.assertEqual(
+            email_delivery_service.return_value.send_otp_email.call_count,
+            OTP_MAX_RESENDS + 1,
+        )
