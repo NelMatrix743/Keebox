@@ -131,6 +131,29 @@ class ResetService:
         return challenge, otp_verification, raw_code
 
     @staticmethod
+    def _create_otp(challenge: ResetChallenge) -> tuple[OTPVerification, str]:
+        """
+        Create a protected OTP record for an existing reset challenge.
+
+        Args:
+            challenge: Reset challenge receiving the new verification code.
+
+        Returns:
+            Persisted OTP verification and its raw code for email delivery.
+
+        Raises:
+            ValueError: Raised if OTP generation produces an empty code.
+        """
+        raw_code: str = generate_otp_code()
+        otp_verification: OTPVerification = OTPVerification(
+            reset_challenge=challenge,
+            email=challenge.user.email,
+        )
+        otp_verification.hash_and_set_otp_code(raw_code)
+        otp_verification.save()
+        return otp_verification, raw_code
+
+    @staticmethod
     def _deliver_otp(user: User, reset_type: ResetType, raw_code: str) -> None:
         """
         Submit the reset OTP email without revealing delivery failures publicly.
