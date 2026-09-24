@@ -232,3 +232,21 @@ class ResetOTPResendAPITests(TestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["error"]["code"], "invalid_reset_challenge")
         self.email_delivery_service.assert_not_called()
+
+    def test_malformed_reset_id_is_rejected(self: Self) -> None:
+        """
+        Verify invalid reset identifiers fail request validation.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when malformed input is accepted.
+        """
+        response: HttpResponse = self._post_resend("not-a-uuid")
+
+        self.assertEqual(response.status_code, 422)
+        self.assertFalse(ResetChallenge.objects.exists())
