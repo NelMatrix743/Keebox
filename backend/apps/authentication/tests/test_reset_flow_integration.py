@@ -90,3 +90,93 @@ class ResetFlowIntegrationTests(TestCase):
             data=payload,
             content_type="application/json",
         )
+
+    def test_password_reset_flow_revokes_old_session_and_allows_new_login(
+        self: Self,
+    ) -> None:
+        """
+        Verify password recovery from request through a fresh successful login.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a stage of password recovery fails.
+        """
+        old_access: str
+        old_refresh: str
+        old_access, old_refresh = TokenService.issue_tokens(self.user)
+
+        started: HttpResponse = self._post(
+            Routes.Reset.PASSWORD,
+            {"email": self.user.email},
+        )
+        started_data: dict[str, Any] = started.json()["data"]
+        reset_id: str = started_data["reset_id"]
+        delivered_code: str = (
+            self.email_delivery_service.return_value.send_otp_email.call_args.kwargs[
+                "otp_code"
+            ]
+        )
+        verified: HttpResponse = self._post(
+            Routes.Reset.VERIFY_OTP,
+            {"reset_id": reset_id, "otp_code": delivered_code},
+        )
+        completed: HttpResponse = self._post(
+            Routes.Reset.PASSWORD_COMPLETE,
+            {
+                "reset_id": reset_id,
+                "new_password": "replacement strong password 7349",
+            },
+        )
+        challenge: ResetChallenge = ResetChallenge.objects.get(pk=reset_id)
+        otp: OTPVerification = OTPVerification.objects.get(
+            reset_challenge=challenge,
+        )
+        self.user.refresh_from_db()
+
+        self.assertEqual(started.status_code, 200)
+        self.assertEqual(verified.status_code, 200)
+        self.assertEqual(completed.status_code, 200)
+        self.assertEqual(challenge.reset_type, ResetType.PASSWORD)
+        self.assertEqual(challenge.status, ResetStatus.COMPLETED)
+        self.assertEqual(otp.status, OTPStatus.CONSUMED)
+        self.assertTrue(self.user.check_password("replacement strong password 7349"))
+        self.assertTrue(verify_lock_pin("123456", self.user.pin_hash))
+        self.assertEqual(self.user.token_version, 1)
+        self.assertNotIn("access_token", completed.json()["data"])
+        self.email_delivery_service.return_value.send_otp_email.assert_called_once_with(
+            recipient_email=self.user.email,
+            recipient_full_name="Ada Lovelace",
+            otp_code=delivered_code,
+            expiration_minutes=5,
+            tag="password-reset-otp",
+        )
+        with self.assertRaises(InvalidToken):
+            VersionedJWTAuth().authenticate(HttpRequest(), old_access)
+        with self.assertRaises(InvalidToken):
+            TokenService.refresh_access_token(old_refresh)
+
+        old_login: HttpResponse = self._post(
+            Routes.Login.BASE,
+            {"email": self.user.email, "password": "original strong password 5821"},
+        )
+        new_login: HttpResponse = self._post(
+            Routes.Login.BASE,
+            {"email": self.user.email, "password": "replacement strong password 7349"},
+        )
+        login_completed: HttpResponse = self._post(
+            Routes.Login.VERIFY_PIN,
+            {
+                "login_challenge_id": new_login.json()["data"]["login_challenge_id"],
+                "pin": "123456",
+            },
+        )
+
+        self.assertEqual(old_login.status_code, 401)
+        self.assertEqual(new_login.status_code, 200)
+        self.assertEqual(login_completed.status_code, 200)
+        self.assertIn("access_token", login_completed.json()["data"])
