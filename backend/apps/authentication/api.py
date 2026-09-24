@@ -574,3 +574,55 @@ def start_password_reset(
         },
     )
     return 200, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    Routes.Reset.PIN,
+    response={
+        200: SuccessResponse[ResetStartedResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def start_pin_reset(
+    request: HttpRequest,
+    payload: ResetStartRequest,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Begin lock-PIN recovery without disclosing account existence.
+
+    Args:
+        request: HTTP request that initiated PIN recovery.
+        payload: Validated email address for the reset request.
+
+    Returns:
+        HTTP status and the standard PIN-reset response envelope.
+
+    Raises:
+        None: Invalid reset requests are mapped to API responses.
+    """
+    try:
+        started: ResetStartResult = ResetService.start_reset(
+            email=str(payload.email),
+            reset_type=ResetType.PIN,
+        )
+    except ValueError:
+        return 400, APIResponse.error(
+            ErrorData(
+                code="invalid_reset_request",
+                message="The PIN reset request is invalid.",
+            ).model_dump(),
+        )
+
+    response_data: ResetStartedResponse = ResetStartedResponse.model_validate(
+        {
+            "reset_id": started.reset_id,
+            "status": "otp_pending",
+            "otp_expires_at": started.otp_expires_at,
+            "resend_available_at": started.resend_available_at,
+            "message": (
+                "If an account exists for this email, a verification code "
+                "has been sent."
+            ),
+        },
+    )
+    return 200, APIResponse.success(response_data.model_dump())
