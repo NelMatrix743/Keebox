@@ -161,3 +161,30 @@ class ResetOTPVerificationAPITests(TestCase):
         self.assertEqual(response.json()["error"]["code"], "invalid_otp")
         self.assertEqual(challenge.status, ResetStatus.OTP_PENDING)
         self.assertEqual(otp.attempt_count, 1)
+
+    def test_attempt_limit_locks_otp_and_cancels_reset(self: Self) -> None:
+        """
+        Verify the final wrong OTP attempt ends the reset flow.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the attempt limit is not enforced.
+        """
+        challenge: ResetChallenge = self._start_reset(ResetType.PASSWORD)
+
+        for _ in range(OTP_MAX_ATTEMPTS - 1):
+            self._post_verification(str(challenge.id), "999999")
+        response: HttpResponse = self._post_verification(str(challenge.id), "999999")
+        challenge.refresh_from_db()
+        otp: OTPVerification = OTPVerification.objects.get(reset_challenge=challenge)
+
+        self.assertEqual(response.status_code, 423)
+        self.assertEqual(response.json()["error"]["code"], "locked_otp")
+        self.assertEqual(challenge.status, ResetStatus.CANCELLED)
+        self.assertEqual(otp.status, OTPStatus.LOCKED)
+        self.assertEqual(otp.attempt_count, OTP_MAX_ATTEMPTS)
