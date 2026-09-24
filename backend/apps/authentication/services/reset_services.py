@@ -130,3 +130,52 @@ class ResetService:
             )
         except EmailDeliveryError:
             logger.exception("Could not deliver a Keebox reset OTP email.")
+
+    @staticmethod
+    def start_reset(email: str, reset_type: ResetType) -> ResetStartResult:
+        """
+        Start credential recovery without disclosing whether the email exists.
+
+        Args:
+            email: Submitted account email address.
+            reset_type: Password or lock-PIN recovery purpose.
+
+        Returns:
+            Public reset identifier and timing, including for unknown emails.
+
+        Raises:
+            ValueError: Raised when the email or reset type is invalid.
+        """
+        normalized_email: str = User.objects.normalize_email(email.strip()).casefold()
+        if not normalized_email or reset_type not in ResetType.values:
+            raise ValueError("The reset request is invalid.")
+
+        current_time: datetime = timezone.now()
+        decoy_result: ResetStartResult = ResetStartResult(
+            reset_id=uuid4(),
+            otp_expires_at=current_time + OTP_TTL,
+            resend_available_at=current_time + OTP_RESEND_COOLDOWN,
+        )
+
+        with transaction.atomic():
+            try:
+                user: User = User.objects.select_for_update().get(
+                    email=normalized_email,
+                )
+            except User.DoesNotExist:
+                return decoy_result
+
+            ResetService._cancel_existing_challenges(user, reset_type)
+            challenge: ResetChallenge
+            otp_verification: OTPVerification
+            raw_code: str
+            challenge, otp_verification, raw_code = (
+                ResetService._create_challenge_and_otp(user, reset_type)
+            )
+
+        ResetService._deliver_otp(user, reset_type, raw_code)
+        return ResetStartResult(
+            reset_id=challenge.id,
+            otp_expires_at=otp_verification.expires_at,
+            resend_available_at=otp_verification.last_sent_at + OTP_RESEND_COOLDOWN,
+        )
