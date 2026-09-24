@@ -103,3 +103,30 @@ class ResetService:
         otp_verification.hash_and_set_otp_code(raw_code)
         otp_verification.save()
         return challenge, otp_verification, raw_code
+
+    @staticmethod
+    def _deliver_otp(user: User, reset_type: ResetType, raw_code: str) -> None:
+        """
+        Submit the reset OTP email without revealing delivery failures publicly.
+
+        Args:
+            user: Account receiving the verification code.
+            reset_type: Credential type being recovered.
+            raw_code: Fresh OTP to include in the email template.
+
+        Returns:
+            None: Delivery is submitted or its failure is logged.
+
+        Raises:
+            None: Email delivery failures are intentionally logged and hidden.
+        """
+        try:
+            EmailDeliveryService().send_otp_email(
+                recipient_email=user.email,
+                recipient_full_name=f"{user.first_name} {user.last_name}".strip(),
+                otp_code=raw_code,
+                expiration_minutes=int(OTP_TTL.total_seconds() // 60),
+                tag=f"{reset_type.value}-reset-otp",
+            )
+        except EmailDeliveryError:
+            logger.exception("Could not deliver a Keebox reset OTP email.")
