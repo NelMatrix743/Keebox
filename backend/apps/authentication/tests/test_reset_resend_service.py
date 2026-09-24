@@ -255,3 +255,44 @@ class ResetResendServiceTests(TestCase):
             email_delivery_service.return_value.send_otp_email.call_count,
             1,
         )
+
+    @patch("apps.authentication.services.reset_services.EmailDeliveryService")
+    def test_locked_otp_cannot_be_bypassed_with_a_resend(
+        self: Self,
+        email_delivery_service: Mock,
+    ) -> None:
+        """
+        Verify a locked OTP cancels its reset instead of allowing a new code.
+
+        Args:
+            self: Current test case instance.
+            email_delivery_service: Mocked external email boundary.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a locked challenge is not cancelled.
+        """
+        started: ResetStartResult = ResetService.start_reset(
+            self.user.email,
+            ResetType.PIN,
+        )
+        otp: OTPVerification = OTPVerification.objects.get(
+            reset_challenge_id=started.reset_id,
+        )
+        otp.status = OTPStatus.LOCKED
+        otp.save(update_fields=["status"])
+
+        with self.assertRaises(LockedOTPError):
+            ResetService.resend_reset_otp(started.reset_id)
+
+        self.assertEqual(
+            ResetChallenge.objects.get(pk=started.reset_id).status,
+            ResetStatus.CANCELLED,
+        )
+        self.assertEqual(OTPVerification.objects.count(), 1)
+        self.assertEqual(
+            email_delivery_service.return_value.send_otp_email.call_count,
+            1,
+        )
