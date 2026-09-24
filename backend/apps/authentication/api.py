@@ -24,6 +24,7 @@ from apps.authentication.models import (
     LoginChallenge,
     OTPVerification,
     RegistrationChallenge,
+    ResetChallenge,
     User,
 )
 from apps.authentication.routes import Routes
@@ -46,6 +47,8 @@ from apps.authentication.schemas import (
     RegistrationVerificationRequest,
     ResetOTPResendRequest,
     ResetOTPResentResponse,
+    ResetOTPVerificationRequest,
+    ResetOTPVerifiedResponse,
     ResetStartRequest,
     ResetStartedResponse,
 )
@@ -700,6 +703,82 @@ def resend_reset_otp(
             "otp_expires_at": resent.otp_expires_at,
             "resend_available_at": resent.resend_available_at,
             "message": "A new verification code has been sent.",
+        },
+    )
+    return 200, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    Routes.Reset.VERIFY_OTP,
+    response={
+        200: SuccessResponse[ResetOTPVerifiedResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def verify_reset_otp(
+    request: HttpRequest,
+    payload: ResetOTPVerificationRequest,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Verify a password or PIN reset OTP and open the completion window.
+
+    Args:
+        request: HTTP request that submitted the reset OTP.
+        payload: Validated reset identifier and six-digit OTP code.
+
+    Returns:
+        HTTP status and the standard reset verification response envelope.
+
+    Raises:
+        None: Expected challenge and OTP failures are mapped to API responses.
+    """
+    try:
+        challenge: ResetChallenge = ResetService.verify_reset_otp(
+            reset_id=payload.reset_id,
+            raw_code=payload.otp_code,
+        )
+    except InvalidOTPError:
+        return 400, APIResponse.error(
+            ErrorData(
+                code="invalid_otp",
+                message="The OTP code is invalid.",
+            ).model_dump(),
+        )
+    except ExpiredOTPError:
+        return 410, APIResponse.error(
+            ErrorData(
+                code="expired_otp",
+                message="The OTP code has expired. Start a new reset.",
+            ).model_dump(),
+        )
+    except LockedOTPError:
+        return 423, APIResponse.error(
+            ErrorData(
+                code="locked_otp",
+                message="The OTP code is locked. Start a new reset.",
+            ).model_dump(),
+        )
+    except ConsumedOTPError:
+        return 409, APIResponse.error(
+            ErrorData(
+                code="consumed_otp",
+                message="The OTP code has already been used.",
+            ).model_dump(),
+        )
+    except InvalidResetChallengeError:
+        return 409, APIResponse.error(
+            ErrorData(
+                code="invalid_reset_challenge",
+                message="The reset cannot verify an OTP.",
+            ).model_dump(),
+        )
+
+    response_data: ResetOTPVerifiedResponse = ResetOTPVerifiedResponse.model_validate(
+        {
+            "reset_id": challenge.id,
+            "status": challenge.status,
+            "completion_expires_at": challenge.completion_expires_at,
+            "message": "Code verified. Complete your credential reset.",
         },
     )
     return 200, APIResponse.success(response_data.model_dump())
