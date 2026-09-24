@@ -188,3 +188,30 @@ class ResetOTPVerificationAPITests(TestCase):
         self.assertEqual(challenge.status, ResetStatus.CANCELLED)
         self.assertEqual(otp.status, OTPStatus.LOCKED)
         self.assertEqual(otp.attempt_count, OTP_MAX_ATTEMPTS)
+
+    def test_expired_otp_cancels_reset(self: Self) -> None:
+        """
+        Verify a late code cannot open a completion window.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an expired code is accepted.
+        """
+        challenge: ResetChallenge = self._start_reset(ResetType.PASSWORD)
+        otp: OTPVerification = OTPVerification.objects.get(reset_challenge=challenge)
+        otp.expires_at = timezone.now() - timedelta(seconds=1)
+        otp.save(update_fields=["expires_at"])
+
+        response: HttpResponse = self._post_verification(str(challenge.id), "048291")
+        challenge.refresh_from_db()
+        otp.refresh_from_db()
+
+        self.assertEqual(response.status_code, 410)
+        self.assertEqual(response.json()["error"]["code"], "expired_otp")
+        self.assertEqual(challenge.status, ResetStatus.CANCELLED)
+        self.assertEqual(otp.status, OTPStatus.EXPIRED)
