@@ -24,6 +24,7 @@ from apps.core.constants import (
     AUTH_PIN_LOCKOUT_DURATION,
     AUTH_PIN_MAX_ATTEMPTS,
     REGISTRATION_CHALLENGE_TTL,
+    RESET_CHALLENGE_COMPLETION_TTL,
 )
 from apps.core.email import EmailDeliveryService
 from apps.core.exceptions import EmailDeliveryError
@@ -175,6 +176,24 @@ class AuthenticationConstantTests(SimpleTestCase):
         self.assertEqual(
             AUTH_PIN_LOCKOUT_DURATION,
             timedelta(hours=24),
+        )
+
+    def test_reset_completion_window_is_ten_minutes(self: Self) -> None:
+        """
+        Verify OTP-verified reset challenges expire after ten minutes.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the reset completion lifetime changes.
+        """
+        self.assertEqual(
+            RESET_CHALLENGE_COMPLETION_TTL,
+            timedelta(minutes=10),
         )
 
 

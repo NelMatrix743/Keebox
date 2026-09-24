@@ -3,10 +3,13 @@ from unittest.mock import Mock, patch
 from uuid import UUID
 
 from django.test import TestCase, override_settings
+from ninja_jwt.exceptions import InvalidToken
 from ninja_jwt.tokens import AccessToken, RefreshToken
 
+from apps.authentication.auth import VersionedJWTAuth
 from apps.authentication.models import LoginChallenge, RegistrationChallenge, User
 from apps.authentication.routes import Routes
+from apps.authentication.services.token_services import TokenService
 from apps.core.choices import LoginStatus, RegistrationStatus
 
 
@@ -135,6 +138,26 @@ class AuthenticationFlowIntegrationTests(TestCase):
         self.assertEqual(str(registration_refresh_token["user_id"]), str(user.id))
         self.assertEqual(str(login_refresh_token["user_id"]), str(user.id))
         self.assertEqual(str(login_access_token["user_id"]), str(user.id))
+        self.assertEqual(user.token_version, 1)
+        self.assertEqual(registration_refresh_token["token_version"], 0)
+        self.assertEqual(login_refresh_token["token_version"], 1)
+        self.assertEqual(login_access_token["token_version"], 1)
+        with self.assertRaises(InvalidToken):
+            VersionedJWTAuth().authenticate(
+                registration_completion_response.wsgi_request,
+                registration_completion_data["access_token"],
+            )
+        with self.assertRaises(InvalidToken):
+            TokenService.refresh_access_token(
+                registration_completion_data["refresh_token"],
+            )
+        self.assertEqual(
+            VersionedJWTAuth().authenticate(
+                login_completion_response.wsgi_request,
+                login_completion_data["access_token"],
+            ),
+            user,
+        )
         self.assertEqual(User.objects.count(), 1)
         self.assertEqual(LoginChallenge.objects.count(), 1)
         generate_otp.assert_called_once_with()

@@ -4,10 +4,11 @@ from typing import Literal
 
 
 REGISTRATION_CHALLENGE_TTL: timedelta = timedelta(minutes=30)
+RESET_CHALLENGE_COMPLETION_TTL: timedelta = timedelta(minutes=10)
 
 AUTH_LOGIN_CHALLENGE_TTL: timedelta = timedelta(minutes=10)
-AUTH_PIN_MAX_ATTEMPTS: int = 5
 AUTH_PIN_LOCKOUT_DURATION: timedelta = timedelta(hours=24)
+AUTH_PIN_MAX_ATTEMPTS: int = 5
 
 OTP_CODE_LENGTH: int = 6
 OTP_TTL: timedelta = timedelta(minutes=5)

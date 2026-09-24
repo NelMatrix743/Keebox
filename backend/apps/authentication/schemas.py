@@ -198,3 +198,125 @@ class LoginPINVerificationRequest(Schema):
 
 class LoginCompletedResponse(AuthenticationSuccessResponse):
     """Represent safe response data for a completed login."""
+
+
+class ResetStartRequest(Schema):
+    """Validate an email submitted to begin password or PIN recovery."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr = Field(max_length=254)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def strip_reset_email(cls: type[Self], value: Any) -> Any:
+        """
+        Remove surrounding whitespace from a submitted reset email address.
+
+        Args:
+            cls: Reset start request schema class.
+            value: Unvalidated email value submitted by the client.
+
+        Returns:
+            The stripped email string or the original non-string value.
+
+        Raises:
+            None.
+        """
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
+
+class ResetStartedResponse(Schema):
+    """Represent generic response data after a reset request is submitted."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reset_id: UUID
+    status: Literal["otp_pending"]
+    otp_expires_at: datetime
+    resend_available_at: datetime
+    message: str
+
+
+class ResetOTPResendRequest(Schema):
+    """Validate the reset identifier submitted to request another OTP."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reset_id: UUID
+
+
+class ResetOTPResentResponse(ResetStartedResponse):
+    """Represent generic response data after requesting a replacement OTP."""
+
+
+class ResetOTPVerificationRequest(Schema):
+    """Validate the reset identifier and six-digit email OTP."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reset_id: UUID
+    otp_code: str = Field(pattern=r"^[0-9]{6}$", strict=True)
+
+
+class ResetOTPVerifiedResponse(Schema):
+    """Represent the limited reset-completion window after OTP verification."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reset_id: UUID
+    status: Literal["otp_verified"]
+    completion_expires_at: datetime
+    message: str
+
+
+class PasswordResetCompletionRequest(Schema):
+    """Validate a new password submitted for a verified reset challenge."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reset_id: UUID
+    new_password: str = Field(min_length=1, strict=True)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls: type[Self], value: str) -> str:
+        """
+        Apply the configured account-password policy to a reset password.
+
+        Args:
+            cls: Password reset completion request schema class.
+            value: New raw password submitted by the client.
+
+        Returns:
+            The password after successful policy validation.
+
+        Raises:
+            ValueError: Raised when the password violates the configured policy.
+        """
+        try:
+            validate_password(value)
+        except DjangoValidationError as exception:
+            raise ValueError(" ".join(exception.messages)) from exception
+        return value
+
+
+class PINResetCompletionRequest(Schema):
+    """Validate a new lock PIN submitted for a verified reset challenge."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reset_id: UUID
+    new_pin: str = Field(min_length=1, strict=True)
+
+
+class ResetCompletedResponse(Schema):
+    """Represent a completed credential reset without authenticating the user."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reset_id: UUID
+    status: Literal["completed"]
+    message: str

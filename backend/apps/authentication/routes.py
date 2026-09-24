@@ -28,10 +28,14 @@ class Routes:
 
 		BASE: Final[str] = "/reset"
 
+		VERIFY_OTP: Final[str] = BASE + "/verify-otp"
+		RESEND_OTP: Final[str] = BASE + "/resend-otp"
+
 		PASSWORD: Final[str] = BASE + "/password"
 		PIN: Final[str] = BASE + "/pin"
 
-		VERIFY_OTP: Final[str] = BASE + "/verify-otp"
+		PASSWORD_COMPLETE: Final[str] = PASSWORD + "/complete"
+		PIN_COMPLETE: Final[str]  = PIN + "/complete"
 
 
 	class UpdatePin:

@@ -44,6 +44,7 @@ class EmailDeliveryService:
         recipient_full_name: str,
         otp_code: str,
         expiration_minutes: int,
+        tag: str = "registration-otp",
     ) -> str:
         """
         Submit an OTP email to Brevo using the configured template.
@@ -54,6 +55,7 @@ class EmailDeliveryService:
             recipient_full_name: Full name displayed for the recipient.
             otp_code: One-time password included in the email template.
             expiration_minutes: Number of minutes before the OTP expires.
+            tag: Brevo tag identifying the OTP delivery workflow.
 
         Returns:
             Brevo message identifier assigned to the submitted email.
@@ -86,7 +88,7 @@ class EmailDeliveryService:
                         "otp_code": otp_code,
                         "expiration_minutes": expiration_minutes,
                     },
-                    tags=["registration-otp"],
+                    tags=[tag],
                 )
             )
         except ApiError as exception:

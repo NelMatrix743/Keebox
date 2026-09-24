@@ -29,3 +29,20 @@ class LoginStatus(md.TextChoices):
     EXPIRED: tuple[str, str] = "expired", "Expired"
     LOCKED: tuple[str, str] = "locked", "Locked"
     CANCELLED: tuple[str, str] = "cancelled", "Cancelled"
+
+
+class ResetStatus(md.TextChoices):
+    """Define the permitted states of the Keebox credential reset challenge."""
+
+    OTP_PENDING: tuple[str, str] = "otp_pending", "OTP pending"
+    OTP_VERIFIED: tuple[str, str] = "otp_verified", "OTP verified"
+    COMPLETED: tuple[str, str] = "completed", "Completed"
+    EXPIRED: tuple[str, str] = "expired", "Expired"
+    CANCELLED: tuple[str, str] = "cancelled", "Cancelled"
+
+
+class ResetType(md.TextChoices):
+    """Define which account credential a reset challenge may replace."""
+
+    PASSWORD: tuple[str, str] = "password", "Password"
+    PIN: tuple[str, str] = "pin", "PIN"

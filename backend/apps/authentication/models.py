@@ -10,7 +10,13 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models as md
 from django.utils import timezone
 
-from apps.core.choices import LoginStatus, OTPStatus, RegistrationStatus
+from apps.core.choices import (
+    LoginStatus,
+    OTPStatus,
+    RegistrationStatus,
+    ResetStatus,
+    ResetType,
+)
 from apps.core.constants import (
     AUTH_LOGIN_CHALLENGE_TTL,
     AUTH_PIN_MAX_ATTEMPTS,
@@ -183,6 +189,8 @@ class User(AbstractUser):
 
     email: md.EmailField = md.EmailField(unique=True)
 
+    token_version: md.PositiveIntegerField = md.PositiveIntegerField(default=0)
+
     pin_hash: md.CharField = md.CharField(max_length=255, null=True, blank=True)
     pin_version: md.PositiveIntegerField = md.PositiveIntegerField(default=0)
     pin_failed_attempts: md.PositiveSmallIntegerField = md.PositiveSmallIntegerField(
@@ -317,6 +325,74 @@ class RegistrationChallenge(md.Model):
 
 
 
+class ResetChallenge(md.Model):
+    """Represent one account credential reset awaiting OTP and completion."""
+
+    id: md.UUIDField = md.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    user: md.ForeignKey = md.ForeignKey(
+        User,
+        on_delete=md.CASCADE,
+        related_name="reset_challenges",
+    )
+
+    reset_type: md.CharField = md.CharField(
+        max_length=10,
+        choices=ResetType.choices,
+    )
+
+    status: md.CharField = md.CharField(
+        max_length=20,
+        choices=ResetStatus.choices,
+        default=ResetStatus.OTP_PENDING,
+    )
+    
+    resend_count: md.PositiveSmallIntegerField = md.PositiveSmallIntegerField(default=0)
+
+    verified_at: md.DateTimeField = md.DateTimeField(null=True, blank=True)
+    completion_expires_at: md.DateTimeField = md.DateTimeField(null=True, blank=True)
+    completed_at: md.DateTimeField = md.DateTimeField(null=True, blank=True)
+
+    created_at: md.DateTimeField = md.DateTimeField(auto_now_add=True)
+    updated_at: md.DateTimeField = md.DateTimeField(auto_now=True)
+
+    def is_expired(self: Self) -> bool:
+        """
+        Determine whether the post-OTP completion window has elapsed.
+
+        Args:
+            self: Current reset challenge instance.
+
+        Returns:
+            True when the completion deadline exists and has elapsed.
+
+        Raises:
+            None.
+        """
+        return (
+            self.completion_expires_at is not None
+            and timezone.now() >= self.completion_expires_at
+        )
+
+    class Meta:
+        db_table: str = "auth_reset_challenge"
+        ordering: ClassVar[list[str]] = ["-created_at"]
+        constraints: ClassVar[list[md.CheckConstraint | md.UniqueConstraint]] = [
+            md.CheckConstraint(
+                condition=md.Q(resend_count__lte=OTP_MAX_RESENDS),
+                name="reset_resend_count_within_limit",
+            ),
+            md.UniqueConstraint(
+                fields=["user", "reset_type"],
+                condition=md.Q(
+                    status__in=[ResetStatus.OTP_PENDING, ResetStatus.OTP_VERIFIED],
+                ),
+                name="unique_active_reset_per_user_type",
+            ),
+        ]
+
+
+
 class OTPVerification(md.Model):
     """Represent one OTP verification attempt owned by an authentication challenge."""
 
@@ -326,6 +402,15 @@ class OTPVerification(md.Model):
         RegistrationChallenge,
         on_delete=md.CASCADE,
         related_name="otp_verifications",
+        null=True,
+        blank=True,
+    )
+    reset_challenge: md.ForeignKey = md.ForeignKey(
+        ResetChallenge,
+        on_delete=md.CASCADE,
+        related_name="otp_verifications",
+        null=True,
+        blank=True,
     )
 
     email: md.EmailField = md.EmailField()
@@ -436,6 +521,13 @@ class OTPVerification(md.Model):
         db_table: str = "otp_verifications"
         ordering: ClassVar[list[str]] = ["-created_at"]
         constraints: ClassVar[list[md.CheckConstraint]] = [
+            md.CheckConstraint(
+                condition=(
+                    md.Q(registration_challenge__isnull=False, reset_challenge__isnull=True)
+                    | md.Q(registration_challenge__isnull=True, reset_challenge__isnull=False)
+                ),
+                name="otp_exactly_one_challenge_owner",
+            ),
             md.CheckConstraint(
                 condition=md.Q(attempt_count__lte=OTP_MAX_ATTEMPTS),
                 name="otp_attempt_count_within_limit",

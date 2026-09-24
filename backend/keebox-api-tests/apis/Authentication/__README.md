@@ -45,3 +45,20 @@ response envelope.
 Before sending the request, replace the example email address with an inbox you
 can access so you can retrieve the OTP. Repeated pending registration attempts
 are allowed until a permanent user owns the email address.
+
+## Account reset
+
+Password and lock-PIN recovery each begin with an email-only request. Both use
+the same reset OTP resend and verification requests, then have separate
+completion requests. No reset request requires an authorization header.
+
+Set `email` to the account's address. After starting a reset, copy `data.reset_id`
+into the `reset_id` variable and the emailed six-digit code into `otp_code`.
+Use `new_password` or `new_pin` only for the corresponding completion request.
+The OTP lasts five minutes; the resend cooldown is 60 seconds. Once the OTP is
+verified, complete the reset within ten minutes. Completion revokes existing
+sessions and does not return new tokens, so sign in again afterward.
+
+An unknown email receives the same successful start response shape, but no
+email is sent and its returned reset ID cannot be verified. Do not infer
+account existence from the start response.

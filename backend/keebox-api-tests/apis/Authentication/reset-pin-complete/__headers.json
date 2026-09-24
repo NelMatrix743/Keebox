@@ -1,0 +1,9 @@
+[
+  {
+    "id": 1,
+    "key": "Content-Type",
+    "value": "application/json",
+    "isEnabled": true,
+    "description": "Send the verified reset ID and replacement PIN as JSON."
+  }
+]

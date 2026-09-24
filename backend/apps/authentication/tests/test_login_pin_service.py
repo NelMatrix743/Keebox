@@ -106,6 +106,7 @@ class LoginPINServiceTests(TestCase):
         self.assertIsNotNone(challenge.completed_at)
         self.assertEqual(user.pin_failed_attempts, 0)
         self.assertIsNone(user.pin_locked_until)
+        self.assertEqual(user.token_version, 1)
 
     def test_verify_pin_records_an_invalid_pin_attempt(self: Self) -> None:
         """

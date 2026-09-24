@@ -2,17 +2,18 @@ from typing import Any
 
 from django.http import HttpRequest
 from ninja import Router
-from ninja_jwt.tokens import RefreshToken
 
 from apps.authentication.exceptions import (
     ConsumedOTPError,
     ExpiredLoginChallengeError,
     ExpiredOTPError,
+    ExpiredResetChallengeError,
     InvalidLoginChallengeError,
     InvalidLoginCredentialsError,
     InvalidLoginPINError,
     InvalidOTPError,
     InvalidRegistrationStateError,
+    InvalidResetChallengeError,
     LockedOTPError,
     LoginAccountLockedError,
     LoginPINAttemptLimitError,
@@ -24,16 +25,21 @@ from apps.authentication.models import (
     LoginChallenge,
     OTPVerification,
     RegistrationChallenge,
+    ResetChallenge,
     User,
 )
 from apps.authentication.routes import Routes
 from apps.authentication.services.login_services import LoginService
 from apps.authentication.services.registration_services import RegistrationService
+from apps.authentication.services.reset_services import ResetService, ResetStartResult
+from apps.authentication.services.token_services import TokenService
 from apps.authentication.schemas import (
     LoginCompletedResponse,
     LoginPINVerificationRequest,
     LoginRequest,
     LoginStartedResponse,
+    PasswordResetCompletionRequest,
+    PINResetCompletionRequest,
     RegistrationCompletedResponse,
     RegistrationOTPResendRequest,
     RegistrationOTPResentResponse,
@@ -42,7 +48,15 @@ from apps.authentication.schemas import (
     RegistrationRequest,
     RegistrationStartedResponse,
     RegistrationVerificationRequest,
+    ResetOTPResendRequest,
+    ResetOTPResentResponse,
+    ResetOTPVerificationRequest,
+    ResetOTPVerifiedResponse,
+    ResetCompletedResponse,
+    ResetStartRequest,
+    ResetStartedResponse,
 )
+from apps.core.choices import ResetType
 from apps.core.constants import OTP_MAX_RESENDS, OTP_RESEND_COOLDOWN, OTP_TTL
 from apps.core.email import EmailDeliveryService
 from apps.core.exceptions import EmailDeliveryError
@@ -358,7 +372,9 @@ def create_registration_pin(
             ).model_dump(),
         )
 
-    refresh_token: RefreshToken = RefreshToken.for_user(user)
+    access_token: str
+    refresh_token: str
+    access_token, refresh_token = TokenService.issue_tokens(user)
     response_data: RegistrationCompletedResponse = (
         RegistrationCompletedResponse.model_validate(
             {
@@ -367,8 +383,8 @@ def create_registration_pin(
                 "last_name": user.last_name,
                 "email": user.email,
                 "kbkey": kbkey,
-                "access_token": str(refresh_token.access_token),
-                "refresh_token": str(refresh_token),
+                "access_token": access_token,
+                "refresh_token": refresh_token,
                 "status": "completed",
                 "message": "Registration completed successfully.",
             },
@@ -499,7 +515,9 @@ def verify_login_pin(
             ).model_dump(),
         )
 
-    refresh_token: RefreshToken = RefreshToken.for_user(user)
+    access_token: str
+    refresh_token: str
+    access_token, refresh_token = TokenService.issue_tokens(user)
     response_data: LoginCompletedResponse = LoginCompletedResponse.model_validate(
         {
             "user_id": user.id,
@@ -507,10 +525,379 @@ def verify_login_pin(
             "last_name": user.last_name,
             "email": user.email,
             "kbkey": kbkey,
-            "access_token": str(refresh_token.access_token),
-            "refresh_token": str(refresh_token),
+            "access_token": access_token,
+            "refresh_token": refresh_token,
             "status": "completed",
             "message": "Login completed successfully.",
+        },
+    )
+    return 200, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    Routes.Reset.PASSWORD,
+    response={
+        200: SuccessResponse[ResetStartedResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def start_password_reset(
+    request: HttpRequest,
+    payload: ResetStartRequest,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Begin password recovery without disclosing account existence.
+
+    Args:
+        request: HTTP request that initiated password recovery.
+        payload: Validated email address for the reset request.
+
+    Returns:
+        HTTP status and the standard password-reset response envelope.
+
+    Raises:
+        None: Invalid reset requests are mapped to API responses.
+    """
+    try:
+        started: ResetStartResult = ResetService.start_reset(
+            email=str(payload.email),
+            reset_type=ResetType.PASSWORD,
+        )
+    except ValueError:
+        return 400, APIResponse.error(
+            ErrorData(
+                code="invalid_reset_request",
+                message="The password reset request is invalid.",
+            ).model_dump(),
+        )
+
+    response_data: ResetStartedResponse = ResetStartedResponse.model_validate(
+        {
+            "reset_id": started.reset_id,
+            "status": "otp_pending",
+            "otp_expires_at": started.otp_expires_at,
+            "resend_available_at": started.resend_available_at,
+            "message": (
+                "If an account exists for this email, a verification code "
+                "has been sent."
+            ),
+        },
+    )
+    return 200, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    Routes.Reset.PIN,
+    response={
+        200: SuccessResponse[ResetStartedResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def start_pin_reset(
+    request: HttpRequest,
+    payload: ResetStartRequest,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Begin lock-PIN recovery without disclosing account existence.
+
+    Args:
+        request: HTTP request that initiated PIN recovery.
+        payload: Validated email address for the reset request.
+
+    Returns:
+        HTTP status and the standard PIN-reset response envelope.
+
+    Raises:
+        None: Invalid reset requests are mapped to API responses.
+    """
+    try:
+        started: ResetStartResult = ResetService.start_reset(
+            email=str(payload.email),
+            reset_type=ResetType.PIN,
+        )
+    except ValueError:
+        return 400, APIResponse.error(
+            ErrorData(
+                code="invalid_reset_request",
+                message="The PIN reset request is invalid.",
+            ).model_dump(),
+        )
+
+    response_data: ResetStartedResponse = ResetStartedResponse.model_validate(
+        {
+            "reset_id": started.reset_id,
+            "status": "otp_pending",
+            "otp_expires_at": started.otp_expires_at,
+            "resend_available_at": started.resend_available_at,
+            "message": (
+                "If an account exists for this email, a verification code "
+                "has been sent."
+            ),
+        },
+    )
+    return 200, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    Routes.Reset.RESEND_OTP,
+    response={
+        200: SuccessResponse[ResetOTPResentResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def resend_reset_otp(
+    request: HttpRequest,
+    payload: ResetOTPResendRequest,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Replace the current OTP for a pending password or PIN reset.
+
+    Args:
+        request: HTTP request that initiated the reset OTP resend.
+        payload: Validated reset identifier requesting a replacement OTP.
+
+    Returns:
+        HTTP status and the standard reset OTP resend response envelope.
+
+    Raises:
+        None: Expected reset and OTP failures are mapped to API responses.
+    """
+    try:
+        resent: ResetStartResult = ResetService.resend_reset_otp(payload.reset_id)
+    except OTPResendCooldownError:
+        return 429, APIResponse.error(
+            ErrorData(
+                code="otp_resend_cooldown",
+                message="A new OTP cannot be requested yet.",
+            ).model_dump(),
+        )
+    except OTPResendLimitError:
+        return 429, APIResponse.error(
+            ErrorData(
+                code="otp_resend_limit_reached",
+                message="The OTP resend limit has been reached. Start a new reset.",
+            ).model_dump(),
+        )
+    except ExpiredOTPError:
+        return 410, APIResponse.error(
+            ErrorData(
+                code="expired_otp",
+                message="The OTP code has expired. Start a new reset.",
+            ).model_dump(),
+        )
+    except LockedOTPError:
+        return 423, APIResponse.error(
+            ErrorData(
+                code="locked_otp",
+                message="The OTP code is locked. Start a new reset.",
+            ).model_dump(),
+        )
+    except InvalidResetChallengeError:
+        return 409, APIResponse.error(
+            ErrorData(
+                code="invalid_reset_challenge",
+                message="The reset cannot resend an OTP.",
+            ).model_dump(),
+        )
+
+    response_data: ResetOTPResentResponse = ResetOTPResentResponse.model_validate(
+        {
+            "reset_id": resent.reset_id,
+            "status": "otp_pending",
+            "otp_expires_at": resent.otp_expires_at,
+            "resend_available_at": resent.resend_available_at,
+            "message": "A new verification code has been sent.",
+        },
+    )
+    return 200, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    Routes.Reset.VERIFY_OTP,
+    response={
+        200: SuccessResponse[ResetOTPVerifiedResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def verify_reset_otp(
+    request: HttpRequest,
+    payload: ResetOTPVerificationRequest,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Verify a password or PIN reset OTP and open the completion window.
+
+    Args:
+        request: HTTP request that submitted the reset OTP.
+        payload: Validated reset identifier and six-digit OTP code.
+
+    Returns:
+        HTTP status and the standard reset verification response envelope.
+
+    Raises:
+        None: Expected challenge and OTP failures are mapped to API responses.
+    """
+    try:
+        challenge: ResetChallenge = ResetService.verify_reset_otp(
+            reset_id=payload.reset_id,
+            raw_code=payload.otp_code,
+        )
+    except InvalidOTPError:
+        return 400, APIResponse.error(
+            ErrorData(
+                code="invalid_otp",
+                message="The OTP code is invalid.",
+            ).model_dump(),
+        )
+    except ExpiredOTPError:
+        return 410, APIResponse.error(
+            ErrorData(
+                code="expired_otp",
+                message="The OTP code has expired. Start a new reset.",
+            ).model_dump(),
+        )
+    except LockedOTPError:
+        return 423, APIResponse.error(
+            ErrorData(
+                code="locked_otp",
+                message="The OTP code is locked. Start a new reset.",
+            ).model_dump(),
+        )
+    except ConsumedOTPError:
+        return 409, APIResponse.error(
+            ErrorData(
+                code="consumed_otp",
+                message="The OTP code has already been used.",
+            ).model_dump(),
+        )
+    except InvalidResetChallengeError:
+        return 409, APIResponse.error(
+            ErrorData(
+                code="invalid_reset_challenge",
+                message="The reset cannot verify an OTP.",
+            ).model_dump(),
+        )
+
+    response_data: ResetOTPVerifiedResponse = ResetOTPVerifiedResponse.model_validate(
+        {
+            "reset_id": challenge.id,
+            "status": challenge.status,
+            "completion_expires_at": challenge.completion_expires_at,
+            "message": "Code verified. Complete your credential reset.",
+        },
+    )
+    return 200, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    Routes.Reset.PASSWORD_COMPLETE,
+    response={
+        200: SuccessResponse[ResetCompletedResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def complete_password_reset(
+    request: HttpRequest,
+    payload: PasswordResetCompletionRequest,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Replace a password after reset OTP verification without signing in.
+
+    Args:
+        request: HTTP request that submitted the new password.
+        payload: Validated reset identifier and replacement password.
+
+    Returns:
+        HTTP status and the standard reset completion response envelope.
+
+    Raises:
+        None: Expected reset and password failures are mapped to API responses.
+    """
+    try:
+        challenge: ResetChallenge = ResetService.complete_password_reset(
+            reset_id=payload.reset_id,
+            raw_password=payload.new_password,
+        )
+    except ExpiredResetChallengeError:
+        return 410, APIResponse.error(
+            ErrorData(
+                code="expired_reset_challenge",
+                message="The reset completion window has expired. Start a new reset.",
+            ).model_dump(),
+        )
+    except InvalidResetChallengeError:
+        return 409, APIResponse.error(
+            ErrorData(
+                code="invalid_reset_challenge",
+                message="The password reset cannot be completed.",
+            ).model_dump(),
+        )
+    except ValueError:
+        return 400, APIResponse.error(
+            ErrorData(
+                code="invalid_password",
+                message="The new password does not meet account requirements.",
+            ).model_dump(),
+        )
+
+    response_data: ResetCompletedResponse = ResetCompletedResponse.model_validate(
+        {
+            "reset_id": challenge.id,
+            "status": challenge.status,
+            "message": "Password reset completed. Sign in again.",
+        },
+    )
+    return 200, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    Routes.Reset.PIN_COMPLETE,
+    response={
+        200: SuccessResponse[ResetCompletedResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def complete_pin_reset(
+    request: HttpRequest,
+    payload: PINResetCompletionRequest,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Replace a lock PIN after reset OTP verification without signing in.
+
+    Args:
+        request: HTTP request that submitted the new lock PIN.
+        payload: Validated reset identifier and replacement PIN.
+
+    Returns:
+        HTTP status and the standard reset completion response envelope.
+
+    Raises:
+        None: Expected reset failures are mapped to API responses.
+    """
+    try:
+        challenge: ResetChallenge = ResetService.complete_pin_reset(
+            reset_id=payload.reset_id,
+            raw_pin=payload.new_pin,
+        )
+    except ExpiredResetChallengeError:
+        return 410, APIResponse.error(
+            ErrorData(
+                code="expired_reset_challenge",
+                message="The reset completion window has expired. Start a new reset.",
+            ).model_dump(),
+        )
+    except InvalidResetChallengeError:
+        return 409, APIResponse.error(
+            ErrorData(
+                code="invalid_reset_challenge",
+                message="The PIN reset cannot be completed.",
+            ).model_dump(),
+        )
+
+    response_data: ResetCompletedResponse = ResetCompletedResponse.model_validate(
+        {
+            "reset_id": challenge.id,
+            "status": challenge.status,
+            "message": "PIN reset completed. Sign in again.",
         },
     )
     return 200, APIResponse.success(response_data.model_dump())

@@ -78,6 +78,39 @@
         "kind": "inline"
       },
       "overrideMeta": null
+    },
+    "reset_id": {
+      "id": "dfa0c094-c0f4-4ce0-9df6-c5c971c9f0aa",
+      "syncValue": "",
+      "type": "string",
+      "isEnabled": true,
+      "rank": "a7",
+      "valueSource": {
+        "kind": "inline"
+      },
+      "overrideMeta": null
+    },
+    "new_password": {
+      "id": "e6659b79-9855-4581-b330-ab1c8bd23e47",
+      "syncValue": "",
+      "type": "string",
+      "isEnabled": true,
+      "rank": "a8",
+      "valueSource": {
+        "kind": "inline"
+      },
+      "overrideMeta": null
+    },
+    "new_pin": {
+      "id": "370500d7-29ce-479b-b13b-9500272f4878",
+      "syncValue": "",
+      "type": "string",
+      "isEnabled": true,
+      "rank": "a9",
+      "valueSource": {
+        "kind": "inline"
+      },
+      "overrideMeta": null
     }
   }
 }
