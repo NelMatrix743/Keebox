@@ -82,3 +82,50 @@ class ResetOTPResendAPITests(TestCase):
             data={"reset_id": reset_id},
             content_type="application/json",
         )
+
+    def test_password_and_pin_resends_keep_the_challenge_and_replace_otp(
+        self: Self,
+    ) -> None:
+        """
+        Verify both reset types issue a fresh OTP without changing reset ID.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when resend state or response is incorrect.
+        """
+        for reset_type in (ResetType.PASSWORD, ResetType.PIN):
+            with self.subTest(reset_type=reset_type):
+                challenge, previous_otp = self._start_reset(reset_type)
+                previous_otp.last_sent_at = (
+                    timezone.now() - OTP_RESEND_COOLDOWN - timedelta(seconds=1)
+                )
+                previous_otp.save(update_fields=["last_sent_at"])
+
+                response: HttpResponse = self._post_resend(str(challenge.id))
+                body: dict[str, Any] = response.json()
+                challenge.refresh_from_db()
+                previous_otp.refresh_from_db()
+                replacement: OTPVerification = OTPVerification.objects.get(
+                    reset_challenge=challenge,
+                    status=OTPStatus.PENDING,
+                )
+
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(body["success"])
+                self.assertIsNone(body["error"])
+                self.assertEqual(body["data"]["reset_id"], str(challenge.id))
+                self.assertEqual(body["data"]["status"], ResetStatus.OTP_PENDING)
+                self.assertIn("otp_expires_at", body["data"])
+                self.assertIn("resend_available_at", body["data"])
+                self.assertEqual(challenge.resend_count, 1)
+                self.assertEqual(previous_otp.status, OTPStatus.EXPIRED)
+                self.assertNotEqual(replacement.pk, previous_otp.pk)
+                self.assertEqual(
+                    self.email_delivery_service.return_value.send_otp_email.call_count,
+                    ResetChallenge.objects.count() * 2,
+                )
