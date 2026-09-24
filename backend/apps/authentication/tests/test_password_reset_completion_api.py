@@ -89,3 +89,48 @@ class PasswordResetCompletionAPITests(TestCase):
             data={"reset_id": reset_id, "new_password": password},
             content_type="application/json",
         )
+
+    def test_verified_password_reset_completes_without_issuing_tokens(
+        self: Self,
+    ) -> None:
+        """
+        Verify completion changes the password and invalidates older sessions.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when completion or revocation fails.
+        """
+        old_access: str
+        old_refresh: str
+        old_access, old_refresh = TokenService.issue_tokens(self.user)
+        challenge: ResetChallenge = self._verified_challenge(ResetType.PASSWORD)
+
+        response: HttpResponse = self._post_completion(
+            str(challenge.id),
+            "replacement strong password 7349",
+        )
+        body: dict[str, Any] = response.json()
+        challenge.refresh_from_db()
+        self.user.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(body["success"])
+        self.assertIsNone(body["error"])
+        self.assertEqual(body["data"]["reset_id"], str(challenge.id))
+        self.assertEqual(body["data"]["status"], ResetStatus.COMPLETED)
+        self.assertIn("Sign in again", body["data"]["message"])
+        self.assertNotIn("access_token", body["data"])
+        self.assertNotIn("refresh_token", body["data"])
+        self.assertEqual(challenge.status, ResetStatus.COMPLETED)
+        self.assertIsNotNone(challenge.completed_at)
+        self.assertTrue(self.user.check_password("replacement strong password 7349"))
+        self.assertEqual(self.user.token_version, 1)
+        with self.assertRaises(InvalidToken):
+            VersionedJWTAuth().authenticate(HttpRequest(), old_access)
+        with self.assertRaises(InvalidToken):
+            TokenService.refresh_access_token(old_refresh)
