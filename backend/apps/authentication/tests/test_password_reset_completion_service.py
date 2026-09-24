@@ -71,3 +71,43 @@ class PasswordResetCompletionServiceTests(TestCase):
             reset_type=reset_type,
         )
         return ResetService.verify_reset_otp(started.reset_id, "048291")
+
+    def test_verified_password_reset_changes_password_and_revokes_old_tokens(
+        self: Self,
+    ) -> None:
+        """
+        Verify completion replaces the password and ends existing sessions.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when completion or revocation is incomplete.
+        """
+        old_access: str
+        old_refresh: str
+        old_access, old_refresh = TokenService.issue_tokens(self.user)
+        challenge: ResetChallenge = self._start_and_verify(ResetType.PASSWORD)
+        self.assertEqual(
+            VersionedJWTAuth().authenticate(HttpRequest(), old_access),
+            self.user,
+        )
+
+        completed: ResetChallenge = ResetService.complete_password_reset(
+            reset_id=challenge.id,
+            raw_password="replacement strong password 7349",
+        )
+        self.user.refresh_from_db()
+
+        self.assertEqual(completed.status, ResetStatus.COMPLETED)
+        self.assertIsNotNone(completed.completed_at)
+        self.assertTrue(self.user.check_password("replacement strong password 7349"))
+        self.assertFalse(self.user.check_password("original strong password 5821"))
+        self.assertEqual(self.user.token_version, 1)
+        with self.assertRaises(InvalidToken):
+            VersionedJWTAuth().authenticate(HttpRequest(), old_access)
+        with self.assertRaises(InvalidToken):
+            TokenService.refresh_access_token(old_refresh)
