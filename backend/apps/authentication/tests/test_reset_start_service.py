@@ -218,3 +218,44 @@ class ResetStartServiceTests(TestCase):
             ],
             "pin-reset-otp",
         )
+
+    @patch("apps.authentication.services.reset_services.EmailDeliveryService")
+    @patch(
+        "apps.authentication.services.reset_services.generate_otp_code",
+        return_value="048291",
+    )
+    def test_delivery_failure_does_not_reveal_a_registered_email(
+        self: Self,
+        generate_otp: Mock,
+        email_delivery_service: Mock,
+    ) -> None:
+        """
+        Verify Brevo failure does not change the public reset-start outcome.
+
+        Args:
+            self: Current test case instance.
+            generate_otp: Mocked secure OTP generator.
+            email_delivery_service: Mocked external email delivery boundary.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when delivery failure escapes the service.
+        """
+        email_delivery_service.return_value.send_otp_email.side_effect = (
+            EmailDeliveryError("Brevo unavailable")
+        )
+
+        with self.assertLogs(
+            "apps.authentication.services.reset_services",
+            level="ERROR",
+        ):
+            started = ResetService.start_reset(
+                email=self.user.email,
+                reset_type=ResetType.PASSWORD,
+            )
+
+        self.assertTrue(ResetChallenge.objects.filter(pk=started.reset_id).exists())
+        self.assertIsNotNone(started.otp_expires_at)
+
