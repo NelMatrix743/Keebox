@@ -185,3 +185,31 @@ class ResetOTPResendAPITests(TestCase):
         self.assertEqual(response.json()["error"]["code"], "expired_otp")
         self.assertEqual(challenge.status, ResetStatus.CANCELLED)
         self.assertEqual(otp.status, OTPStatus.EXPIRED)
+
+    def test_resend_limit_cancels_the_reset(self: Self) -> None:
+        """
+        Verify the final permitted resend cannot be exceeded.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a limited challenge remains usable.
+        """
+        challenge, otp = self._start_reset(ResetType.PASSWORD)
+        challenge.resend_count = OTP_MAX_RESENDS
+        challenge.save(update_fields=["resend_count"])
+        otp.last_sent_at = timezone.now() - OTP_RESEND_COOLDOWN - timedelta(seconds=1)
+        otp.save(update_fields=["last_sent_at"])
+
+        response: HttpResponse = self._post_resend(str(challenge.id))
+        challenge.refresh_from_db()
+        otp.refresh_from_db()
+
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.json()["error"]["code"], "otp_resend_limit_reached")
+        self.assertEqual(challenge.status, ResetStatus.CANCELLED)
+        self.assertEqual(otp.status, OTPStatus.EXPIRED)
