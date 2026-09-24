@@ -89,3 +89,34 @@ class ResetStartServiceTests(TestCase):
             expiration_minutes=5,
             tag="password-reset-otp",
         )
+
+    @patch("apps.authentication.services.reset_services.EmailDeliveryService")
+    def test_unknown_email_gets_a_decoy_identifier_without_email(
+        self: Self,
+        email_delivery_service: Mock,
+    ) -> None:
+        """
+        Verify an unknown email receives the same result shape without storage.
+
+        Args:
+            self: Current test case instance.
+            email_delivery_service: Mocked external email delivery boundary.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an unknown address reveals account state.
+        """
+        started = ResetService.start_reset(
+            email="missing@example.com",
+            reset_type=ResetType.PASSWORD,
+        )
+
+        self.assertIsNotNone(started.reset_id)
+        self.assertIsNotNone(started.otp_expires_at)
+        self.assertIsNotNone(started.resend_available_at)
+        self.assertFalse(ResetChallenge.objects.filter(pk=started.reset_id).exists())
+        self.assertEqual(ResetChallenge.objects.count(), 0)
+        self.assertEqual(OTPVerification.objects.count(), 0)
+        email_delivery_service.assert_not_called()
