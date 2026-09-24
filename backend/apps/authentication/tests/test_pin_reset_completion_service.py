@@ -179,3 +179,29 @@ class PINResetCompletionServiceTests(TestCase):
         self.assertEqual(self.user.pin_failed_attempts, 5)
         self.assertIsNotNone(self.user.pin_locked_until)
         self.assertEqual(self.user.token_version, 0)
+
+    def test_completed_or_missing_pin_reset_cannot_be_replayed(self: Self) -> None:
+        """
+        Verify a reset identifier changes the PIN at most once.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a completed or unknown reset works.
+        """
+        with self.assertRaises(InvalidResetChallengeError):
+            ResetService.complete_pin_reset(uuid4(), "654321")
+
+        challenge: ResetChallenge = self._start_and_verify(ResetType.PIN)
+        ResetService.complete_pin_reset(challenge.id, "654321")
+        with self.assertRaises(InvalidResetChallengeError):
+            ResetService.complete_pin_reset(challenge.id, "987654")
+
+        self.user.refresh_from_db()
+        self.assertTrue(verify_lock_pin("654321", self.user.pin_hash))
+        self.assertEqual(self.user.pin_version, 3)
+        self.assertEqual(self.user.token_version, 1)
