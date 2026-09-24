@@ -117,3 +117,36 @@ class PINResetCompletionServiceTests(TestCase):
             VersionedJWTAuth().authenticate(HttpRequest(), old_access)
         with self.assertRaises(InvalidToken):
             TokenService.refresh_access_token(old_refresh)
+
+    def test_pending_or_password_challenge_cannot_replace_the_pin(
+        self: Self,
+    ) -> None:
+        """
+        Verify PIN completion requires an OTP-verified PIN reset.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when invalid challenge state changes a PIN.
+        """
+        pending: ResetStartResult = ResetService.start_reset(
+            email=self.user.email,
+            reset_type=ResetType.PIN,
+        )
+        with self.assertRaises(InvalidResetChallengeError):
+            ResetService.complete_pin_reset(pending.reset_id, "654321")
+
+        password_challenge: ResetChallenge = self._start_and_verify(
+            ResetType.PASSWORD,
+        )
+        with self.assertRaises(InvalidResetChallengeError):
+            ResetService.complete_pin_reset(password_challenge.id, "654321")
+
+        self.user.refresh_from_db()
+        self.assertTrue(verify_lock_pin("123456", self.user.pin_hash))
+        self.assertEqual(self.user.pin_version, 2)
+        self.assertEqual(self.user.token_version, 0)
