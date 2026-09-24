@@ -6,12 +6,20 @@ from uuid import UUID, uuid4
 from django.db import transaction
 from django.utils import timezone
 
-from apps.core.choices import OTPStatus, ResetStatus, ResetType
-from apps.core.constants import OTP_RESEND_COOLDOWN, OTP_TTL
-from apps.core.email import EmailDeliveryService
-from apps.core.exceptions import EmailDeliveryError
+from apps.authentication.exceptions import (
+    ExpiredOTPError,
+    InvalidResetChallengeError,
+    LockedOTPError,
+    OTPResendCooldownError,
+    OTPResendLimitError,
+    OTPServiceError,
+)
 from apps.authentication.models import OTPVerification, ResetChallenge, User
 from apps.authentication.otp import generate_otp_code
+from apps.core.choices import OTPStatus, ResetStatus, ResetType
+from apps.core.constants import OTP_MAX_RESENDS, OTP_RESEND_COOLDOWN, OTP_TTL
+from apps.core.email import EmailDeliveryService
+from apps.core.exceptions import EmailDeliveryError
 
 
 
@@ -29,6 +37,28 @@ class ResetStartResult:
 
 class ResetService:
     """Manage password and lock-PIN recovery challenges."""
+
+    @staticmethod
+    def _cancel_challenge(challenge: ResetChallenge) -> None:
+        """
+        Cancel one reset challenge and invalidate all its pending OTPs.
+
+        Args:
+            challenge: Reset challenge that must no longer continue.
+
+        Returns:
+            None: The challenge and pending OTP state are persisted.
+
+        Raises:
+            None.
+        """
+        current_time: datetime = timezone.now()
+        OTPVerification.objects.filter(
+            reset_challenge=challenge,
+            status=OTPStatus.PENDING,
+        ).update(status=OTPStatus.EXPIRED, updated_at=current_time)
+        challenge.status = ResetStatus.CANCELLED
+        challenge.save(update_fields=["status", "updated_at"])
 
     @staticmethod
     def _cancel_existing_challenges(user: User, reset_type: ResetType) -> None:
@@ -95,13 +125,9 @@ class ResetService:
             user=user,
             reset_type=reset_type,
         )
-        raw_code: str = generate_otp_code()
-        otp_verification: OTPVerification = OTPVerification(
-            reset_challenge=challenge,
-            email=user.email,
-        )
-        otp_verification.hash_and_set_otp_code(raw_code)
-        otp_verification.save()
+        otp_verification: OTPVerification
+        raw_code: str
+        otp_verification, raw_code = ResetService._create_otp(challenge)
         return challenge, otp_verification, raw_code
 
     @staticmethod
