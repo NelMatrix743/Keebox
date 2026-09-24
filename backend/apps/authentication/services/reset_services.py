@@ -477,3 +477,55 @@ class ResetService:
             otp_expires_at=replacement_otp.expires_at,
             resend_available_at=replacement_otp.last_sent_at + OTP_RESEND_COOLDOWN,
         )
+
+    @staticmethod
+    def verify_reset_otp(reset_id: UUID, raw_code: str) -> ResetChallenge:
+        """
+        Verify the newest reset OTP and start the completion deadline.
+
+        Args:
+            reset_id: Identifier of the pending credential reset challenge.
+            raw_code: Six-digit OTP submitted from the reset email.
+
+        Returns:
+            The reset challenge advanced to the OTP-verified state.
+
+        Raises:
+            InvalidResetChallengeError: Raised when the reset or OTP is absent
+                or the challenge is not awaiting OTP verification.
+            ConsumedOTPError: Raised when the current OTP was already used.
+            ExpiredOTPError: Raised after cancelling an expired OTP challenge.
+            LockedOTPError: Raised after cancelling a locked OTP challenge.
+            InvalidOTPError: Raised when the submitted OTP code is incorrect.
+        """
+        pending_error: OTPServiceError | None = None
+        verified_challenge: ResetChallenge | None = None
+
+        with transaction.atomic():
+            challenge: ResetChallenge = ResetService._get_locked_pending_challenge(
+                reset_id,
+            )
+            current_otp: OTPVerification = ResetService._get_locked_current_otp(
+                challenge,
+            )
+            pending_error = ResetService._get_terminal_otp_error(
+                challenge,
+                current_otp,
+            )
+
+            if pending_error is None and not current_otp.verify_otp_code(raw_code):
+                pending_error = ResetService._record_failed_otp_attempt(
+                    challenge,
+                    current_otp,
+                )
+            elif pending_error is None:
+                ResetService._consume_otp(challenge, current_otp)
+                verified_challenge = challenge
+
+        if pending_error is not None:
+            raise pending_error
+        if verified_challenge is None:
+            raise InvalidResetChallengeError(
+                "The reset OTP verification could not be completed.",
+            )
+        return verified_challenge
