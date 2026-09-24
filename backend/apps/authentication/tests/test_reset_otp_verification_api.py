@@ -238,3 +238,24 @@ class ResetOTPVerificationAPITests(TestCase):
         self.assertEqual(missing.json()["error"]["code"], "invalid_reset_challenge")
         self.assertEqual(replay.status_code, 409)
         self.assertEqual(replay.json()["error"]["code"], "invalid_reset_challenge")
+
+    def test_malformed_otp_is_rejected_before_verification(self: Self) -> None:
+        """
+        Verify non-six-digit input cannot consume or count an OTP attempt.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when invalid input reaches verification.
+        """
+        challenge: ResetChallenge = self._start_reset(ResetType.PIN)
+
+        response: HttpResponse = self._post_verification(str(challenge.id), "12345")
+        otp: OTPVerification = OTPVerification.objects.get(reset_challenge=challenge)
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(otp.attempt_count, 0)
