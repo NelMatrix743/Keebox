@@ -136,3 +136,28 @@ class ResetOTPVerificationAPITests(TestCase):
                 )
                 self.assertEqual(otp.status, OTPStatus.CONSUMED)
                 self.assertNotIn("048291", str(body))
+
+    def test_wrong_code_returns_an_error_and_records_an_attempt(self: Self) -> None:
+        """
+        Verify an incorrect OTP cannot advance a PIN reset.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a wrong code changes reset state.
+        """
+        challenge: ResetChallenge = self._start_reset(ResetType.PIN)
+
+        response: HttpResponse = self._post_verification(str(challenge.id), "999999")
+        challenge.refresh_from_db()
+        otp: OTPVerification = OTPVerification.objects.get(reset_challenge=challenge)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()["success"])
+        self.assertEqual(response.json()["error"]["code"], "invalid_otp")
+        self.assertEqual(challenge.status, ResetStatus.OTP_PENDING)
+        self.assertEqual(otp.attempt_count, 1)
