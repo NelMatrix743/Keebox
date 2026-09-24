@@ -7,7 +7,9 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.authentication.exceptions import (
+    ConsumedOTPError,
     ExpiredOTPError,
+    InvalidOTPError,
     InvalidResetChallengeError,
     LockedOTPError,
     OTPResendCooldownError,
@@ -17,7 +19,13 @@ from apps.authentication.exceptions import (
 from apps.authentication.models import OTPVerification, ResetChallenge, User
 from apps.authentication.otp import generate_otp_code
 from apps.core.choices import OTPStatus, ResetStatus, ResetType
-from apps.core.constants import OTP_MAX_RESENDS, OTP_RESEND_COOLDOWN, OTP_TTL
+from apps.core.constants import (
+    OTP_MAX_ATTEMPTS,
+    OTP_MAX_RESENDS,
+    OTP_RESEND_COOLDOWN,
+    OTP_TTL,
+    RESET_CHALLENGE_COMPLETION_TTL,
+)
 from apps.core.email import EmailDeliveryService
 from apps.core.exceptions import EmailDeliveryError
 
@@ -159,14 +167,14 @@ class ResetService:
         Lock an account before loading its pending reset challenge.
 
         Args:
-            reset_id: Identifier of the reset challenge to resend.
+            reset_id: Identifier of the reset challenge to inspect.
 
         Returns:
             Locked reset challenge in the OTP-pending state.
 
         Raises:
             InvalidResetChallengeError: Raised when the challenge or user is
-                missing or the challenge cannot resend an OTP.
+                missing or the challenge is not awaiting OTP verification.
         """
         try:
             challenge_owner_id: UUID = ResetChallenge.objects.values_list(
@@ -212,9 +220,46 @@ class ResetService:
         )
         if current_otp is None:
             raise InvalidResetChallengeError(
-                "The reset challenge has no OTP to resend.",
+                "The reset challenge has no OTP to inspect.",
             )
         return current_otp
+
+    @staticmethod
+    def _get_terminal_otp_error(
+        challenge: ResetChallenge,
+        current_otp: OTPVerification,
+    ) -> OTPServiceError | None:
+        """
+        Cancel a reset whose current OTP is already unusable.
+
+        Args:
+            challenge: Reset challenge owning the current OTP.
+            current_otp: Most recently issued OTP verification.
+
+        Returns:
+            Deferred expiry or lock error, or None when verification may proceed.
+
+        Raises:
+            ConsumedOTPError: Raised when the OTP has already been used.
+        """
+        if current_otp.is_consumed():
+            raise ConsumedOTPError("The reset OTP has already been consumed.")
+
+        if current_otp.status == OTPStatus.EXPIRED or current_otp.is_expired():
+            ResetService._cancel_challenge(challenge)
+            return ExpiredOTPError("The reset OTP has expired.")
+
+        if (
+            current_otp.status == OTPStatus.LOCKED
+            or current_otp.attempt_count >= OTP_MAX_ATTEMPTS
+        ):
+            if current_otp.status != OTPStatus.LOCKED:
+                current_otp.status = OTPStatus.LOCKED
+                current_otp.save(update_fields=["status", "updated_at"])
+            ResetService._cancel_challenge(challenge)
+            return LockedOTPError("The reset OTP is locked.")
+
+        return None
 
     @staticmethod
     def _deliver_otp(user: User, reset_type: ResetType, raw_code: str) -> None:
