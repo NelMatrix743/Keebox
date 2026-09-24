@@ -77,3 +77,43 @@ class PINResetCompletionServiceTests(TestCase):
             reset_type=reset_type,
         )
         return ResetService.verify_reset_otp(started.reset_id, "048291")
+
+    def test_verified_pin_reset_replaces_pin_unlocks_account_and_revokes_tokens(
+        self: Self,
+    ) -> None:
+        """
+        Verify OTP-only PIN recovery updates security state atomically.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when PIN replacement or revocation fails.
+        """
+        old_access: str
+        old_refresh: str
+        old_access, old_refresh = TokenService.issue_tokens(self.user)
+        challenge: ResetChallenge = self._start_and_verify(ResetType.PIN)
+
+        completed: ResetChallenge = ResetService.complete_pin_reset(
+            reset_id=challenge.id,
+            raw_pin="654321",
+        )
+        self.user.refresh_from_db()
+
+        self.assertEqual(completed.status, ResetStatus.COMPLETED)
+        self.assertIsNotNone(completed.completed_at)
+        self.assertTrue(verify_lock_pin("654321", self.user.pin_hash))
+        self.assertFalse(verify_lock_pin("123456", self.user.pin_hash))
+        self.assertEqual(self.user.pin_version, 3)
+        self.assertEqual(self.user.pin_failed_attempts, 0)
+        self.assertIsNone(self.user.pin_locked_until)
+        self.assertEqual(self.user.token_version, 1)
+        self.assertTrue(self.user.check_password("original strong password 5821"))
+        with self.assertRaises(InvalidToken):
+            VersionedJWTAuth().authenticate(HttpRequest(), old_access)
+        with self.assertRaises(InvalidToken):
+            TokenService.refresh_access_token(old_refresh)
