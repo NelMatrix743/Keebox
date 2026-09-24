@@ -201,3 +201,34 @@ class PasswordResetCompletionAPITests(TestCase):
         self.assertEqual(challenge.status, ResetStatus.EXPIRED)
         self.assertTrue(self.user.check_password("original strong password 5821"))
         self.assertEqual(self.user.token_version, 0)
+
+    def test_completed_or_unknown_reset_cannot_be_reused(self: Self) -> None:
+        """
+        Verify a reset identifier authorizes at most one password change.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an unusable reset is accepted.
+        """
+        missing: HttpResponse = self._post_completion(
+            str(uuid4()),
+            "replacement strong password 7349",
+        )
+        challenge: ResetChallenge = self._verified_challenge(ResetType.PASSWORD)
+        self._post_completion(str(challenge.id), "replacement strong password 7349")
+        replay: HttpResponse = self._post_completion(
+            str(challenge.id),
+            "another strong password 9047",
+        )
+
+        self.assertEqual(missing.status_code, 409)
+        self.assertEqual(replay.status_code, 409)
+        self.assertEqual(replay.json()["error"]["code"], "invalid_reset_challenge")
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("replacement strong password 7349"))
+        self.assertEqual(self.user.token_version, 1)
