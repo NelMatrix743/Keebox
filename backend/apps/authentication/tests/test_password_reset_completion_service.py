@@ -147,3 +147,35 @@ class PasswordResetCompletionServiceTests(TestCase):
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password("original strong password 5821"))
         self.assertEqual(self.user.token_version, 0)
+
+    def test_expired_completion_window_marks_the_challenge_expired(
+        self: Self,
+    ) -> None:
+        """
+        Verify the post-OTP deadline prevents a late password change.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an expired challenge remains usable.
+        """
+        challenge: ResetChallenge = self._start_and_verify(ResetType.PASSWORD)
+        challenge.completion_expires_at = timezone.now() - timedelta(seconds=1)
+        challenge.save(update_fields=["completion_expires_at"])
+
+        with self.assertRaises(ExpiredResetChallengeError):
+            ResetService.complete_password_reset(
+                challenge.id,
+                "replacement strong password 7349",
+            )
+
+        challenge.refresh_from_db()
+        self.user.refresh_from_db()
+        self.assertEqual(challenge.status, ResetStatus.EXPIRED)
+        self.assertIsNone(challenge.completed_at)
+        self.assertTrue(self.user.check_password("original strong password 5821"))
+        self.assertEqual(self.user.token_version, 0)
