@@ -73,3 +73,33 @@ class ResetService:
             updated_at=current_time,
         ))
 
+    @staticmethod
+    def _create_challenge_and_otp(
+        user: User,
+        reset_type: ResetType,
+    ) -> tuple[ResetChallenge, OTPVerification, str]:
+        """
+        Create a reset challenge and its protected initial OTP.
+
+        Args:
+            user: Account whose credential may be reset.
+            reset_type: Credential type selected for recovery.
+
+        Returns:
+            Persisted challenge, OTP verification, and raw code for delivery.
+
+        Raises:
+            ValueError: Raised if OTP generation produces an empty code.
+        """
+        challenge: ResetChallenge = ResetChallenge.objects.create(
+            user=user,
+            reset_type=reset_type,
+        )
+        raw_code: str = generate_otp_code()
+        otp_verification: OTPVerification = OTPVerification(
+            reset_challenge=challenge,
+            email=user.email,
+        )
+        otp_verification.hash_and_set_otp_code(raw_code)
+        otp_verification.save()
+        return challenge, otp_verification, raw_code
