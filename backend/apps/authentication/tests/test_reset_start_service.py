@@ -169,3 +169,52 @@ class ResetStartServiceTests(TestCase):
             ResetStatus.OTP_PENDING,
         )
         self.assertEqual(email_delivery_service.return_value.send_otp_email.call_count, 2)
+
+    @patch("apps.authentication.services.reset_services.EmailDeliveryService")
+    @patch(
+        "apps.authentication.services.reset_services.generate_otp_code",
+        return_value="048291",
+    )
+    def test_password_and_pin_resets_can_coexist(
+        self: Self,
+        generate_otp: Mock,
+        email_delivery_service: Mock,
+    ) -> None:
+        """
+        Verify starting a PIN reset does not cancel a password reset.
+
+        Args:
+            self: Current test case instance.
+            generate_otp: Mocked secure OTP generator.
+            email_delivery_service: Mocked external email delivery boundary.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when independent reset types interfere.
+        """
+        password_reset = ResetService.start_reset(
+            email=self.user.email,
+            reset_type=ResetType.PASSWORD,
+        )
+        pin_reset = ResetService.start_reset(
+            email=self.user.email,
+            reset_type=ResetType.PIN,
+        )
+
+        self.assertEqual(
+            ResetChallenge.objects.get(pk=password_reset.reset_id).status,
+            ResetStatus.OTP_PENDING,
+        )
+        self.assertEqual(
+            ResetChallenge.objects.get(pk=pin_reset.reset_id).status,
+            ResetStatus.OTP_PENDING,
+        )
+        self.assertNotEqual(password_reset.reset_id, pin_reset.reset_id)
+        self.assertEqual(
+            email_delivery_service.return_value.send_otp_email.call_args.kwargs[
+                "tag"
+            ],
+            "pin-reset-otp",
+        )
