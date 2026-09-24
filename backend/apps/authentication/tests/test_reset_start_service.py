@@ -1,0 +1,91 @@
+from datetime import timedelta
+from typing import Self
+from unittest.mock import Mock, patch
+
+from django.test import TestCase
+
+from apps.authentication.models import OTPVerification, ResetChallenge, User
+from apps.authentication.services.reset_services import ResetService, ResetStartResult
+from apps.core.choices import OTPStatus, ResetStatus, ResetType
+from apps.core.constants import OTP_RESEND_COOLDOWN, OTP_TTL
+from apps.core.exceptions import EmailDeliveryError
+
+
+
+class ResetStartServiceTests(TestCase):
+    def setUp(self: Self) -> None:
+        """
+        Create the account used for password and PIN reset initiation tests.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This setup method does not return a value.
+
+        Raises:
+            None.
+        """
+        self.user: User = User.objects.create_user(
+            email="ada@example.com",
+            password="correct horse battery staple",
+            first_name="Ada",
+            last_name="Lovelace",
+        )
+
+    @patch("apps.authentication.services.reset_services.EmailDeliveryService")
+    @patch(
+        "apps.authentication.services.reset_services.generate_otp_code",
+        return_value="048291",
+    )
+    def test_known_email_creates_and_delivers_a_protected_reset_otp(
+        self: Self,
+        generate_otp: Mock,
+        email_delivery_service: Mock,
+    ) -> None:
+        """
+        Verify a password reset stores a hashed OTP and emails the account.
+
+        Args:
+            self: Current test case instance.
+            generate_otp: Mocked secure OTP generator.
+            email_delivery_service: Mocked external email delivery boundary.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when the challenge or delivery is incorrect.
+        """
+        started: ResetStartResult = ResetService.start_reset(
+            email="  ADA@example.com  ",
+            reset_type=ResetType.PASSWORD,
+        )
+        challenge: ResetChallenge = ResetChallenge.objects.get(pk=started.reset_id)
+        otp: OTPVerification = OTPVerification.objects.get(
+            reset_challenge=challenge,
+        )
+
+        self.assertEqual(challenge.user_id, self.user.id)
+        self.assertEqual(challenge.reset_type, ResetType.PASSWORD)
+        self.assertEqual(challenge.status, ResetStatus.OTP_PENDING)
+        self.assertEqual(otp.status, OTPStatus.PENDING)
+        self.assertNotEqual(otp.code_hash, "048291")
+        self.assertTrue(otp.verify_otp_code("048291"))
+        self.assertEqual(started.otp_expires_at, otp.expires_at)
+        self.assertEqual(
+            started.resend_available_at,
+            otp.last_sent_at + OTP_RESEND_COOLDOWN,
+        )
+        self.assertLess(
+            abs((otp.expires_at - otp.last_sent_at) - OTP_TTL),
+            timedelta(seconds=1),
+        )
+        generate_otp.assert_called_once_with()
+        email_delivery_service.return_value.send_otp_email.assert_called_once_with(
+            recipient_email="ada@example.com",
+            recipient_full_name="Ada Lovelace",
+            otp_code="048291",
+            expiration_minutes=5,
+            tag="password-reset-otp",
+        )
