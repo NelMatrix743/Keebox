@@ -296,3 +296,37 @@ class ResetResendServiceTests(TestCase):
             email_delivery_service.return_value.send_otp_email.call_count,
             1,
         )
+
+    @patch("apps.authentication.services.reset_services.EmailDeliveryService")
+    def test_unknown_or_replaced_reset_id_cannot_resend(
+        self: Self,
+        email_delivery_service: Mock,
+    ) -> None:
+        """
+        Verify absent and cancelled challenges never produce an OTP email.
+
+        Args:
+            self: Current test case instance.
+            email_delivery_service: Mocked external email boundary.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an invalid reset ID can resend.
+        """
+        with self.assertRaises(InvalidResetChallengeError):
+            ResetService.resend_reset_otp(uuid4())
+
+        first: ResetStartResult = ResetService.start_reset(
+            self.user.email,
+            ResetType.PASSWORD,
+        )
+        ResetService.start_reset(self.user.email, ResetType.PASSWORD)
+        with self.assertRaises(InvalidResetChallengeError):
+            ResetService.resend_reset_otp(first.reset_id)
+
+        self.assertEqual(
+            email_delivery_service.return_value.send_otp_email.call_count,
+            2,
+        )
