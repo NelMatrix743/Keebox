@@ -127,3 +127,37 @@ class ResetVerificationServiceTests(TestCase):
         self.assertIsNone(challenge.completion_expires_at)
         self.assertEqual(otp.status, OTPStatus.PENDING)
         self.assertEqual(otp.attempt_count, 1)
+
+    def test_fifth_wrong_otp_locks_the_code_and_cancels_the_reset(self: Self) -> None:
+        """
+        Verify the OTP attempt limit ends the reset without issuing a new code.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when attempts exceed the limit or continue.
+        """
+        started: ResetStartResult = ResetService.start_reset(
+            self.user.email,
+            ResetType.PASSWORD,
+        )
+
+        for _ in range(OTP_MAX_ATTEMPTS - 1):
+            with self.assertRaises(InvalidOTPError):
+                ResetService.verify_reset_otp(started.reset_id, "999999")
+        with self.assertRaises(LockedOTPError):
+            ResetService.verify_reset_otp(started.reset_id, "999999")
+
+        challenge: ResetChallenge = ResetChallenge.objects.get(pk=started.reset_id)
+        otp: OTPVerification = OTPVerification.objects.get(
+            reset_challenge=challenge,
+        )
+        self.assertEqual(challenge.status, ResetStatus.CANCELLED)
+        self.assertEqual(otp.status, OTPStatus.LOCKED)
+        self.assertEqual(otp.attempt_count, OTP_MAX_ATTEMPTS)
+        with self.assertRaises(InvalidResetChallengeError):
+            ResetService.verify_reset_otp(started.reset_id, "048291")
