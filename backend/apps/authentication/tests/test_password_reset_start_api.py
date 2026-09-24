@@ -93,3 +93,25 @@ class PasswordResetStartAPITests(TestCase):
         self.assertFalse(ResetChallenge.objects.exists())
         self.assertFalse(OTPVerification.objects.exists())
         email_delivery_service.assert_not_called()
+
+    def test_invalid_email_is_rejected_without_starting_reset(self: Self) -> None:
+        """
+        Verify malformed email input is rejected by the request contract.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when malformed input starts a reset.
+        """
+        response: HttpResponse = self.client.post(
+            f"/api/auth{Routes.Reset.PASSWORD}",
+            data={"email": "not-an-email"},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertFalse(ResetChallenge.objects.exists())
