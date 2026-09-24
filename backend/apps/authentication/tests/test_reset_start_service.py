@@ -259,3 +259,22 @@ class ResetStartServiceTests(TestCase):
         self.assertTrue(ResetChallenge.objects.filter(pk=started.reset_id).exists())
         self.assertIsNotNone(started.otp_expires_at)
 
+    def test_invalid_reset_type_is_rejected(self: Self) -> None:
+        """
+        Verify an unsupported recovery purpose cannot create a challenge.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an invalid reset type is accepted.
+        """
+        with self.assertRaises(ValueError):
+            ResetService.start_reset(
+                email=self.user.email,
+                reset_type="unsupported",
+            )
+        self.assertEqual(ResetChallenge.objects.count(), 0)
