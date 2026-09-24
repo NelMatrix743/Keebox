@@ -31,6 +31,7 @@ from apps.core.constants import (
 )
 from apps.core.email import EmailDeliveryService
 from apps.core.exceptions import EmailDeliveryError
+from apps.core.pin import encrypt_lock_pin
 
 
 
@@ -613,5 +614,78 @@ class ResetService:
         if completed_challenge is None:
             raise InvalidResetChallengeError(
                 "The password reset could not be completed.",
+            )
+        return completed_challenge
+
+    @staticmethod
+    def complete_pin_reset(reset_id: UUID, raw_pin: str) -> ResetChallenge:
+        """
+        Replace a lock PIN after OTP verification and revoke older sessions.
+
+        Args:
+            reset_id: Identifier of the OTP-verified PIN reset challenge.
+            raw_pin: New lock PIN selected for the account.
+
+        Returns:
+            The reset challenge advanced to the completed state.
+
+        Raises:
+            InvalidResetChallengeError: Raised when the challenge is absent,
+                not a PIN reset, or not ready for completion.
+            ExpiredResetChallengeError: Raised after expiring a completion
+                window that has elapsed.
+            ValueError: Raised when the new PIN cannot be protected.
+        """
+        pending_error: ExpiredResetChallengeError | None = None
+        completed_challenge: ResetChallenge | None = None
+
+        with transaction.atomic():
+            challenge: ResetChallenge = ResetService._get_locked_challenge(reset_id)
+            if (
+                challenge.reset_type != ResetType.PIN
+                or challenge.status != ResetStatus.OTP_VERIFIED
+                or challenge.verified_at is None
+                or challenge.completion_expires_at is None
+            ):
+                raise InvalidResetChallengeError(
+                    "The PIN reset cannot be completed.",
+                )
+
+            if challenge.is_expired():
+                challenge.status = ResetStatus.EXPIRED
+                challenge.save(update_fields=["status", "updated_at"])
+                pending_error = ExpiredResetChallengeError(
+                    "The PIN reset completion window has expired.",
+                )
+            else:
+                user: User = challenge.user
+                protected_pin: str = encrypt_lock_pin(raw_pin)
+                user.pin_hash = protected_pin
+                user.pin_version += 1
+                user.pin_failed_attempts = 0
+                user.pin_locked_until = None
+                user.token_version += 1
+                user.save(
+                    update_fields=[
+                        "pin_hash",
+                        "pin_version",
+                        "pin_failed_attempts",
+                        "pin_locked_until",
+                        "token_version",
+                    ],
+                )
+
+                challenge.status = ResetStatus.COMPLETED
+                challenge.completed_at = timezone.now()
+                challenge.save(
+                    update_fields=["status", "completed_at", "updated_at"],
+                )
+                completed_challenge = challenge
+
+        if pending_error is not None:
+            raise pending_error
+        if completed_challenge is None:
+            raise InvalidResetChallengeError(
+                "The PIN reset could not be completed.",
             )
         return completed_challenge
