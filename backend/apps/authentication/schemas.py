@@ -200,6 +200,15 @@ class LoginCompletedResponse(AuthenticationSuccessResponse):
     """Represent safe response data for a completed login."""
 
 
+class LogoutResponse(Schema):
+    """Represent confirmation that the active session has ended."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["logged_out"]
+    message: str
+
+
 class ResetStartRequest(Schema):
     """Validate an email submitted to begin password or PIN recovery."""
 
