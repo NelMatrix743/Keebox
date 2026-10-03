@@ -2,7 +2,8 @@ from typing import Any
 
 from django.http import HttpRequest, HttpResponse
 from ninja import NinjaAPI
-from ninja.errors import ValidationError
+from ninja.errors import AuthenticationError, ValidationError
+from ninja_jwt.exceptions import AuthenticationFailed
 
 from apps.core.info import API_DESCRIPTION, API_TITLE, API_VERSION
 from apps.core.response import ErrorData, APIResponse
@@ -16,6 +17,37 @@ api: NinjaAPI = NinjaAPI(
     version=API_VERSION,
     description=API_DESCRIPTION
 )
+
+
+@api.exception_handler(AuthenticationError)
+def handle_missing_authentication(
+    request: HttpRequest,
+    exception: AuthenticationError,
+) -> HttpResponse:
+    """
+    Return missing bearer credentials through the standard error envelope.
+
+    Args:
+        request: HTTP request without accepted authentication credentials.
+        exception: Authentication failure raised by the API router.
+
+    Returns:
+        HTTP response describing the missing authentication credentials.
+
+    Raises:
+        None.
+    """
+    return api.create_response(
+        request,
+        APIResponse.error(
+            ErrorData(
+                code="authentication_required",
+                message="Authentication is required.",
+            ).model_dump(),
+        ),
+        status=401,
+    )
+
 
 
 @api.exception_handler(ValidationError)
