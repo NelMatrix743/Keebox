@@ -55,3 +55,31 @@ class LogoutAPITests(TestCase):
             f"/api/auth{Routes.Logout.BASE}",
             HTTP_AUTHORIZATION=f"Bearer {access_token}",
         )
+
+    def test_logout_invalidates_access_and_refresh_tokens(self: Self) -> None:
+        """
+        Verify an authenticated logout ends the active session.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when tokens remain valid after logout.
+        """
+        response: HttpResponse = self._post_logout(self.access_token)
+        body: dict[str, Any] = response.json()
+        self.user.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(body["success"])
+        self.assertIsNone(body["error"])
+        self.assertIsNone(body["meta"])
+        self.assertEqual(body["data"]["status"], "logged_out")
+        self.assertEqual(self.user.token_version, 1)
+        with self.assertRaises(InvalidToken):
+            VersionedJWTAuth().authenticate(HttpRequest(), self.access_token)
+        with self.assertRaises(InvalidToken):
+            TokenService.refresh_access_token(self.refresh_token)
