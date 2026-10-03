@@ -49,6 +49,35 @@ def handle_missing_authentication(
     )
 
 
+@api.exception_handler(AuthenticationFailed)
+def handle_invalid_authentication(
+    request: HttpRequest,
+    exception: AuthenticationFailed,
+) -> HttpResponse:
+    """
+    Return rejected bearer credentials through the standard error envelope.
+
+    Args:
+        request: HTTP request with invalid or superseded credentials.
+        exception: Authentication failure raised while validating the token.
+
+    Returns:
+        HTTP response describing an invalid session.
+
+    Raises:
+        None.
+    """
+    return api.create_response(
+        request,
+        APIResponse.error(
+            ErrorData(
+                code="invalid_session",
+                message="The session is no longer valid.",
+            ).model_dump(),
+        ),
+        status=401,
+    )
+
 
 @api.exception_handler(ValidationError)
 def handle_validation_error(
