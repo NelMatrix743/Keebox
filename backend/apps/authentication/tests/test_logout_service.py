@@ -49,3 +49,30 @@ class LogoutServiceTests(TestCase):
 
         self.user.refresh_from_db()
         self.assertEqual(self.user.token_version, 1)
+
+    def test_superseded_session_cannot_log_out_the_newer_session(
+        self: Self,
+    ) -> None:
+        """
+        Verify a version changed before locking cannot revoke a newer login.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a stale logout changes session state.
+        """
+        self.user.token_version = 1
+        self.user.save(update_fields=["token_version"])
+
+        with self.assertRaises(InvalidToken):
+            TokenService.revoke_current_session(
+                user_id=self.user.id,
+                expected_token_version=0,
+            )
+
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.token_version, 1)
