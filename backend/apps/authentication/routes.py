@@ -23,6 +23,12 @@ class Routes:
 		VERIFY_PIN: Final[str] = BASE + "/verify-pin"
 
 
+	class Logout:
+		"""Define the authenticated session termination route."""
+
+		BASE: Final[str] = "/logout"
+
+
 	class Reset:
 		"""Define account-reset route paths."""
 
