@@ -2,7 +2,9 @@ from typing import Any
 
 from django.http import HttpRequest
 from ninja import Router
+from ninja_jwt.exceptions import InvalidToken
 
+from apps.authentication.auth import VersionedJWTAuth
 from apps.authentication.exceptions import (
     ConsumedOTPError,
     ExpiredLoginChallengeError,
@@ -38,6 +40,7 @@ from apps.authentication.schemas import (
     LoginPINVerificationRequest,
     LoginRequest,
     LoginStartedResponse,
+    LogoutResponse,
     PasswordResetCompletionRequest,
     PINResetCompletionRequest,
     RegistrationCompletedResponse,
@@ -529,6 +532,50 @@ def verify_login_pin(
             "refresh_token": refresh_token,
             "status": "completed",
             "message": "Login completed successfully.",
+        },
+    )
+    return 200, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    Routes.Logout.BASE,
+    auth=VersionedJWTAuth(),
+    response={
+        200: SuccessResponse[LogoutResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def logout(request: HttpRequest) -> tuple[int, dict[str, Any]]:
+    """
+    End the authenticated session and revoke its access and refresh tokens.
+
+    Args:
+        request: HTTP request authenticated with the current access token.
+
+    Returns:
+        HTTP status and the standard logout response envelope.
+
+    Raises:
+        None: A superseded session is mapped to an API error response.
+    """
+    authenticated_user: User = request.auth
+    try:
+        TokenService.revoke_current_session(
+            user_id=authenticated_user.id,
+            expected_token_version=authenticated_user.token_version,
+        )
+    except InvalidToken:
+        return 401, APIResponse.error(
+            ErrorData(
+                code="invalid_session",
+                message="The session is no longer valid.",
+            ).model_dump(),
+        )
+
+    response_data: LogoutResponse = LogoutResponse.model_validate(
+        {
+            "status": "logged_out",
+            "message": "Logged out successfully.",
         },
     )
     return 200, APIResponse.success(response_data.model_dump())
