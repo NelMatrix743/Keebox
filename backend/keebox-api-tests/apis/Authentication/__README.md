@@ -62,3 +62,10 @@ sessions and does not return new tokens, so sign in again afterward.
 An unknown email receives the same successful start response shape, but no
 email is sent and its returned reset ID cannot be verified. Do not infer
 account existence from the start response.
+
+## Logout
+
+After login, copy `data.access_token` into the `access_token` secret variable.
+Send the Logout request to end that session. Its bearer access token is
+required; logout invalidates both the access and refresh tokens. Sign in again
+to obtain a new token pair.

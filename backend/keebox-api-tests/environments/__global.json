@@ -111,6 +111,17 @@
         "kind": "inline"
       },
       "overrideMeta": null
+    },
+    "access_token": {
+      "id": "b5df8f9f-73f6-47b4-8909-4d6a1a930551",
+      "syncValue": "",
+      "type": "secret",
+      "isEnabled": true,
+      "rank": "b0",
+      "valueSource": {
+        "kind": "inline"
+      },
+      "overrideMeta": null
     }
   }
 }
