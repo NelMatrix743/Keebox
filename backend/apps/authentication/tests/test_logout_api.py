@@ -113,3 +113,23 @@ class LogoutAPITests(TestCase):
         self.assertEqual(repeated.status_code, 401)
         self.assertEqual(repeated.json()["error"]["code"], "invalid_session")
         self.assertEqual(self.user.token_version, 1)
+
+    def test_refresh_token_cannot_authenticate_logout(self: Self) -> None:
+        """
+        Verify the logout bearer credential must be an access token.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when refresh tokens authorize logout.
+        """
+        response: HttpResponse = self._post_logout(self.refresh_token)
+        self.user.refresh_from_db()
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["error"]["code"], "invalid_session")
+        self.assertEqual(self.user.token_version, 0)
