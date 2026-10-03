@@ -83,3 +83,33 @@ class LogoutAPITests(TestCase):
             VersionedJWTAuth().authenticate(HttpRequest(), self.access_token)
         with self.assertRaises(InvalidToken):
             TokenService.refresh_access_token(self.refresh_token)
+
+    def test_missing_or_reused_access_token_cannot_log_out_again(
+        self: Self,
+    ) -> None:
+        """
+        Verify logout requires a current authenticated session.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an unauthorized request changes state.
+        """
+        missing: HttpResponse = self._post_logout(None)
+        first: HttpResponse = self._post_logout(self.access_token)
+        repeated: HttpResponse = self._post_logout(self.access_token)
+        self.user.refresh_from_db()
+
+        self.assertEqual(missing.status_code, 401)
+        self.assertEqual(
+            missing.json()["error"]["code"],
+            "authentication_required",
+        )
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(repeated.status_code, 401)
+        self.assertEqual(repeated.json()["error"]["code"], "invalid_session")
+        self.assertEqual(self.user.token_version, 1)
