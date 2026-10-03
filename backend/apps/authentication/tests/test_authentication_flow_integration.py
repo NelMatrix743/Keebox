@@ -167,3 +167,24 @@ class AuthenticationFlowIntegrationTests(TestCase):
             otp_code="482913",
             expiration_minutes=5,
         )
+
+        logout_response: Any = self.client.post(
+            f"/api/auth{Routes.Logout.BASE}",
+            HTTP_AUTHORIZATION=(
+                f"Bearer {login_completion_data['access_token']}"
+            ),
+        )
+        user.refresh_from_db()
+
+        self.assertEqual(logout_response.status_code, 200)
+        self.assertEqual(logout_response.json()["data"]["status"], "logged_out")
+        self.assertEqual(user.token_version, 2)
+        with self.assertRaises(InvalidToken):
+            VersionedJWTAuth().authenticate(
+                logout_response.wsgi_request,
+                login_completion_data["access_token"],
+            )
+        with self.assertRaises(InvalidToken):
+            TokenService.refresh_access_token(
+                login_completion_data["refresh_token"],
+            )
