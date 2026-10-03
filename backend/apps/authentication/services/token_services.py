@@ -1,6 +1,8 @@
 from typing import Final
+from uuid import UUID
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from ninja_jwt.exceptions import InvalidToken, TokenError
 from ninja_jwt.tokens import RefreshToken, Token
 
@@ -52,6 +54,34 @@ class TokenService:
             type(token_version) is not int or token_version != user.token_version
         ):
             raise InvalidToken("The session is no longer valid.")
+
+    @staticmethod
+    @transaction.atomic
+    def revoke_current_session(user_id: UUID, expected_token_version: int) -> None:
+        """
+        Invalidate the active access and refresh tokens for one account.
+
+        Args:
+            user_id: Identifier of the account whose session is ending.
+            expected_token_version: Session version authenticated by the request.
+
+        Returns:
+            None: The account's token version is advanced in the database.
+
+        Raises:
+            InvalidToken: Raised when the account or authenticated session is
+                no longer current.
+        """
+        try:
+            user: User = User.objects.select_for_update().get(pk=user_id)
+        except User.DoesNotExist as exception:
+            raise InvalidToken("The session is no longer valid.") from exception
+
+        if not user.is_active or user.token_version != expected_token_version:
+            raise InvalidToken("The session is no longer valid.")
+
+        user.token_version += 1
+        user.save(update_fields=["token_version"])
 
     @staticmethod
     def refresh_access_token(raw_refresh_token: str) -> str:
