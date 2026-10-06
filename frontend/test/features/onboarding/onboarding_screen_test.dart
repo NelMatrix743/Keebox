@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'package:keebox/app/theme/app_theme.dart';
 import 'package:keebox/features/onboarding/onboarding_screen.dart';
@@ -13,7 +14,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
-      MaterialApp(
+      _buildApp(
         theme: AppTheme.light,
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context).copyWith(
@@ -35,7 +36,7 @@ void main() {
     var signInCount = 0;
     var getStartedCount = 0;
     await tester.pumpWidget(
-      MaterialApp(
+      _buildApp(
         theme: AppTheme.light,
         home: OnboardingScreen(
           onSignIn: () => signInCount++,
@@ -63,7 +64,7 @@ void main() {
         var signInPressed = false;
         var getStartedPressed = false;
         await tester.pumpWidget(
-          MaterialApp(
+          _buildApp(
             theme: AppTheme.light,
             builder: (context, child) => MediaQuery(
               data: MediaQuery.of(context).copyWith(
@@ -87,4 +88,18 @@ void main() {
       },
     );
   }
+}
+
+Widget _buildApp({
+  ThemeData? theme,
+  TransitionBuilder? builder,
+  required Widget home,
+}) {
+  return ScreenUtilInit(
+    designSize: const Size(402, 874),
+    minTextAdapt: true,
+    splitScreenMode: true,
+    builder: (context, child) =>
+        MaterialApp(theme: theme, builder: builder, home: home),
+  );
 }
