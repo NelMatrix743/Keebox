@@ -2,5 +2,5 @@
 # FVM Version Cache
 .fvm/
 
-# Native splash generator executables.
-.dart_tool/pub/
+# Generated Dart tooling files.
+.dart_tool/
