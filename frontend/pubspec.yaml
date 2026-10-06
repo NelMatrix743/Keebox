@@ -63,6 +63,10 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  assets:
+    - assets/images/onboarding.png
+    - assets/icons/get_started.png
+
   fonts:
     - family: Poppins
       fonts:
