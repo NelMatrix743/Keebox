@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Keebox (debug)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/frontend",
+      "program": "${workspaceFolder}/frontend/lib/main.dart",
+      "flutterMode": "debug"
+    },
+    {
+      "name": "Keebox (profile)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/frontend",
+      "program": "${workspaceFolder}/frontend/lib/main.dart",
+      "flutterMode": "profile"
+    },
+    {
+      "name": "Keebox (release)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/frontend",
+      "program": "${workspaceFolder}/frontend/lib/main.dart",
+      "flutterMode": "release"
+    }
+  ]
+}
