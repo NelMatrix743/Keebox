@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'app_texts.dart';
-import 'router/app_router.dart';
-import 'theme/app_theme.dart';
+import 'package:keebox/app/app_texts.dart';
+import 'package:keebox/app/router/app_router.dart';
+import 'package:keebox/app/theme/app_theme.dart';
 
 class KeeboxApp extends ConsumerWidget {
   const KeeboxApp({super.key});

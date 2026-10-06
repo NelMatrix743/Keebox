@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'app_colors.dart';
-import 'app_fonts.dart';
-import 'app_typography.dart';
+import 'package:keebox/app/theme/app_colors.dart';
+import 'package:keebox/app/theme/app_fonts.dart';
+import 'package:keebox/app/theme/app_typography.dart';
 
 abstract final class AppTheme {
   static final ThemeData light = ThemeData(

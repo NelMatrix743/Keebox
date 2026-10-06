@@ -1,4 +1,4 @@
-import 'app/bootstrap.dart';
+import 'package:keebox/app/bootstrap.dart';
 
 Future<void> main() async {
   await bootstrap();

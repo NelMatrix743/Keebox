@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'app_colors.dart';
-import 'app_fonts.dart';
+import 'package:keebox/app/theme/app_colors.dart';
+import 'package:keebox/app/theme/app_fonts.dart';
 
 abstract final class AppTypography {
   static final TextTheme textTheme = _buildTextTheme();
