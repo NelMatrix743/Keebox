@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:keebox/app/router/app_routes.dart';
 import 'package:keebox/features/onboarding/onboarding_screen.dart';
+import 'package:keebox/features/authentication/login/login_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
@@ -20,8 +21,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.signIn,
         name: AppRoutes.signInName,
+        builder: (context, state) => LoginScreen(
+          onRegister: () => context.pushNamed(AppRoutes.registerName),
+          onForgotPassword: () =>
+              context.pushNamed(AppRoutes.forgotPasswordName),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.forgotPassword,
+        name: AppRoutes.forgotPasswordName,
         builder: (context, state) =>
-            Scaffold(appBar: AppBar(title: const Text('Sign In'))),
+            Scaffold(appBar: AppBar(title: const Text('Reset Password'))),
       ),
       GoRoute(
         path: AppRoutes.register,
