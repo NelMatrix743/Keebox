@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:keebox/app/app_texts.dart';
@@ -21,6 +22,10 @@ class KeeboxApp extends ConsumerWidget {
       theme: AppTheme.light,
       themeMode: ThemeMode.light,
       routerConfig: ref.watch(appRouterProvider),
+      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: AppTheme.systemUiOverlayStyle,
+        child: child!,
+      ),
     );
   }
 }

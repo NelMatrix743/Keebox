@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'package:keebox/app/theme/app_colors.dart';
 import 'package:keebox/app/theme/app_fonts.dart';
+import 'package:keebox/app/theme/app_theme.dart';
 import 'package:keebox/assets/app_assets.dart';
 
 class OnboardingScreen extends StatelessWidget {
@@ -29,13 +30,10 @@ class OnboardingScreen extends StatelessWidget {
     );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark.copyWith(
-        statusBarColor: Colors.transparent,
-      ),
+      value: AppTheme.systemUiOverlayStyle,
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: SafeArea(
-          minimum: const EdgeInsets.only(bottom: 26),
           child: Column(
             children: [
               Expanded(
@@ -65,7 +63,7 @@ class OnboardingScreen extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 26),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

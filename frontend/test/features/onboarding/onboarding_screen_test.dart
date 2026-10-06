@@ -5,6 +5,30 @@ import 'package:keebox/app/theme/app_theme.dart';
 import 'package:keebox/features/onboarding/onboarding_screen.dart';
 
 void main() {
+  testWidgets('bottom action keeps spacing above Android navigation controls', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            padding: const EdgeInsets.only(top: 24, bottom: 26),
+            viewPadding: const EdgeInsets.only(top: 24, bottom: 26),
+          ),
+          child: child!,
+        ),
+        home: OnboardingScreen(onSignIn: () {}, onGetStarted: () {}),
+      ),
+    );
+    final buttonBottom = tester.getBottomLeft(find.byType(FilledButton)).dy;
+    expect(874 - 26 - buttonBottom, greaterThanOrEqualTo(26));
+  });
+
   testWidgets('Sign In and Get Started invoke their respective actions', (
     tester,
   ) async {
