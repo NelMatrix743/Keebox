@@ -1,3 +1,9 @@
 
 # FVM Version Cache
 .fvm/
+
+# Generated Dart tooling files.
+.dart_tool/
+
+# Generated Flutter build output.
+build/
