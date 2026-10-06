@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'package:keebox/app/theme/app_colors.dart';
 import 'package:keebox/app/theme/app_fonts.dart';
@@ -20,12 +21,12 @@ class OnboardingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(10)),
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(10.r),
     );
-    const labelStyle = TextStyle(
+    final labelStyle = TextStyle(
       fontFamily: AppFonts.inter,
-      fontSize: 16,
+      fontSize: 16.sp,
       fontWeight: FontWeight.w600,
     );
 
@@ -39,14 +40,11 @@ class OnboardingScreen extends StatelessWidget {
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final width = math.min(
-                      379.0,
-                      constraints.maxWidth * 379 / 402,
-                    );
+                    final width = math.min(379.w, constraints.maxWidth);
                     return Align(
                       alignment: const Alignment(0, -0.1),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
                         child: Image.asset(
                           AppAssets.onboarding,
                           width: width,
@@ -63,7 +61,7 @@ class OnboardingScreen extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 26),
+                padding: EdgeInsets.fromLTRB(18.w, 0, 18.w, 26.h),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -71,30 +69,27 @@ class OnboardingScreen extends StatelessWidget {
                       onPressed: onSignIn,
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.text,
-                        minimumSize: const Size.fromHeight(50),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
+                        minimumSize: Size.fromHeight(math.max(48, 50.h)),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 24.w,
+                          vertical: 12.h,
                         ),
-                        side: const BorderSide(
-                          color: AppColors.border,
-                          width: 2,
-                        ),
+                        side: BorderSide(color: AppColors.border, width: 2.r),
                         shape: shape,
                         textStyle: labelStyle,
                       ),
                       child: const Text('Sign In'),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16.h),
                     FilledButton(
                       onPressed: onGetStarted,
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.brand,
                         foregroundColor: AppColors.background,
-                        minimumSize: const Size.fromHeight(50),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
+                        minimumSize: Size.fromHeight(math.max(48, 50.h)),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 24.w,
+                          vertical: 12.h,
                         ),
                         shape: shape,
                         textStyle: labelStyle,
@@ -108,11 +103,11 @@ class OnboardingScreen extends StatelessWidget {
                               textAlign: TextAlign.center,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8.w),
                           Image.asset(
                             AppAssets.getStarted,
-                            width: 24,
-                            height: 24,
+                            width: 24.r,
+                            height: 24.r,
                             excludeFromSemantics: true,
                           ),
                         ],
