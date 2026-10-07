@@ -114,10 +114,43 @@
     },
     "access_token": {
       "id": "b5df8f9f-73f6-47b4-8909-4d6a1a930551",
-      "syncValue": "",
+      "syncValue": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkxMzg2NzI1LCJpYXQiOjE3OTEzODY0MjUsImp0aSI6IjFhYjA4MzY5MjAwNzQyNmE5ZmNjZmEwMzkzN2JiNzIxIiwidXNlcl9pZCI6ImQ5ZGU2MGVmLTJhZDktNGYxYy1iNzU0LWE2OTM0NDNmZTZhZSIsInRva2VuX3ZlcnNpb24iOjB9.j-c47QG4H8abzP6sFS_tp0SGiYQ8m13Y9n8zenYv6Dw",
       "type": "secret",
       "isEnabled": true,
       "rank": "aA",
+      "valueSource": {
+        "kind": "inline"
+      },
+      "overrideMeta": null
+    },
+    "user_id": {
+      "id": "896f27f4-6090-43a5-b91c-160cc8180eda",
+      "syncValue": "d9de60ef-2ad9-4f1c-b754-a693443fe6ae",
+      "type": "string",
+      "isEnabled": true,
+      "rank": "hmuy98ipp",
+      "valueSource": {
+        "kind": "inline"
+      },
+      "overrideMeta": null
+    },
+    "KBKEY": {
+      "id": "8d0e80bf-bc55-44d7-a191-ab76ca2d5efd",
+      "syncValue": "KBK-dTl0JVvwZ4Go6ZpudYclZt-TmLGh2bMIrovYCOyBYNJ0",
+      "type": "string",
+      "isEnabled": true,
+      "rank": "hmuy98t7j",
+      "valueSource": {
+        "kind": "inline"
+      },
+      "overrideMeta": null
+    },
+    "refresh_token": {
+      "id": "320209a2-e1e9-4494-b0de-c42da229b7e2",
+      "syncValue": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc5MTQ3MjgyNSwiaWF0IjoxNzkxMzg2NDI1LCJqdGkiOiI0NWE0NjcyOGRhZTU0Yjc4YjhkODIwMGMyNGJmYTY3YyIsInVzZXJfaWQiOiJkOWRlNjBlZi0yYWQ5LTRmMWMtYjc1NC1hNjkzNDQzZmU2YWUiLCJ0b2tlbl92ZXJzaW9uIjowfQ.k8P24Hbdf5XKW6E8CTkH_GOxaFrhZpm6-IFRIuc17RE",
+      "type": "string",
+      "isEnabled": true,
+      "rank": "hmuy99s65",
       "valueSource": {
         "kind": "inline"
       },
