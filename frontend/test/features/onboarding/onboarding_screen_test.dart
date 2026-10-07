@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'package:keebox/app/theme/app_theme.dart';
-import 'package:keebox/features/onboarding/onboarding_screen.dart';
+import 'package:keebox/features/onboarding/screens/onboarding_screen.dart';
 
 void main() {
   testWidgets('bottom action keeps spacing above Android navigation controls', (
