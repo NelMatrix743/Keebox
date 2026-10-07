@@ -3,9 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:keebox/network/api_exception.dart';
 import 'package:keebox/network/api_response.dart';
+import 'package:keebox/network/api_session.dart';
 
 final apiClientProvider = Provider<APIClient>((ref) {
-  final client = APIClient();
+  final client = APIClient(session: ref.watch(apiSessionProvider));
   ref.onDispose(client.close);
   return client;
 });
@@ -13,6 +14,7 @@ final apiClientProvider = Provider<APIClient>((ref) {
 class APIClient {
   APIClient({
     Dio? dio,
+    this.session,
     Duration connectTimeout = const Duration(seconds: 20),
     Duration sendTimeout = const Duration(seconds: 30),
     Duration receiveTimeout = const Duration(seconds: 30),
@@ -26,6 +28,7 @@ class APIClient {
   }
 
   final Dio _dio;
+  final APISession? session;
 
   Future<APIResponse<T>> request<T>(
     String url, {
@@ -35,26 +38,48 @@ class APIClient {
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,
     CancelToken? cancelToken,
+    bool authenticated = false,
   }) async {
+    final token = authenticated ? session?.accessToken : null;
+    if (authenticated && (token == null || token.isEmpty)) {
+      throw const APIException(
+        kind: APIErrorKind.api,
+        code: 'authentication_required',
+        message: 'Authentication is required.',
+      );
+    }
+    final requestHeaders = <String, dynamic>{
+      ...?headers,
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
     Response<dynamic> response;
     try {
       response = await _dio.request<dynamic>(
         url,
         data: data,
         queryParameters: queryParameters,
-        options: Options(method: method, headers: headers),
+        options: Options(
+          method: method,
+          headers: requestHeaders,
+          followRedirects: !authenticated,
+        ),
         cancelToken: cancelToken,
       );
     } on DioException catch (error) {
-      throw _fromDio(error);
+      final failure = _fromDio(error);
+      await _handleInvalidSession(failure, token);
+      throw failure;
     }
     final body = response.data;
     if (body is! Map<String, dynamic> || body['success'] is! bool) {
       throw _invalidResponse(response.statusCode);
     }
     if (body['success'] == false) {
-      throw _backendError(body, response.statusCode) ??
+      final failure =
+          _backendError(body, response.statusCode) ??
           _invalidResponse(response.statusCode);
+      await _handleInvalidSession(failure, token);
+      throw failure;
     }
     if (!body.containsKey('data') || body['error'] != null) {
       throw _invalidResponse(response.statusCode);
@@ -79,6 +104,7 @@ class APIClient {
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,
     CancelToken? cancelToken,
+    bool authenticated = false,
   }) => request<T>(
     url,
     method: 'GET',
@@ -87,6 +113,7 @@ class APIClient {
     queryParameters: queryParameters,
     headers: headers,
     cancelToken: cancelToken,
+    authenticated: authenticated,
   );
 
   Future<APIResponse<T>> post<T>(
@@ -96,6 +123,7 @@ class APIClient {
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,
     CancelToken? cancelToken,
+    bool authenticated = false,
   }) => request<T>(
     url,
     method: 'POST',
@@ -104,6 +132,7 @@ class APIClient {
     queryParameters: queryParameters,
     headers: headers,
     cancelToken: cancelToken,
+    authenticated: authenticated,
   );
 
   Future<APIResponse<T>> put<T>(
@@ -113,6 +142,7 @@ class APIClient {
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,
     CancelToken? cancelToken,
+    bool authenticated = false,
   }) => request<T>(
     url,
     method: 'PUT',
@@ -121,6 +151,7 @@ class APIClient {
     queryParameters: queryParameters,
     headers: headers,
     cancelToken: cancelToken,
+    authenticated: authenticated,
   );
 
   Future<APIResponse<T>> patch<T>(
@@ -130,6 +161,7 @@ class APIClient {
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,
     CancelToken? cancelToken,
+    bool authenticated = false,
   }) => request<T>(
     url,
     method: 'PATCH',
@@ -138,6 +170,7 @@ class APIClient {
     queryParameters: queryParameters,
     headers: headers,
     cancelToken: cancelToken,
+    authenticated: authenticated,
   );
 
   Future<APIResponse<T>> delete<T>(
@@ -147,6 +180,7 @@ class APIClient {
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,
     CancelToken? cancelToken,
+    bool authenticated = false,
   }) => request<T>(
     url,
     method: 'DELETE',
@@ -155,9 +189,22 @@ class APIClient {
     queryParameters: queryParameters,
     headers: headers,
     cancelToken: cancelToken,
+    authenticated: authenticated,
   );
 
   void close() => _dio.close(force: true);
+
+  Future<void> _handleInvalidSession(
+    APIException failure,
+    String? token,
+  ) async {
+    if (token != null &&
+        failure.statusCode == 401 &&
+        (failure.code == 'invalid_session' ||
+            failure.code == 'authentication_required')) {
+      await session?.invalidate(token);
+    }
+  }
 
   static APIException _invalidResponse(int? status) => APIException(
     kind: APIErrorKind.invalidResponse,
