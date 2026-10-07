@@ -70,7 +70,7 @@
     },
     "login_challenge_id": {
       "id": "f5ff90fc-7ddc-4bec-bdd7-43dffed78be9",
-      "syncValue": "",
+      "syncValue": "4a35bca9-58a1-4dda-8fd9-eea8c02d55fc",
       "type": "string",
       "isEnabled": true,
       "rank": "a6",
