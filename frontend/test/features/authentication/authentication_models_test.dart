@@ -1,11 +1,25 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keebox/features/authentication/models/authentication_result.dart';
+import 'package:keebox/features/authentication/models/authentication_session.dart';
 import 'package:keebox/features/authentication/models/login_challenge.dart';
 import 'package:keebox/features/authentication/models/login_request.dart';
 import 'package:keebox/features/authentication/models/login_pin_request.dart';
 import 'package:keebox/features/authentication/models/logout_response.dart';
 
 void main() {
+  test('session serializes only the account ID and tokens', () {
+    final session = AuthenticationSession.fromJson({
+      'user_id': 'user-id',
+      'access_token': 'access-secret',
+      'refresh_token': 'refresh-secret',
+    });
+    expect(session.toJson(), {
+      'user_id': 'user-id',
+      'access_token': 'access-secret',
+      'refresh_token': 'refresh-secret',
+    });
+  });
+
   test('login request trims email while preserving password whitespace', () {
     expect(
       const LoginRequest(
