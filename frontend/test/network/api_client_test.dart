@@ -5,18 +5,143 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keebox/network/api_client.dart';
 import 'package:keebox/network/api_exception.dart';
+import 'package:keebox/network/api_session.dart';
 
 void main() {
   late Dio dio;
   late _Adapter adapter;
   late APIClient client;
+  late APISession session;
+  late int invalidations;
 
   setUp(() {
     adapter = _Adapter();
     dio = Dio()..httpClientAdapter = adapter;
-    client = APIClient(dio: dio);
+    invalidations = 0;
+    session = APISession()
+      ..set(
+        'current-token',
+        onInvalidSession: () async {
+          invalidations++;
+        },
+      );
+    client = APIClient(dio: dio, session: session);
   });
   tearDown(() => client.close());
+
+  test(
+    'protected request attaches current token while public request does not',
+    () async {
+      await client.get<void>(
+        'https://example.com/api/private',
+        authenticated: true,
+        decode: (_) {},
+      );
+      expect(adapter.request!.headers['Authorization'], 'Bearer current-token');
+      await client.get<void>('https://example.com/api/public', decode: (_) {});
+      expect(adapter.request!.headers['Authorization'], isNull);
+    },
+  );
+
+  test('protected request without a token fails before sending', () async {
+    session.clear();
+    await expectLater(
+      client.get<void>(
+        'https://example.com/api/private',
+        authenticated: true,
+        decode: (_) {},
+      ),
+      throwsA(
+        isA<APIException>().having(
+          (e) => e.code,
+          'code',
+          'authentication_required',
+        ),
+      ),
+    );
+    expect(adapter.calls, 0);
+  });
+
+  test(
+    'invalid session from a protected request invalidates current token',
+    () async {
+      adapter.status = 401;
+      adapter.body = {
+        'success': false,
+        'data': null,
+        'error': {'code': 'invalid_session', 'message': 'Session invalid.'},
+        'meta': null,
+      };
+      await expectLater(
+        client.get<void>(
+          'https://example.com/api/private',
+          authenticated: true,
+          decode: (_) {},
+        ),
+        throwsA(isA<APIException>()),
+      );
+      expect(session.accessToken, isNull);
+      expect(invalidations, 1);
+    },
+  );
+
+  test(
+    'public credential failure does not invalidate authenticated session',
+    () async {
+      adapter.status = 401;
+      adapter.body = {
+        'success': false,
+        'data': null,
+        'error': {
+          'code': 'invalid_login_credentials',
+          'message': 'Credentials invalid.',
+        },
+        'meta': null,
+      };
+      await expectLater(
+        client.post<void>('https://example.com/api/auth/login', decode: (_) {}),
+        throwsA(isA<APIException>()),
+      );
+      expect(session.accessToken, 'current-token');
+      expect(invalidations, 0);
+    },
+  );
+
+  test(
+    'late invalid-session response cannot invalidate a replacement token',
+    () async {
+      adapter.status = 401;
+      adapter.body = {
+        'success': false,
+        'data': null,
+        'error': {'code': 'invalid_session', 'message': 'Session invalid.'},
+        'meta': null,
+      };
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onError: (error, handler) {
+            session.set(
+              'replacement-token',
+              onInvalidSession: () async {
+                invalidations++;
+              },
+            );
+            handler.next(error);
+          },
+        ),
+      );
+      await expectLater(
+        client.get<void>(
+          'https://example.com/api/private',
+          authenticated: true,
+          decode: (_) {},
+        ),
+        throwsA(isA<APIException>()),
+      );
+      expect(session.accessToken, 'replacement-token');
+      expect(invalidations, 0);
+    },
+  );
 
   test(
     'sends JSON payload, query and headers and decodes envelope data',
