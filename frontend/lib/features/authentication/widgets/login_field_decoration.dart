@@ -16,7 +16,8 @@ InputDecoration loginFieldDecoration({
     color: AppColors.mutedText,
   ),
   filled: true,
-  fillColor: AppColors.inputBackground,
+  fillColor: AppColors.border,
+  isDense: true,
   contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 14.h),
   prefixIcon: Padding(
     padding: EdgeInsets.all(10.r),
@@ -27,11 +28,11 @@ InputDecoration loginFieldDecoration({
       excludeFromSemantics: true,
     ),
   ),
-  prefixIconConstraints: BoxConstraints(minWidth: 48, minHeight: 48),
+  prefixIconConstraints: BoxConstraints(minWidth: 48, minHeight: 55.h),
   suffixIcon: suffix,
   enabledBorder: OutlineInputBorder(
     borderRadius: BorderRadius.circular(10.r),
-    borderSide: BorderSide(color: AppColors.border, width: 2.r),
+    borderSide: BorderSide.none,
   ),
   focusedBorder: OutlineInputBorder(
     borderRadius: BorderRadius.circular(10.r),
@@ -39,11 +40,11 @@ InputDecoration loginFieldDecoration({
   ),
   errorBorder: OutlineInputBorder(
     borderRadius: BorderRadius.circular(10.r),
-    borderSide: BorderSide(color: Colors.red, width: 2.r),
+    borderSide: BorderSide.none,
   ),
   focusedErrorBorder: OutlineInputBorder(
     borderRadius: BorderRadius.circular(10.r),
-    borderSide: BorderSide(color: Colors.red, width: 2.r),
+    borderSide: BorderSide(color: AppColors.brand, width: 2.r),
   ),
 );
 
