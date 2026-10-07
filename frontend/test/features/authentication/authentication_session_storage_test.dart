@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:keebox/features/authentication/models/authenticated_user.dart';
 import 'package:keebox/features/authentication/models/authentication_credentials.dart';
-import 'package:keebox/features/authentication/storage/authenticated_user_storage.dart';
+import 'package:keebox/features/authentication/storage/user_storage.dart';
 import 'package:keebox/features/authentication/storage/authentication_session_storage.dart';
 
 void main() {

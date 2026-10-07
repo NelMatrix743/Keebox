@@ -2,7 +2,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:keebox/features/authentication/models/authenticated_user.dart';
-import 'package:keebox/features/authentication/storage/authenticated_user_storage.dart';
+import 'package:keebox/features/authentication/storage/user_storage.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
