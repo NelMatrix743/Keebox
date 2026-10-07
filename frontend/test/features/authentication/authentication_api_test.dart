@@ -46,7 +46,7 @@ void main() {
       expect(session.user.email, 'user@example.com');
       expect(session.accessToken, 'access-token');
       expect(session.refreshToken, 'refresh-token');
-      expect(session.kbkey, 'key');
+      expect(session.user.kbkey, 'key');
       expect(adapter.requests.last.uri.toString(), APIEndpoints.loginVerifyPin);
       expect(adapter.requests.last.data, {
         'login_challenge_id': 'challenge-id',

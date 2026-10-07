@@ -55,7 +55,7 @@ void main() {
     expect(session.user.email, 'ada@example.com');
     expect(session.accessToken, 'access-secret');
     expect(session.refreshToken, 'refresh-secret');
-    expect(session.kbkey, 'key-secret');
+    expect(session.user.kbkey, 'key-secret');
     expect(session.message, 'Login completed successfully.');
   });
 
