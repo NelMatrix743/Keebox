@@ -44,8 +44,8 @@ void main() {
         ),
       );
       expect(session.user.email, 'user@example.com');
-      expect(session.accessToken, 'access-token');
-      expect(session.refreshToken, 'refresh-token');
+      expect(session.session.accessToken, 'access-token');
+      expect(session.session.refreshToken, 'refresh-token');
       expect(session.user.kbkey, 'key');
       expect(adapter.requests.last.uri.toString(), APIEndpoints.loginVerifyPin);
       expect(adapter.requests.last.data, {
@@ -54,7 +54,7 @@ void main() {
       });
       expect(adapter.requests.last.headers['Authorization'], isNull);
 
-      final result = await api.logout(accessToken: session.accessToken);
+      final result = await api.logout(accessToken: session.session.accessToken);
       expect(result.message, 'Logged out successfully.');
       expect(adapter.requests.last.uri.toString(), APIEndpoints.logout);
       expect(
