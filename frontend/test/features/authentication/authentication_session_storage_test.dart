@@ -2,7 +2,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:keebox/features/authentication/models/authenticated_user.dart';
-import 'package:keebox/features/authentication/models/authentication_credentials.dart';
+import 'package:keebox/features/authentication/models/authentication_session.dart';
 import 'package:keebox/features/authentication/storage/user_storage.dart';
 import 'package:keebox/features/authentication/storage/auth_session_storage.dart';
 
@@ -71,8 +71,8 @@ void main() {
   });
 }
 
-AuthenticationCredentials _credentials({String accessToken = 'access-1'}) =>
-    AuthenticationCredentials(
+AuthenticationSession _credentials({String accessToken = 'access-1'}) =>
+    AuthenticationSession(
       userId: 'user-1',
       accessToken: accessToken,
       refreshToken: 'refresh-1',
