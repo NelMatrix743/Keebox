@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import 'package:keebox/features/authentication/models/authentication_credentials.dart';
+import 'package:keebox/features/authentication/models/authentication_session.dart';
 import 'package:keebox/storage/secure_storage.dart';
 
 final authenticationSessionStorageProvider =
@@ -21,21 +21,20 @@ class AuthenticationSessionStorage {
   final FlutterSecureStorage storage;
   Future<void> _pending = Future<void>.value();
 
-  Future<void> save(AuthenticationCredentials credentials) =>
-      _serialize(() async {
-        await storage.write(
-          key: _sessionKey,
-          value: jsonEncode(credentials.toJson()),
-        );
-      });
+  Future<void> save(AuthenticationSession credentials) => _serialize(() async {
+    await storage.write(
+      key: _sessionKey,
+      value: jsonEncode(credentials.toJson()),
+    );
+  });
 
-  Future<AuthenticationCredentials?> read() => _serialize(() async {
+  Future<AuthenticationSession?> read() => _serialize(() async {
     final raw = await storage.read(key: _sessionKey);
     if (raw == null) {
       return null;
     }
     try {
-      return AuthenticationCredentials.fromJson(jsonDecode(raw));
+      return AuthenticationSession.fromJson(jsonDecode(raw));
     } on FormatException {
       await storage.delete(key: _sessionKey);
       return null;

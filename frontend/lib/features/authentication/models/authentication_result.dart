@@ -1,5 +1,5 @@
 import 'package:keebox/features/authentication/models/authenticated_user.dart';
-import 'package:keebox/features/authentication/models/authentication_credentials.dart';
+import 'package:keebox/features/authentication/models/authentication_session.dart';
 import 'package:keebox/features/authentication/models/authentication_json.dart';
 
 class AuthenticationResult {
@@ -10,7 +10,7 @@ class AuthenticationResult {
   });
 
   final AuthenticatedUser user;
-  final AuthenticationCredentials session;
+  final AuthenticationSession session;
   final String message;
 
   factory AuthenticationResult.fromJson(Object? data) {
@@ -18,7 +18,7 @@ class AuthenticationResult {
     requireAuthenticationStatus(json, 'completed');
     return AuthenticationResult(
       user: AuthenticatedUser.fromJson(json),
-      session: AuthenticationCredentials.fromJson(json),
+      session: AuthenticationSession.fromJson(json),
       message: authenticationString(json, 'message'),
     );
   }
