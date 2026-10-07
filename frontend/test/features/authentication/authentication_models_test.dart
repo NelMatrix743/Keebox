@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:keebox/features/authentication/models/authentication_session.dart';
+import 'package:keebox/features/authentication/models/authentication_result.dart';
 import 'package:keebox/features/authentication/models/login_challenge.dart';
 import 'package:keebox/features/authentication/models/login_request.dart';
 import 'package:keebox/features/authentication/models/login_pin_request.dart';
@@ -48,20 +48,20 @@ void main() {
   });
 
   test('completed authentication decodes user and session credentials', () {
-    final session = AuthenticationSession.fromJson(_session());
+    final session = AuthenticationResult.fromJson(_session());
     expect(session.user.id, 'user-id');
     expect(session.user.firstName, 'Ada');
     expect(session.user.lastName, 'Lovelace');
     expect(session.user.email, 'ada@example.com');
-    expect(session.accessToken, 'access-secret');
-    expect(session.refreshToken, 'refresh-secret');
+    expect(session.session.accessToken, 'access-secret');
+    expect(session.session.refreshToken, 'refresh-secret');
     expect(session.user.kbkey, 'key-secret');
     expect(session.message, 'Login completed successfully.');
   });
 
   test('password-verified payload cannot become an authenticated session', () {
     expect(
-      () => AuthenticationSession.fromJson(_challenge()),
+      () => AuthenticationResult.fromJson(_challenge()),
       throwsFormatException,
     );
   });
@@ -70,11 +70,11 @@ void main() {
     for (final key in _session().keys) {
       final missing = _session()..remove(key);
       expect(
-        () => AuthenticationSession.fromJson(missing),
+        () => AuthenticationResult.fromJson(missing),
         throwsFormatException,
       );
       expect(
-        () => AuthenticationSession.fromJson({..._session(), key: 123}),
+        () => AuthenticationResult.fromJson({..._session(), key: 123}),
         throwsFormatException,
       );
     }
