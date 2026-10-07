@@ -14,4 +14,9 @@ abstract final class AppRoutes {
   // forgot-password route
   static const forgotPassword = '/forgot-password';
   static const forgotPasswordName = 'forgot-password';
+
+  static const verifyPin = '/verify-pin';
+  static const verifyPinName = 'verify-pin';
+  static const home = '/home';
+  static const homeName = 'home';
 }
