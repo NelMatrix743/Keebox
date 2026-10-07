@@ -3,6 +3,10 @@ abstract final class EnvironmentConfig {
 
   static final String apiBaseUrl = _resolveApiBaseUrl();
 
+  static void validate() {
+    _resolveApiBaseUrl();
+  }
+
   static String _resolveApiBaseUrl() {
     final value = _configuredApiBaseUrl.trim();
     if (value.isEmpty) {

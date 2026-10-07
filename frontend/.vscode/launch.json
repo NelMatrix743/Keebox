@@ -7,7 +7,8 @@
       "request": "launch",
       "cwd": "${workspaceFolder}",
       "program": "${workspaceFolder}/lib/main.dart",
-      "flutterMode": "debug"
+      "flutterMode": "debug",
+      "toolArgs": ["--dart-define=API_BASE_URL=http://127.0.0.1:7000/api"]
     },
     {
       "name": "Keebox (profile)",
@@ -15,7 +16,8 @@
       "request": "launch",
       "cwd": "${workspaceFolder}",
       "program": "${workspaceFolder}/lib/main.dart",
-      "flutterMode": "profile"
+      "flutterMode": "profile",
+      "toolArgs": ["--dart-define=API_BASE_URL=http://127.0.0.1:7000/api"]
     },
     {
       "name": "Keebox (release)",
@@ -23,7 +25,8 @@
       "request": "launch",
       "cwd": "${workspaceFolder}",
       "program": "${workspaceFolder}/lib/main.dart",
-      "flutterMode": "release"
+      "flutterMode": "release",
+      "toolArgs": ["--dart-define=API_BASE_URL=http://127.0.0.1:7000/api"]
     }
   ]
 }
