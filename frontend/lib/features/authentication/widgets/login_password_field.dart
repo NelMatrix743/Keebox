@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:keebox/app/theme/app_colors.dart';
 import 'package:keebox/assets/app_assets.dart';
 import 'package:keebox/features/authentication/widgets/login_field_decoration.dart';
 
@@ -39,21 +38,18 @@ class _LoginPasswordFieldState extends State<LoginPasswordField> {
         decoration: loginFieldDecoration(
           hint: 'Your password',
           icon: AppAssets.password,
-          suffix: IconButton(
-            tooltip: _obscure ? 'Show password' : 'Hide password',
-            onPressed: () => setState(() => _obscure = !_obscure),
-            icon: _obscure
-                ? Image.asset(
-                    AppAssets.passwordHidden,
-                    width: 24.r,
-                    height: 24.r,
-                    excludeFromSemantics: true,
-                  )
-                : Icon(
-                    Icons.visibility_outlined,
-                    color: AppColors.mutedText,
-                    size: 24.r,
-                  ),
+          suffix: Padding(
+            padding: EdgeInsetsDirectional.only(end: 8.w),
+            child: IconButton(
+              tooltip: _obscure ? 'Show password' : 'Hide password',
+              onPressed: () => setState(() => _obscure = !_obscure),
+              icon: Image.asset(
+                _obscure ? AppAssets.passwordHidden : AppAssets.passwordVisible,
+                width: 24.r,
+                height: 24.r,
+                excludeFromSemantics: true,
+              ),
+            ),
           ),
         ),
         validator: (value) =>
