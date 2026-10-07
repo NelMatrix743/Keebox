@@ -70,6 +70,7 @@ flutter:
     - assets/icons/email.png
     - assets/icons/password.png
     - assets/icons/password_hidden.png
+    - assets/icons/password_visible.png
     - assets/icons/arrow_right.png
     - assets/logos/keebox_logo_brand.png
 
