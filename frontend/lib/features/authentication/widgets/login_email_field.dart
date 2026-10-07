@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:keebox/assets/app_assets.dart';
-import 'package:keebox/features/authentication/login/widgets/login_field_decoration.dart';
+import 'package:keebox/features/authentication/widgets/login_field_decoration.dart';
 
 class LoginEmailField extends StatelessWidget {
   const LoginEmailField({required this.controller, super.key});

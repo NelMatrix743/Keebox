@@ -2,12 +2,12 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:keebox/features/authentication/login/widgets/login_header.dart';
-import 'package:keebox/features/authentication/login/widgets/login_email_field.dart';
-import 'package:keebox/features/authentication/login/widgets/login_password_field.dart';
-import 'package:keebox/features/authentication/login/widgets/forgot_password_link.dart';
-import 'package:keebox/features/authentication/login/widgets/login_button.dart';
-import 'package:keebox/features/authentication/login/widgets/registration_footer.dart';
+import 'package:keebox/features/authentication/widgets/login_header.dart';
+import 'package:keebox/features/authentication/widgets/login_email_field.dart';
+import 'package:keebox/features/authentication/widgets/login_password_field.dart';
+import 'package:keebox/features/authentication/widgets/forgot_password_link.dart';
+import 'package:keebox/features/authentication/widgets/login_button.dart';
+import 'package:keebox/features/authentication/widgets/registration_footer.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({

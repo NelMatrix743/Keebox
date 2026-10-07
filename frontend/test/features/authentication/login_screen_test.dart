@@ -3,7 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:keebox/app/theme/app_theme.dart';
-import 'package:keebox/features/authentication/login/login_screen.dart';
+import 'package:keebox/features/authentication/screens/login_screen.dart';
 
 void main() {
   testWidgets('login requires an email and password before submitting', (
