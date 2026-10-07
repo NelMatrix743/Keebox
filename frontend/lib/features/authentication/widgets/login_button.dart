@@ -7,16 +7,11 @@ import 'package:keebox/app/theme/app_fonts.dart';
 import 'package:keebox/assets/app_assets.dart';
 
 class LoginButton extends StatelessWidget {
-  const LoginButton({
-    required this.onPressed,
-    this.isLoading = false,
-    super.key,
-  });
-  final VoidCallback? onPressed;
-  final bool isLoading;
+  const LoginButton({required this.onPressed, super.key});
+  final VoidCallback onPressed;
   @override
   Widget build(BuildContext context) => FilledButton(
-    onPressed: isLoading ? null : onPressed,
+    onPressed: onPressed,
     style: FilledButton.styleFrom(
       backgroundColor: AppColors.brand,
       foregroundColor: Colors.white,
@@ -29,27 +24,18 @@ class LoginButton extends StatelessWidget {
         fontWeight: FontWeight.w600,
       ),
     ),
-    child: isLoading
-        ? SizedBox(
-            width: 24.r,
-            height: 24.r,
-            child: const CircularProgressIndicator(
-              strokeWidth: 2,
-              semanticsLabel: 'Logging in',
-            ),
-          )
-        : Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Flexible(child: Text('Login')),
-              SizedBox(width: 4.w),
-              Image.asset(
-                AppAssets.arrowRight,
-                width: 30.r,
-                height: 30.r,
-                excludeFromSemantics: true,
-              ),
-            ],
-          ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Flexible(child: Text('Login')),
+        SizedBox(width: 4.w),
+        Image.asset(
+          AppAssets.arrowRight,
+          width: 30.r,
+          height: 30.r,
+          excludeFromSemantics: true,
+        ),
+      ],
+    ),
   );
 }
