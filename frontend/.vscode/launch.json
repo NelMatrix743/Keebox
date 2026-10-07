@@ -3,6 +3,7 @@
   "configurations": [
     {
       "name": "Keebox (debug)",
+      "templateFor": "",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}",
