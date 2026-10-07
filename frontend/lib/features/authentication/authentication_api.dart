@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:keebox/features/authentication/models/authentication_session.dart';
+import 'package:keebox/features/authentication/models/authentication_result.dart';
 import 'package:keebox/features/authentication/models/login_challenge.dart';
 import 'package:keebox/features/authentication/models/login_pin_request.dart';
 import 'package:keebox/features/authentication/models/login_request.dart';
@@ -31,14 +31,14 @@ class AuthenticationAPI {
     return response.data;
   }
 
-  Future<AuthenticationSession> verifyPin(
+  Future<AuthenticationResult> verifyPin(
     LoginPinRequest request, {
     CancelToken? cancelToken,
   }) async {
-    final response = await client.post<AuthenticationSession>(
+    final response = await client.post<AuthenticationResult>(
       APIEndpoints.loginVerifyPin,
       data: request.toJson(),
-      decode: AuthenticationSession.fromJson,
+      decode: AuthenticationResult.fromJson,
       cancelToken: cancelToken,
     );
     return response.data;
