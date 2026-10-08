@@ -204,9 +204,9 @@ class RegistrationCompletionServiceTests(TestCase):
         self.assertIsNone(challenge.completed_at)
         self.assertFalse(User.objects.exists())
 
-    def test_complete_registration_requires_a_lock_pin(self: Self) -> None:
+    def test_complete_registration_requires_a_five_digit_lock_pin(self: Self) -> None:
         """
-        Verify a permanent user cannot be created without a lock PIN.
+        Verify malformed PINs leave registration available without creating a user.
 
         Args:
             self: Current test case instance.
@@ -221,8 +221,9 @@ class RegistrationCompletionServiceTests(TestCase):
             self._create_otp_verified_registration()
         )
 
-        with self.assertRaises(ValueError):
-            RegistrationService.complete_registration(challenge.id, "")
+        for pin in ("", "1234", "123456", "abcde", "１２３４５", "12345\n"):
+            with self.subTest(pin=pin), self.assertRaises(ValueError):
+                RegistrationService.complete_registration(challenge.id, pin)
 
         challenge.refresh_from_db()
         self.assertEqual(
