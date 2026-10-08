@@ -8,6 +8,58 @@ from apps.core.pin import encrypt_lock_pin, verify_lock_pin
 
 @override_settings(KEEBOX_PIN_PEPPER="test-pin-pepper")
 class LockPINSecurityTests(SimpleTestCase):
+    def test_five_digit_pin_preserves_leading_zeroes(self: Self) -> None:
+        """
+        Verify a five-digit PIN retains every digit during hashing and verification.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when leading zeroes are lost or ignored.
+        """
+        encoded_pin: str = encrypt_lock_pin("00123")
+
+        self.assertTrue(verify_lock_pin("00123", encoded_pin))
+        self.assertFalse(verify_lock_pin("123", encoded_pin))
+
+    def test_invalid_pin_formats_cannot_be_hashed_or_verified(self: Self) -> None:
+        """
+        Verify PIN protection accepts exactly five ASCII digits.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a malformed PIN is accepted.
+        """
+        encoded_pin: str = encrypt_lock_pin("00123")
+        invalid_pins: tuple[str, ...] = (
+            "",
+            "1234",
+            "123456",
+            "abcde",
+            "12a45",
+            "１２３４５",
+            "١٢٣٤٥",
+            " 12345",
+            "12345 ",
+            "12345\n",
+            "12 45",
+        )
+
+        for pin in invalid_pins:
+            with self.subTest(pin=pin):
+                with self.assertRaises(ValueError):
+                    encrypt_lock_pin(pin)
+                self.assertFalse(verify_lock_pin(pin, encoded_pin))
+
     def test_encrypt_lock_pin_returns_an_argon2id_verifier(self: Self) -> None:
         """
         Verify lock PIN encryption returns a non-reversible Argon2id verifier.
