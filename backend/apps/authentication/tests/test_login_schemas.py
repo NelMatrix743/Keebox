@@ -126,7 +126,7 @@ class LoginSchemaTests(SimpleTestCase):
         self: Self,
     ) -> None:
         """
-        Verify a PIN-verification request requires a UUID and nonempty PIN.
+        Verify a PIN-verification request requires a UUID and five-digit PIN.
 
         Args:
             self: Current test case instance.

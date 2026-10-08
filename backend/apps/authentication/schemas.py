@@ -201,7 +201,13 @@ class LoginPINVerificationRequest(Schema):
     model_config = ConfigDict(extra="forbid")
 
     login_challenge_id: UUID
-    pin: str = Field(min_length=1, strict=True)
+    pin: str = Field(
+        min_length=AUTH_PIN_LENGTH,
+        max_length=AUTH_PIN_LENGTH,
+        pattern=AUTH_PIN_PATTERN,
+        strict=True,
+        description="Exactly five ASCII digits; leading zeroes are preserved.",
+    )
 
 
 class LoginCompletedResponse(AuthenticationSuccessResponse):

@@ -18,6 +18,35 @@ from apps.core.pin import encrypt_lock_pin
     KEEBOX_PIN_PEPPER="test-pin-pepper",
 )
 class LoginPINAPITests(TestCase):
+    def test_malformed_pin_does_not_consume_login_attempts(self: Self) -> None:
+        """
+        Verify invalid PIN formats are rejected before login state is changed.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when malformed input consumes an attempt.
+        """
+        challenge: LoginChallenge
+        _expected_kbkey: str
+        challenge, _expected_kbkey = self._create_login_challenge()
+
+        for pin in ("", "1234", "123456", "abcde", "１２３４５", "12345\n"):
+            with self.subTest(pin=pin):
+                response: Any = self._verify_pin(str(challenge.id), pin)
+                self.assertEqual(response.status_code, 422)
+                self.assertEqual(response.json()["error"]["code"], "validation_error")
+
+        challenge.refresh_from_db()
+        user: User = User.objects.get(pk=challenge.user_id)
+        self.assertEqual(challenge.status, LoginStatus.PASSWORD_VERIFIED)
+        self.assertEqual(user.pin_failed_attempts, 0)
+        self.assertIsNone(user.pin_locked_until)
+
     def _create_user(self: Self) -> tuple[User, str]:
         """
         Create a user with a protected lock PIN and KBKey.
