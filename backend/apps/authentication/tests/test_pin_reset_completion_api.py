@@ -232,7 +232,7 @@ class PINResetCompletionAPITests(TestCase):
         self.assertEqual(self.user.pin_version, 3)
         self.assertEqual(self.user.token_version, 1)
 
-    def test_empty_pin_is_rejected_without_consuming_the_reset(self: Self) -> None:
+    def test_invalid_pin_is_rejected_without_consuming_the_reset(self: Self) -> None:
         """
         Verify invalid PIN input cannot complete the verified challenge.
 
@@ -243,15 +243,18 @@ class PINResetCompletionAPITests(TestCase):
             None: This test does not return a value.
 
         Raises:
-            AssertionError: Raised when an empty PIN changes security state.
+            AssertionError: Raised when a malformed PIN changes security state.
         """
         challenge: ResetChallenge = self._verified_challenge(ResetType.PIN)
 
-        response: HttpResponse = self._post_completion(str(challenge.id), "")
+        for pin in ("", "1234", "123456", "abcde", "１２３４５", "12345\n"):
+            with self.subTest(pin=pin):
+                response: HttpResponse = self._post_completion(str(challenge.id), pin)
+                self.assertEqual(response.status_code, 422)
+                self.assertEqual(response.json()["error"]["code"], "validation_error")
         challenge.refresh_from_db()
         self.user.refresh_from_db()
 
-        self.assertEqual(response.status_code, 422)
         self.assertEqual(challenge.status, ResetStatus.OTP_VERIFIED)
         self.assertTrue(verify_lock_pin("12345", self.user.pin_hash))
         self.assertEqual(self.user.pin_version, 2)

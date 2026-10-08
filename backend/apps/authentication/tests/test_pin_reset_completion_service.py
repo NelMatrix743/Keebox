@@ -206,7 +206,7 @@ class PINResetCompletionServiceTests(TestCase):
         self.assertEqual(self.user.pin_version, 3)
         self.assertEqual(self.user.token_version, 1)
 
-    def test_empty_pin_does_not_consume_the_verified_challenge(
+    def test_invalid_pin_does_not_consume_the_verified_challenge(
         self: Self,
     ) -> None:
         """
@@ -223,8 +223,9 @@ class PINResetCompletionServiceTests(TestCase):
         """
         challenge: ResetChallenge = self._start_and_verify(ResetType.PIN)
 
-        with self.assertRaises(ValueError):
-            ResetService.complete_pin_reset(challenge.id, "")
+        for pin in ("", "1234", "123456", "abcde", "１２３４５", "12345\n"):
+            with self.subTest(pin=pin), self.assertRaises(ValueError):
+                ResetService.complete_pin_reset(challenge.id, pin)
 
         challenge.refresh_from_db()
         self.user.refresh_from_db()
