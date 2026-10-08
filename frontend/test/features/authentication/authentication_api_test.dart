@@ -40,7 +40,7 @@ void main() {
       final session = await api.verifyPin(
         LoginPinRequest(
           loginChallengeId: challenge.loginChallengeId,
-          pin: '0012',
+          pin: '00123',
         ),
       );
       expect(session.user.email, 'user@example.com');
@@ -50,7 +50,7 @@ void main() {
       expect(adapter.requests.last.uri.toString(), APIEndpoints.loginVerifyPin);
       expect(adapter.requests.last.data, {
         'login_challenge_id': 'challenge-id',
-        'pin': '0012',
+        'pin': '00123',
       });
       expect(adapter.requests.last.headers['Authorization'], isNull);
 
@@ -84,7 +84,7 @@ void main() {
       adapter.statusCode = 400;
       await expectLater(
         api.verifyPin(
-          const LoginPinRequest(loginChallengeId: 'challenge-id', pin: '0000'),
+          const LoginPinRequest(loginChallengeId: 'challenge-id', pin: '00000'),
         ),
         throwsA(
           isA<APIException>()
@@ -102,7 +102,7 @@ void main() {
       adapter.malformedSession = true;
       await expectLater(
         api.verifyPin(
-          const LoginPinRequest(loginChallengeId: 'challenge-id', pin: '0012'),
+          const LoginPinRequest(loginChallengeId: 'challenge-id', pin: '00123'),
         ),
         throwsA(
           isA<APIException>().having(
