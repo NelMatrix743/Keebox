@@ -67,7 +67,7 @@ class RegistrationCompletionServiceTests(TestCase):
         kbkey: str
         user, kbkey = RegistrationService.complete_registration(
             challenge.id,
-            "123456",
+            "12345",
         )
 
         challenge.refresh_from_db()
@@ -79,7 +79,7 @@ class RegistrationCompletionServiceTests(TestCase):
         self.assertEqual(user.password, password_hash)
         self.assertTrue(user.check_password("correct horse battery staple"))
         self.assertIsNotNone(user.pin_hash)
-        self.assertTrue(verify_lock_pin("123456", user.pin_hash))
+        self.assertTrue(verify_lock_pin("12345", user.pin_hash))
         self.assertTrue(validate_kbkey(kbkey))
         self.assertIsNotNone(user.encrypted_kbkey)
         self.assertIsNotNone(user.kbkey_nonce)
@@ -96,7 +96,7 @@ class RegistrationCompletionServiceTests(TestCase):
         self.assertIsNotNone(challenge.completed_at)
 
         with self.assertRaises(InvalidRegistrationStateError):
-            RegistrationService.complete_registration(challenge.id, "123456")
+            RegistrationService.complete_registration(challenge.id, "12345")
 
         self.assertEqual(User.objects.count(), 1)
 
@@ -133,7 +133,7 @@ class RegistrationCompletionServiceTests(TestCase):
                 with self.assertRaises(InvalidRegistrationStateError):
                     RegistrationService.complete_registration(
                         challenge.id,
-                        "123456",
+                        "12345",
                     )
 
         self.assertFalse(User.objects.exists())
@@ -160,10 +160,10 @@ class RegistrationCompletionServiceTests(TestCase):
         challenge.save(update_fields=["expires_at", "updated_at"])
 
         with self.assertRaises(InvalidRegistrationStateError):
-            RegistrationService.complete_registration(challenge.id, "123456")
+            RegistrationService.complete_registration(challenge.id, "12345")
 
         with self.assertRaises(InvalidRegistrationStateError):
-            RegistrationService.complete_registration(uuid4(), "123456")
+            RegistrationService.complete_registration(uuid4(), "12345")
 
         self.assertFalse(User.objects.exists())
 
@@ -194,7 +194,7 @@ class RegistrationCompletionServiceTests(TestCase):
             ),
             self.assertRaises(RuntimeError),
         ):
-            RegistrationService.complete_registration(challenge.id, "123456")
+            RegistrationService.complete_registration(challenge.id, "12345")
 
         challenge.refresh_from_db()
         self.assertEqual(

@@ -48,7 +48,7 @@ class LoginPINAPITests(TestCase):
             password="correct horse battery staple",
             first_name="Nelson",
             last_name="Ubochiegbu",
-            pin_hash=encrypt_lock_pin("123456"),
+            pin_hash=encrypt_lock_pin("12345"),
             encrypted_kbkey=encrypted_kbkey,
             kbkey_nonce=kbkey_nonce,
             kbkey_encryption_version=kbkey_encryption_version,
@@ -116,7 +116,7 @@ class LoginPINAPITests(TestCase):
         expected_kbkey: str
         login_challenge, expected_kbkey = self._create_login_challenge()
 
-        response: Any = self._verify_pin(str(login_challenge.id), "123456")
+        response: Any = self._verify_pin(str(login_challenge.id), "12345")
         response_body: dict[str, Any] = response.json()
         response_data: dict[str, Any] = response_body["data"]
         refresh_token: RefreshToken = RefreshToken(response_data["refresh_token"])
@@ -149,7 +149,7 @@ class LoginPINAPITests(TestCase):
         _expected_kbkey: str
         login_challenge, _expected_kbkey = self._create_login_challenge()
 
-        response: Any = self._verify_pin(str(login_challenge.id), "654321")
+        response: Any = self._verify_pin(str(login_challenge.id), "54321")
         response_body: dict[str, Any] = response.json()
 
         self.assertEqual(response.status_code, 400)
@@ -178,10 +178,10 @@ class LoginPINAPITests(TestCase):
         login_challenge, _expected_kbkey = self._create_login_challenge()
 
         for _ in range(4):
-            response: Any = self._verify_pin(str(login_challenge.id), "654321")
+            response: Any = self._verify_pin(str(login_challenge.id), "54321")
             self.assertEqual(response.status_code, 400)
 
-        response = self._verify_pin(str(login_challenge.id), "654321")
+        response = self._verify_pin(str(login_challenge.id), "54321")
         response_body: dict[str, Any] = response.json()
 
         login_challenge.refresh_from_db()
@@ -213,7 +213,7 @@ class LoginPINAPITests(TestCase):
         login_challenge.expires_at = timezone.now() - timedelta(microseconds=1)
         login_challenge.save(update_fields=["expires_at", "updated_at"])
 
-        response: Any = self._verify_pin(str(login_challenge.id), "123456")
+        response: Any = self._verify_pin(str(login_challenge.id), "12345")
         response_body: dict[str, Any] = response.json()
 
         login_challenge.refresh_from_db()

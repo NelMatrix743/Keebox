@@ -52,7 +52,7 @@ class LoginPINServiceTests(TestCase):
             password="correct horse battery staple",
             first_name="Nelson",
             last_name="Ubochiegbu",
-            pin_hash=encrypt_lock_pin("123456"),
+            pin_hash=encrypt_lock_pin("12345"),
             encrypted_kbkey=encrypted_kbkey,
             kbkey_nonce=kbkey_nonce,
             kbkey_encryption_version=kbkey_encryption_version,
@@ -96,7 +96,7 @@ class LoginPINServiceTests(TestCase):
 
         user: User
         kbkey: str
-        user, kbkey = LoginService.verify_pin(challenge.id, "123456")
+        user, kbkey = LoginService.verify_pin(challenge.id, "12345")
 
         challenge.refresh_from_db()
         user.refresh_from_db()
@@ -124,7 +124,7 @@ class LoginPINServiceTests(TestCase):
         challenge: LoginChallenge = self._create_login_challenge()
 
         with self.assertRaises(InvalidLoginPINError):
-            LoginService.verify_pin(challenge.id, "654321")
+            LoginService.verify_pin(challenge.id, "54321")
 
         challenge.refresh_from_db()
         user: User = User.objects.get(pk=challenge.user_id)
@@ -151,10 +151,10 @@ class LoginPINServiceTests(TestCase):
 
         for _ in range(4):
             with self.assertRaises(InvalidLoginPINError):
-                LoginService.verify_pin(challenge.id, "654321")
+                LoginService.verify_pin(challenge.id, "54321")
 
         with self.assertRaises(LoginPINAttemptLimitError):
-            LoginService.verify_pin(challenge.id, "654321")
+            LoginService.verify_pin(challenge.id, "54321")
 
         challenge.refresh_from_db()
         user: User = User.objects.get(pk=challenge.user_id)
@@ -185,7 +185,7 @@ class LoginPINServiceTests(TestCase):
         challenge.save(update_fields=["expires_at", "updated_at"])
 
         with self.assertRaises(ExpiredLoginChallengeError):
-            LoginService.verify_pin(challenge.id, "123456")
+            LoginService.verify_pin(challenge.id, "12345")
 
         challenge.refresh_from_db()
         self.assertEqual(challenge.status, LoginStatus.EXPIRED)

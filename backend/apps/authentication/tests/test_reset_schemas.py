@@ -202,11 +202,11 @@ class ResetSchemaTests(SimpleTestCase):
         )
         pin_request: PINResetCompletionRequest = (
             PINResetCompletionRequest.model_validate(
-                {"reset_id": reset_id, "new_pin": "123456"},
+                {"reset_id": reset_id, "new_pin": "12345"},
             )
         )
         self.assertEqual(password_request.reset_id, reset_id)
-        self.assertEqual(pin_request.new_pin, "123456")
+        self.assertEqual(pin_request.new_pin, "12345")
 
         invalid_password_payloads: tuple[dict[str, object], ...] = (
             {"reset_id": reset_id, "new_password": ""},
@@ -227,7 +227,7 @@ class ResetSchemaTests(SimpleTestCase):
             {"reset_id": reset_id, "new_pin": 123456},
             {
                 "reset_id": reset_id,
-                "new_pin": "123456",
+                "new_pin": "12345",
                 "completion_token": "not-used",
             },
         ):

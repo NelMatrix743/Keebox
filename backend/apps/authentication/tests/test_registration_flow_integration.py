@@ -75,7 +75,7 @@ class RegistrationFlowIntegrationTests(TestCase):
             f"/api/auth{Routes.Registration.CREATE_PIN}",
             data={
                 "registration_id": str(registration_id),
-                "pin": "123456",
+                "pin": "12345",
             },
             content_type="application/json",
         )
@@ -128,7 +128,7 @@ class RegistrationFlowIntegrationTests(TestCase):
             completion_data["kbkey"],
         )
         self.assertTrue(user.check_password("correct horse battery staple"))
-        self.assertTrue(verify_lock_pin("123456", user.pin_hash))
+        self.assertTrue(verify_lock_pin("12345", user.pin_hash))
         self.assertEqual(str(refresh_token["user_id"]), str(user.id))
         self.assertEqual(str(access_token["user_id"]), str(user.id))
         self.assertEqual(otp_verification.status, OTPStatus.CONSUMED)

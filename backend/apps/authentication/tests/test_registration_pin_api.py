@@ -64,7 +64,7 @@ class RegistrationPINAPITests(TestCase):
             f"/api/auth{Routes.Registration.CREATE_PIN}",
             data={
                 "registration_id": str(registration_challenge.id),
-                "pin": "123456",
+                "pin": "12345",
             },
             content_type="application/json",
         )
@@ -95,7 +95,7 @@ class RegistrationPINAPITests(TestCase):
             ),
             response_data["kbkey"],
         )
-        self.assertTrue(verify_lock_pin("123456", user.pin_hash))
+        self.assertTrue(verify_lock_pin("12345", user.pin_hash))
         self.assertTrue(user.check_password("correct horse battery staple"))
         self.assertEqual(
             str(refresh_token["user_id"]),
@@ -136,7 +136,7 @@ class RegistrationPINAPITests(TestCase):
             f"/api/auth{Routes.Registration.CREATE_PIN}",
             data={
                 "registration_id": str(registration_challenge.id),
-                "pin": "123456",
+                "pin": "12345",
             },
             content_type="application/json",
         )

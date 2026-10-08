@@ -142,18 +142,18 @@ class LoginSchemaTests(SimpleTestCase):
             LoginPINVerificationRequest.model_validate(
                 {
                     "login_challenge_id": login_challenge_id,
-                    "pin": "123456",
+                    "pin": "12345",
                 },
             )
         )
 
         self.assertEqual(request.login_challenge_id, login_challenge_id)
-        self.assertEqual(request.pin, "123456")
+        self.assertEqual(request.pin, "12345")
 
         invalid_payloads: tuple[dict[str, object], ...] = (
             {
                 "login_challenge_id": "not-a-uuid",
-                "pin": "123456",
+                "pin": "12345",
             },
             {
                 "login_challenge_id": login_challenge_id,
@@ -165,7 +165,7 @@ class LoginSchemaTests(SimpleTestCase):
             },
             {
                 "login_challenge_id": login_challenge_id,
-                "pin": "123456",
+                "pin": "12345",
                 "unexpected": "value",
             },
         )
