@@ -74,9 +74,15 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                     const Spacer(),
                     PinConfirmButton(
                       onPressed: state.canConfirm
-                          ? () => controller.confirm(
-                              (pin) => widget.onPinConfirmed?.call(pin),
-                            )
+                          ? () {
+                              ScaffoldMessenger.of(context)
+                                  .removeCurrentSnackBar();
+                              unawaited(
+                                controller.confirm(
+                                  (pin) => widget.onPinConfirmed?.call(pin),
+                                ),
+                              );
+                            }
                           : null,
                       isSubmitting: state.isSubmitting,
                       isComplete: state.stage == PinSetupStage.complete,
