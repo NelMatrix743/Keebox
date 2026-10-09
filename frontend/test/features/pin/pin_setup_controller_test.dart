@@ -138,6 +138,47 @@ void main() {
     expect(container.read(pinSetupControllerProvider(other)).digits, '9');
   });
 
+  test('second confirmation stays busy before mismatch validation', () async {
+    enter('12345');
+    await controller.confirm((_) {});
+    enter('54321');
+    final rendered = Completer<void>();
+    var submitted = false;
+    final confirmation = controller.confirm(
+      (_) => submitted = true,
+      beforeValidation: () => rendered.future,
+    );
+    expect(current().isSubmitting, isTrue);
+    expect(current().canConfirm, isFalse);
+    expect(current().error, isNull);
+    controller.deleteDigit();
+    expect(current().digits, '54321');
+    rendered.complete();
+    await confirmation;
+    expect(submitted, isFalse);
+    expect(current().isSubmitting, isFalse);
+    expect(current().error, PinSetupError.mismatch);
+    expect(current().digits, isEmpty);
+  });
+
+  test('leaving before validation prevents the completion callback', () async {
+    enter('12345');
+    await controller.confirm((_) {});
+    enter('12345');
+    final rendered = Completer<void>();
+    var submitted = false;
+    final confirmation = controller.confirm(
+      (_) => submitted = true,
+      beforeValidation: () => rendered.future,
+    );
+    container.invalidate(pinSetupControllerProvider(screen));
+    await container.pump();
+    rendered.complete();
+    await confirmation;
+    expect(submitted, isFalse);
+    expect(current().stage, PinSetupStage.entry);
+  });
+
   test('leaving during completion safely disposes the PIN flow', () async {
     enter('12345');
     await controller.confirm((_) {});
