@@ -16,7 +16,7 @@ class PinSetupHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (title, subtitle) = switch (stage) {
-      PinSetupStage.entry => switch (mode) {
+      PinSetupStage.entry || PinSetupStage.confirmation => switch (mode) {
         PinSetupMode.create => (
           AppTexts.createPinTitle,
           AppTexts.createPinSubtitle,
@@ -26,10 +26,6 @@ class PinSetupHeader extends StatelessWidget {
           AppTexts.resetPinSubtitle,
         ),
       },
-      PinSetupStage.confirmation => (
-        AppTexts.confirmPinTitle,
-        AppTexts.confirmPinInstruction,
-      ),
       PinSetupStage.complete => (
         AppTexts.pinConfirmedTitle,
         AppTexts.pinConfirmedSubtitle,

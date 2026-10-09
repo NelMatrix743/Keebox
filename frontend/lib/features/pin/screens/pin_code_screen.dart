@@ -9,7 +9,7 @@ import 'package:keebox/features/pin/models/pin_setup_mode.dart';
 import 'package:keebox/features/pin/state/pin_setup_controller.dart';
 import 'package:keebox/features/pin/state/pin_setup_state.dart';
 import 'package:keebox/features/pin/widgets/pin_confirm_button.dart';
-import 'package:keebox/features/pin/widgets/pin_digit_row.dart';
+import 'package:keebox/features/pin/widgets/pin_entry_section.dart';
 import 'package:keebox/features/pin/widgets/pin_numpad.dart';
 import 'package:keebox/features/pin/widgets/pin_setup_header.dart';
 
@@ -35,16 +35,18 @@ class _PinCodeScreenState extends ConsumerState<PinCodeScreen> {
     final state = ref.watch(provider);
     final controller = ref.read(provider.notifier);
     ref.listen(provider, (previous, next) {
-      if (next.error == null || next.error == previous?.error) return;
-      final message = switch (next.error!) {
-        PinSetupError.mismatch => AppTexts.pinMismatchMessage,
-        PinSetupError.submission => AppTexts.pinConfirmationFailed,
-      };
+      if (next.error != PinSetupError.submission ||
+          next.error == previous?.error) {
+        return;
+      }
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          SnackBar(
-            content: Text(message, style: const TextStyle(color: Colors.white)),
+          const SnackBar(
+            content: Text(
+              AppTexts.pinConfirmationFailed,
+              style: TextStyle(color: Colors.white),
+            ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.fixed,
           ),
@@ -63,8 +65,7 @@ class _PinCodeScreenState extends ConsumerState<PinCodeScreen> {
                   children: [
                     PinSetupHeader(mode: widget.mode, stage: state.stage),
                     SizedBox(height: 34.h),
-                    PinDigitRow(digits: state.digits),
-                    SizedBox(height: 36.h),
+                    PinEntrySection(state: state),
                     PinNumpad(
                       onDigit: controller.enterDigit,
                       onDelete: controller.deleteDigit,
@@ -80,12 +81,16 @@ class _PinCodeScreenState extends ConsumerState<PinCodeScreen> {
                                   .removeCurrentSnackBar();
                               unawaited(
                                 controller.confirm(
-                                  (pin) => widget.onPinConfirmed?.call(pin),
+                                  (pin) async {
+                                    if (!mounted) return;
+                                    await widget.onPinConfirmed?.call(pin);
+                                  },
+                                  beforeValidation: () =>
+                                      WidgetsBinding.instance.endOfFrame,
                                 ),
                               );
                             }
                           : null,
-                      isSubmitting: state.isSubmitting,
                       isComplete: state.stage == PinSetupStage.complete,
                     ),
                   ],

@@ -6,7 +6,6 @@ abstract final class AppTexts {
       'Create a lock PIN to locally secure your data';
   static const resetPinTitle = 'Reset Your PIN Code';
   static const resetPinSubtitle = 'Enter a new pin code to reset';
-  static const confirmPinTitle = 'Confirm Your PIN Code';
   static const confirmPinInstruction = 'Enter your PIN code again to confirm';
   static const pinConfirmedTitle = 'PIN Code Confirmed';
   static const pinConfirmedSubtitle = 'Your PIN entries match';

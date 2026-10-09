@@ -10,13 +10,11 @@ import 'package:keebox/assets/app_assets.dart';
 class PinConfirmButton extends StatelessWidget {
   const PinConfirmButton({
     required this.onPressed,
-    this.isSubmitting = false,
     this.isComplete = false,
     super.key,
   });
 
   final VoidCallback? onPressed;
-  final bool isSubmitting;
   final bool isComplete;
 
   @override
@@ -45,22 +43,12 @@ class PinConfirmButton extends StatelessWidget {
             child: Text(isComplete ? AppTexts.confirmed : AppTexts.confirm),
           ),
           SizedBox(width: 8.w),
-          if (isSubmitting)
-            SizedBox.square(
-              dimension: 24.r,
-              child: const CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-                semanticsLabel: AppTexts.confirmingPin,
-              ),
-            )
-          else
-            Image.asset(
-              AppAssets.pinConfirm,
-              width: 24.r,
-              height: 24.r,
-              excludeFromSemantics: true,
-            ),
+          Image.asset(
+            AppAssets.pinConfirm,
+            width: 24.r,
+            height: 24.r,
+            excludeFromSemantics: true,
+          ),
         ],
       ),
     ),
