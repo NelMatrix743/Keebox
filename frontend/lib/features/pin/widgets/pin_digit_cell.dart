@@ -5,10 +5,16 @@ import 'package:keebox/app/theme/app_colors.dart';
 import 'package:keebox/app/theme/app_fonts.dart';
 
 class PinDigitCell extends StatelessWidget {
-  const PinDigitCell({required this.position, this.digit, super.key});
+  const PinDigitCell({
+    required this.position,
+    this.digit,
+    this.hasError = false,
+    super.key,
+  });
 
   final int position;
   final String? digit;
+  final bool hasError;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -20,7 +26,11 @@ class PinDigitCell extends StatelessWidget {
       height: 50.h,
       decoration: BoxDecoration(
         border: Border.all(
-          color: digit == null ? AppColors.border : AppColors.brand,
+          color: hasError
+              ? Colors.red
+              : digit == null
+              ? AppColors.border
+              : AppColors.brand,
           width: 2,
         ),
         borderRadius: BorderRadius.circular(8.r),
