@@ -7,6 +7,9 @@ abstract final class AppRoutes {
   static const signIn = '/sign-in';
   static const signInName = 'sign-in';
 
+  static const homeLock = '/home-lock';
+  static const homeLockName = 'home-lock';
+
   // register route
   static const register = '/register';
   static const registerName = 'register';

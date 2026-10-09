@@ -7,10 +7,12 @@ class LoginPasswordField extends StatefulWidget {
   const LoginPasswordField({
     required this.controller,
     required this.onSubmitted,
+    this.enabled = true,
     super.key,
   });
   final TextEditingController controller;
   final VoidCallback onSubmitted;
+  final bool enabled;
 
   @override
   State<LoginPasswordField> createState() => _LoginPasswordFieldState();
@@ -26,6 +28,7 @@ class _LoginPasswordFieldState extends State<LoginPasswordField> {
       Text('Password', style: loginFieldLabelStyle),
       SizedBox(height: 8.h),
       TextFormField(
+        enabled: widget.enabled,
         controller: widget.controller,
         style: loginFieldTextStyle,
         obscureText: _obscure,
@@ -42,7 +45,9 @@ class _LoginPasswordFieldState extends State<LoginPasswordField> {
             padding: EdgeInsetsDirectional.only(end: 8.w),
             child: IconButton(
               tooltip: _obscure ? 'Show password' : 'Hide password',
-              onPressed: () => setState(() => _obscure = !_obscure),
+              onPressed: widget.enabled
+                  ? () => setState(() => _obscure = !_obscure)
+                  : null,
               icon: Image.asset(
                 _obscure ? AppAssets.passwordHidden : AppAssets.passwordVisible,
                 width: 24.r,

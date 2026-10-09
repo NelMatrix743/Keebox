@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:keebox/app/router/app_routes.dart';
 import 'package:keebox/features/onboarding/screens/onboarding_screen.dart';
 import 'package:keebox/features/authentication/screens/login_screen.dart';
+import 'package:keebox/features/authentication/screens/home_lock_placeholder_screen.dart';
+import 'package:keebox/features/authentication/state/authentication_controller.dart';
+import 'package:keebox/features/authentication/state/authentication_state.dart';
 import 'package:keebox/features/pin/models/pin_setup_mode.dart';
 import 'package:keebox/features/pin/screens/pin_code_screen.dart';
 
@@ -24,9 +27,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.signIn,
         name: AppRoutes.signInName,
         builder: (context, state) => LoginScreen(
+          onLoginVerified: (_) => context.goNamed(AppRoutes.homeLockName),
           onRegister: () => context.pushNamed(AppRoutes.registerName),
           onForgotPassword: () =>
               context.pushNamed(AppRoutes.forgotPasswordName),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.homeLock,
+        name: AppRoutes.homeLockName,
+        redirect: (context, state) =>
+            ref.read(authenticationControllerProvider).asData?.value
+                is AwaitingPin
+            ? null
+            : AppRoutes.signIn,
+        builder: (context, state) => HomeLockPlaceholderScreen(
+          onBackToLogin: () => context.goNamed(AppRoutes.signInName),
         ),
       ),
       GoRoute(
