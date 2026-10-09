@@ -72,6 +72,9 @@ flutter:
     - assets/icons/password_hidden.png
     - assets/icons/password_visible.png
     - assets/icons/arrow_right.png
+    - assets/icons/pin_lock.png
+    - assets/icons/pin_delete.png
+    - assets/icons/pin_confirm.png
     - assets/logos/keebox_logo_brand.png
 
   fonts:
