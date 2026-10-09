@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:keebox/app/app_texts.dart';
 import 'package:keebox/app/theme/app_colors.dart';
 import 'package:keebox/app/theme/app_fonts.dart';
 import 'package:keebox/assets/app_assets.dart';
@@ -40,7 +41,9 @@ class PinConfirmButton extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Flexible(child: Text(isComplete ? 'Confirmed' : 'Confirm')),
+          Flexible(
+            child: Text(isComplete ? AppTexts.confirmed : AppTexts.confirm),
+          ),
           SizedBox(width: 8.w),
           if (isSubmitting)
             SizedBox.square(
@@ -48,7 +51,7 @@ class PinConfirmButton extends StatelessWidget {
               child: const CircularProgressIndicator(
                 strokeWidth: 2,
                 color: Colors.white,
-                semanticsLabel: 'Confirming PIN',
+                semanticsLabel: AppTexts.confirmingPin,
               ),
             )
           else

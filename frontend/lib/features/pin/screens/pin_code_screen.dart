@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import 'package:keebox/app/app_texts.dart';
 import 'package:keebox/features/pin/models/pin_setup_mode.dart';
 import 'package:keebox/features/pin/state/pin_setup_controller.dart';
 import 'package:keebox/features/pin/state/pin_setup_state.dart';
@@ -36,9 +37,8 @@ class _PinCodeScreenState extends ConsumerState<PinCodeScreen> {
     ref.listen(provider, (previous, next) {
       if (next.error == null || next.error == previous?.error) return;
       final message = switch (next.error!) {
-        PinSetupError.mismatch => 'PIN codes do not match. Please try again.',
-        PinSetupError.submission =>
-          'Could not confirm your PIN. Please try again.',
+        PinSetupError.mismatch => AppTexts.pinMismatchMessage,
+        PinSetupError.submission => AppTexts.pinConfirmationFailed,
       };
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()

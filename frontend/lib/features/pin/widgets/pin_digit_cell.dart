@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:keebox/app/app_texts.dart';
 import 'package:keebox/app/theme/app_colors.dart';
 import 'package:keebox/app/theme/app_fonts.dart';
 
@@ -11,8 +12,8 @@ class PinDigitCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: 'PIN digit ${position + 1}',
-    value: digit ?? 'Empty',
+    label: AppTexts.pinDigitLabel(position + 1),
+    value: digit ?? AppTexts.emptyPinDigit,
     excludeSemantics: true,
     child: Container(
       width: 45.w,

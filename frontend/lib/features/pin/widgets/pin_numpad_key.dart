@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:keebox/app/app_texts.dart';
 import 'package:keebox/app/theme/app_colors.dart';
 import 'package:keebox/app/theme/app_fonts.dart';
 import 'package:keebox/assets/app_assets.dart';
@@ -44,7 +45,7 @@ class PinNumpadKey extends StatelessWidget {
     ),
     child: digit == null
         ? Semantics(
-            label: 'Delete last digit',
+            label: AppTexts.deletePinDigit,
             child: Builder(
               builder: (context) => Image.asset(
                 AppAssets.pinDelete,

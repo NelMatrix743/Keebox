@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:keebox/app/app_texts.dart';
 import 'package:keebox/app/theme/app_colors.dart';
 import 'package:keebox/app/theme/app_fonts.dart';
 import 'package:keebox/assets/app_assets.dart';
@@ -17,21 +18,21 @@ class PinSetupHeader extends StatelessWidget {
     final (title, subtitle) = switch (stage) {
       PinSetupStage.entry => switch (mode) {
         PinSetupMode.create => (
-          'Create a PIN Code',
-          'Create a lock PIN to locally secure your data',
+          AppTexts.createPinTitle,
+          AppTexts.createPinSubtitle,
         ),
         PinSetupMode.reset => (
-          'Reset Your PIN Code',
-          'Enter a new pin code to reset',
+          AppTexts.resetPinTitle,
+          AppTexts.resetPinSubtitle,
         ),
       },
       PinSetupStage.confirmation => (
-        'Confirm Your PIN Code',
-        'Enter your PIN code again to confirm',
+        AppTexts.confirmPinTitle,
+        AppTexts.confirmPinInstruction,
       ),
       PinSetupStage.complete => (
-        'PIN Code Confirmed',
-        'Your PIN entries match',
+        AppTexts.pinConfirmedTitle,
+        AppTexts.pinConfirmedSubtitle,
       ),
     };
     return Column(
