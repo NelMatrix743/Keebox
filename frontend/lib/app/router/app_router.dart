@@ -6,7 +6,7 @@ import 'package:keebox/app/router/app_routes.dart';
 import 'package:keebox/features/onboarding/screens/onboarding_screen.dart';
 import 'package:keebox/features/authentication/screens/login_screen.dart';
 import 'package:keebox/features/pin/models/pin_setup_mode.dart';
-import 'package:keebox/features/pin/screens/pin_setup_screen.dart';
+import 'package:keebox/features/pin/screens/pin_code_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
@@ -44,7 +44,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.createPin,
         name: AppRoutes.createPinName,
-        builder: (context, state) => PinSetupScreen(
+        builder: (context, state) => PinCodeScreen(
           mode: PinSetupMode.create,
           onPinConfirmed: (pin) {
             if (context.canPop()) context.pop(pin);
@@ -54,7 +54,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.resetPin,
         name: AppRoutes.resetPinName,
-        builder: (context, state) => PinSetupScreen(
+        builder: (context, state) => PinCodeScreen(
           mode: PinSetupMode.reset,
           onPinConfirmed: (pin) {
             if (context.canPop()) context.pop(pin);

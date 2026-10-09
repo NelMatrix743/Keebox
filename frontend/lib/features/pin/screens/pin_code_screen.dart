@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+
 import 'package:keebox/features/pin/models/pin_setup_mode.dart';
 import 'package:keebox/features/pin/state/pin_setup_controller.dart';
 import 'package:keebox/features/pin/state/pin_setup_state.dart';
@@ -11,8 +12,8 @@ import 'package:keebox/features/pin/widgets/pin_digit_row.dart';
 import 'package:keebox/features/pin/widgets/pin_numpad.dart';
 import 'package:keebox/features/pin/widgets/pin_setup_header.dart';
 
-class PinSetupScreen extends ConsumerStatefulWidget {
-  const PinSetupScreen({required this.mode, this.onPinConfirmed, super.key});
+class PinCodeScreen extends ConsumerStatefulWidget {
+  const PinCodeScreen({required this.mode, this.onPinConfirmed, super.key});
 
   final PinSetupMode mode;
 
@@ -21,10 +22,10 @@ class PinSetupScreen extends ConsumerStatefulWidget {
   final FutureOr<void> Function(String pin)? onPinConfirmed;
 
   @override
-  ConsumerState<PinSetupScreen> createState() => _PinSetupScreenState();
+  ConsumerState<PinCodeScreen> createState() => _PinCodeScreenState();
 }
 
-class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
+class _PinCodeScreenState extends ConsumerState<PinCodeScreen> {
   final _screenIdentity = Object();
 
   @override
