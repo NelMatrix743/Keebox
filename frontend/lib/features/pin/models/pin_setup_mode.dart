@@ -1,0 +1,1 @@
+enum PinSetupMode { create, reset }
