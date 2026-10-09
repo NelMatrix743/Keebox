@@ -120,6 +120,7 @@ void main() {
     await tester.tap(find.text('Confirm'));
     await tester.pumpAndSettle();
     expect(pins, ['12345']);
+    expect(find.byType(SnackBar), findsNothing);
   });
 
   testWidgets('pending callback disables input and failure permits retry', (
