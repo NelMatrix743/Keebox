@@ -53,7 +53,7 @@ class ResetFlowIntegrationTests(TestCase):
             password="original strong password 5821",
             first_name="Ada",
             last_name="Lovelace",
-            pin_hash=encrypt_lock_pin("123456"),
+            pin_hash=encrypt_lock_pin("12345"),
             encrypted_kbkey=encrypted_kbkey,
             kbkey_nonce=kbkey_nonce,
             kbkey_encryption_version=kbkey_encryption_version,
@@ -145,7 +145,7 @@ class ResetFlowIntegrationTests(TestCase):
         self.assertEqual(challenge.status, ResetStatus.COMPLETED)
         self.assertEqual(otp.status, OTPStatus.CONSUMED)
         self.assertTrue(self.user.check_password("replacement strong password 7349"))
-        self.assertTrue(verify_lock_pin("123456", self.user.pin_hash))
+        self.assertTrue(verify_lock_pin("12345", self.user.pin_hash))
         self.assertEqual(self.user.token_version, 1)
         self.assertNotIn("access_token", completed.json()["data"])
         self.email_delivery_service.return_value.send_otp_email.assert_called_once_with(
@@ -172,7 +172,7 @@ class ResetFlowIntegrationTests(TestCase):
             Routes.Login.VERIFY_PIN,
             {
                 "login_challenge_id": new_login.json()["data"]["login_challenge_id"],
-                "pin": "123456",
+                "pin": "12345",
             },
         )
 
@@ -240,7 +240,7 @@ class ResetFlowIntegrationTests(TestCase):
         )
         completed: HttpResponse = self._post(
             Routes.Reset.PIN_COMPLETE,
-            {"reset_id": reset_id, "new_pin": "654321"},
+            {"reset_id": reset_id, "new_pin": "54321"},
         )
         challenge: ResetChallenge = ResetChallenge.objects.get(pk=reset_id)
         old_otp.refresh_from_db()
@@ -256,8 +256,8 @@ class ResetFlowIntegrationTests(TestCase):
         self.assertEqual(challenge.status, ResetStatus.COMPLETED)
         self.assertEqual(challenge.resend_count, 1)
         self.assertEqual(old_otp.status, OTPStatus.EXPIRED)
-        self.assertTrue(verify_lock_pin("654321", self.user.pin_hash))
-        self.assertFalse(verify_lock_pin("123456", self.user.pin_hash))
+        self.assertTrue(verify_lock_pin("54321", self.user.pin_hash))
+        self.assertFalse(verify_lock_pin("12345", self.user.pin_hash))
         self.assertTrue(self.user.check_password("original strong password 5821"))
         self.assertEqual(self.user.pin_failed_attempts, 0)
         self.assertIsNone(self.user.pin_locked_until)
@@ -280,7 +280,7 @@ class ResetFlowIntegrationTests(TestCase):
             Routes.Login.VERIFY_PIN,
             {
                 "login_challenge_id": new_login.json()["data"]["login_challenge_id"],
-                "pin": "654321",
+                "pin": "54321",
             },
         )
 

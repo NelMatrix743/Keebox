@@ -7,6 +7,8 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from ninja import Schema
 from pydantic import ConfigDict, EmailStr, Field, field_validator
 
+from apps.core.constants import AUTH_PIN_LENGTH, AUTH_PIN_PATTERN
+
 
 
 class AuthenticationSuccessResponse(Schema):
@@ -140,7 +142,13 @@ class RegistrationCompletionRequest(Schema):
     model_config = ConfigDict(extra="forbid")
 
     registration_id: UUID
-    pin: str = Field(min_length=1, strict=True)
+    pin: str = Field(
+        min_length=AUTH_PIN_LENGTH,
+        max_length=AUTH_PIN_LENGTH,
+        pattern=AUTH_PIN_PATTERN,
+        strict=True,
+        description="Exactly five ASCII digits; leading zeroes are preserved.",
+    )
 
 
 class RegistrationCompletedResponse(AuthenticationSuccessResponse):
@@ -193,7 +201,13 @@ class LoginPINVerificationRequest(Schema):
     model_config = ConfigDict(extra="forbid")
 
     login_challenge_id: UUID
-    pin: str = Field(min_length=1, strict=True)
+    pin: str = Field(
+        min_length=AUTH_PIN_LENGTH,
+        max_length=AUTH_PIN_LENGTH,
+        pattern=AUTH_PIN_PATTERN,
+        strict=True,
+        description="Exactly five ASCII digits; leading zeroes are preserved.",
+    )
 
 
 class LoginCompletedResponse(AuthenticationSuccessResponse):
@@ -318,7 +332,13 @@ class PINResetCompletionRequest(Schema):
     model_config = ConfigDict(extra="forbid")
 
     reset_id: UUID
-    new_pin: str = Field(min_length=1, strict=True)
+    new_pin: str = Field(
+        min_length=AUTH_PIN_LENGTH,
+        max_length=AUTH_PIN_LENGTH,
+        pattern=AUTH_PIN_PATTERN,
+        strict=True,
+        description="Exactly five ASCII digits; leading zeroes are preserved.",
+    )
 
 
 class ResetCompletedResponse(Schema):

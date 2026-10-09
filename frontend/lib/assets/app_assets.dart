@@ -7,4 +7,7 @@ abstract final class AppAssets {
   static const passwordVisible = 'assets/icons/password_visible.png';
   static const arrowRight = 'assets/icons/arrow_right.png';
   static const logoBrand = 'assets/logos/keebox_logo_brand.png';
+  static const pinLock = 'assets/icons/pin_lock.png';
+  static const pinDelete = 'assets/icons/pin_delete.png';
+  static const pinConfirm = 'assets/icons/pin_confirm.png';
 }

@@ -2,9 +2,9 @@
 <resources>
     <style name="KeeboxLaunchTheme" parent="LaunchTheme">
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-        <item name="android:statusBarColor">#8D08F7</item>
+        <item name="android:statusBarColor">#423CBD</item>
         <item name="android:windowLightStatusBar">true</item>
-        <item name="android:navigationBarColor">#8D08F7</item>
+        <item name="android:navigationBarColor">#423CBD</item>
         <item name="android:windowLightNavigationBar">true</item>
     </style>
 </resources>

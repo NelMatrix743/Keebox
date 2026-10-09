@@ -64,7 +64,7 @@ class RegistrationPINAPITests(TestCase):
             f"/api/auth{Routes.Registration.CREATE_PIN}",
             data={
                 "registration_id": str(registration_challenge.id),
-                "pin": "123456",
+                "pin": "12345",
             },
             content_type="application/json",
         )
@@ -95,7 +95,7 @@ class RegistrationPINAPITests(TestCase):
             ),
             response_data["kbkey"],
         )
-        self.assertTrue(verify_lock_pin("123456", user.pin_hash))
+        self.assertTrue(verify_lock_pin("12345", user.pin_hash))
         self.assertTrue(user.check_password("correct horse battery staple"))
         self.assertEqual(
             str(refresh_token["user_id"]),
@@ -136,7 +136,7 @@ class RegistrationPINAPITests(TestCase):
             f"/api/auth{Routes.Registration.CREATE_PIN}",
             data={
                 "registration_id": str(registration_challenge.id),
-                "pin": "123456",
+                "pin": "12345",
             },
             content_type="application/json",
         )
@@ -156,9 +156,9 @@ class RegistrationPINAPITests(TestCase):
         )
         self.assertFalse(User.objects.exists())
 
-    def test_create_pin_rejects_an_empty_pin(self: Self) -> None:
+    def test_create_pin_rejects_malformed_pins(self: Self) -> None:
         """
-        Verify registration cannot complete with an empty lock PIN.
+        Verify malformed lock PINs leave registration awaiting PIN creation.
 
         Args:
             self: Current test case instance.
@@ -167,27 +167,29 @@ class RegistrationPINAPITests(TestCase):
             None: This test does not return a value.
 
         Raises:
-            AssertionError: Raised when an empty PIN creates a permanent user.
+            AssertionError: Raised when a malformed PIN creates a permanent user.
         """
         registration_challenge: RegistrationChallenge = (
             self._create_otp_verified_registration()
         )
 
-        response: Any = self.client.post(
-            f"/api/auth{Routes.Registration.CREATE_PIN}",
-            data={
-                "registration_id": str(registration_challenge.id),
-                "pin": "",
-            },
-            content_type="application/json",
-        )
-        response_body: dict[str, Any] = response.json()
+        for pin in ("", "1234", "123456", "abcde", "１２３４５", "12345\n"):
+            with self.subTest(pin=pin):
+                response: Any = self.client.post(
+                    f"/api/auth{Routes.Registration.CREATE_PIN}",
+                    data={
+                        "registration_id": str(registration_challenge.id),
+                        "pin": pin,
+                    },
+                    content_type="application/json",
+                )
+                response_body: dict[str, Any] = response.json()
+                self.assertEqual(response.status_code, 422)
+                self.assertFalse(response_body["success"])
+                self.assertIsNone(response_body["data"])
+                self.assertEqual(response_body["error"]["code"], "validation_error")
 
         registration_challenge.refresh_from_db()
-        self.assertEqual(response.status_code, 422)
-        self.assertFalse(response_body["success"])
-        self.assertIsNone(response_body["data"])
-        self.assertEqual(response_body["error"]["code"], "validation_error")
         self.assertEqual(
             registration_challenge.status,
             RegistrationStatus.OTP_VERIFIED,

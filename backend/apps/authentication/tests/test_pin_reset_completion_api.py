@@ -38,7 +38,7 @@ class PINResetCompletionAPITests(TestCase):
             password="original strong password 5821",
             first_name="Ada",
             last_name="Lovelace",
-            pin_hash=encrypt_lock_pin("123456"),
+            pin_hash=encrypt_lock_pin("12345"),
             pin_version=2,
             pin_failed_attempts=5,
             pin_locked_until=timezone.now() + timedelta(hours=24),
@@ -116,7 +116,7 @@ class PINResetCompletionAPITests(TestCase):
         old_access, old_refresh = TokenService.issue_tokens(self.user)
         challenge: ResetChallenge = self._verified_challenge(ResetType.PIN)
 
-        response: HttpResponse = self._post_completion(str(challenge.id), "654321")
+        response: HttpResponse = self._post_completion(str(challenge.id), "54321")
         body: dict[str, Any] = response.json()
         challenge.refresh_from_db()
         self.user.refresh_from_db()
@@ -131,8 +131,8 @@ class PINResetCompletionAPITests(TestCase):
         self.assertNotIn("refresh_token", body["data"])
         self.assertEqual(challenge.status, ResetStatus.COMPLETED)
         self.assertIsNotNone(challenge.completed_at)
-        self.assertTrue(verify_lock_pin("654321", self.user.pin_hash))
-        self.assertFalse(verify_lock_pin("123456", self.user.pin_hash))
+        self.assertTrue(verify_lock_pin("54321", self.user.pin_hash))
+        self.assertFalse(verify_lock_pin("12345", self.user.pin_hash))
         self.assertEqual(self.user.pin_version, 3)
         self.assertEqual(self.user.pin_failed_attempts, 0)
         self.assertIsNone(self.user.pin_locked_until)
@@ -163,7 +163,7 @@ class PINResetCompletionAPITests(TestCase):
         wrong_type: ResetChallenge = self._verified_challenge(ResetType.PASSWORD)
 
         for reset_id in (pending.reset_id, wrong_type.id):
-            response: HttpResponse = self._post_completion(str(reset_id), "654321")
+            response: HttpResponse = self._post_completion(str(reset_id), "54321")
             self.assertEqual(response.status_code, 409)
             self.assertEqual(
                 response.json()["error"]["code"],
@@ -171,7 +171,7 @@ class PINResetCompletionAPITests(TestCase):
             )
 
         self.user.refresh_from_db()
-        self.assertTrue(verify_lock_pin("123456", self.user.pin_hash))
+        self.assertTrue(verify_lock_pin("12345", self.user.pin_hash))
         self.assertEqual(self.user.pin_version, 2)
         self.assertEqual(self.user.token_version, 0)
 
@@ -192,7 +192,7 @@ class PINResetCompletionAPITests(TestCase):
         challenge.completion_expires_at = timezone.now() - timedelta(seconds=1)
         challenge.save(update_fields=["completion_expires_at"])
 
-        response: HttpResponse = self._post_completion(str(challenge.id), "654321")
+        response: HttpResponse = self._post_completion(str(challenge.id), "54321")
         challenge.refresh_from_db()
         self.user.refresh_from_db()
 
@@ -202,7 +202,7 @@ class PINResetCompletionAPITests(TestCase):
             "expired_reset_challenge",
         )
         self.assertEqual(challenge.status, ResetStatus.EXPIRED)
-        self.assertTrue(verify_lock_pin("123456", self.user.pin_hash))
+        self.assertTrue(verify_lock_pin("12345", self.user.pin_hash))
         self.assertEqual(self.user.pin_failed_attempts, 5)
         self.assertIsNotNone(self.user.pin_locked_until)
 
@@ -219,20 +219,20 @@ class PINResetCompletionAPITests(TestCase):
         Raises:
             AssertionError: Raised when an unusable reset changes the PIN.
         """
-        missing: HttpResponse = self._post_completion(str(uuid4()), "654321")
+        missing: HttpResponse = self._post_completion(str(uuid4()), "54321")
         challenge: ResetChallenge = self._verified_challenge(ResetType.PIN)
-        self._post_completion(str(challenge.id), "654321")
-        replay: HttpResponse = self._post_completion(str(challenge.id), "987654")
+        self._post_completion(str(challenge.id), "54321")
+        replay: HttpResponse = self._post_completion(str(challenge.id), "98765")
 
         self.assertEqual(missing.status_code, 409)
         self.assertEqual(replay.status_code, 409)
         self.assertEqual(replay.json()["error"]["code"], "invalid_reset_challenge")
         self.user.refresh_from_db()
-        self.assertTrue(verify_lock_pin("654321", self.user.pin_hash))
+        self.assertTrue(verify_lock_pin("54321", self.user.pin_hash))
         self.assertEqual(self.user.pin_version, 3)
         self.assertEqual(self.user.token_version, 1)
 
-    def test_empty_pin_is_rejected_without_consuming_the_reset(self: Self) -> None:
+    def test_invalid_pin_is_rejected_without_consuming_the_reset(self: Self) -> None:
         """
         Verify invalid PIN input cannot complete the verified challenge.
 
@@ -243,16 +243,19 @@ class PINResetCompletionAPITests(TestCase):
             None: This test does not return a value.
 
         Raises:
-            AssertionError: Raised when an empty PIN changes security state.
+            AssertionError: Raised when a malformed PIN changes security state.
         """
         challenge: ResetChallenge = self._verified_challenge(ResetType.PIN)
 
-        response: HttpResponse = self._post_completion(str(challenge.id), "")
+        for pin in ("", "1234", "123456", "abcde", "１２３４５", "12345\n"):
+            with self.subTest(pin=pin):
+                response: HttpResponse = self._post_completion(str(challenge.id), pin)
+                self.assertEqual(response.status_code, 422)
+                self.assertEqual(response.json()["error"]["code"], "validation_error")
         challenge.refresh_from_db()
         self.user.refresh_from_db()
 
-        self.assertEqual(response.status_code, 422)
         self.assertEqual(challenge.status, ResetStatus.OTP_VERIFIED)
-        self.assertTrue(verify_lock_pin("123456", self.user.pin_hash))
+        self.assertTrue(verify_lock_pin("12345", self.user.pin_hash))
         self.assertEqual(self.user.pin_version, 2)
         self.assertEqual(self.user.token_version, 0)

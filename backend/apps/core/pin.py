@@ -1,9 +1,12 @@
 import hashlib
 import hmac
+import re
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 from django.conf import settings
+
+from apps.core.constants import AUTH_PIN_LENGTH, AUTH_PIN_PATTERN
 
 
 
@@ -42,7 +45,7 @@ def _pepper_pin(pin: str, pin_pepper: str) -> str:
     Derive peppered PIN material before Argon2id hashing.
 
     Args:
-        pin: Raw lock PIN submitted by the user.
+        pin: Five-digit ASCII lock PIN submitted by the user.
         pin_pepper: Server-side secret used to protect the PIN search space.
 
     Returns:
@@ -63,16 +66,17 @@ def encrypt_lock_pin(pin: str) -> str:
     Create a salted Argon2id verifier for a lock PIN.
 
     Args:
-        pin: Raw lock PIN submitted by the user.
+        pin: Five-digit ASCII lock PIN submitted by the user.
 
     Returns:
         An encoded Argon2id verifier containing its salt and parameters.
 
     Raises:
-        ValueError: Raised when the PIN or server-side PIN pepper is empty.
+        ValueError: Raised when the PIN is not exactly five ASCII digits or
+            the server-side PIN pepper is empty.
     """
-    if not pin:
-        raise ValueError("The lock PIN is required.")
+    if not isinstance(pin, str) or re.fullmatch(AUTH_PIN_PATTERN, pin) is None:
+        raise ValueError(f"The lock PIN must contain exactly {AUTH_PIN_LENGTH} digits.")
 
     pin_pepper: str = _get_pin_pepper()
     peppered_pin: str = _pepper_pin(pin, pin_pepper)
@@ -84,16 +88,20 @@ def verify_lock_pin(pin: str, encoded_pin: str) -> bool:
     Verify a raw lock PIN against an encoded Argon2id verifier.
 
     Args:
-        pin: Raw lock PIN submitted by the user.
+        pin: Five-digit ASCII lock PIN submitted by the user.
         encoded_pin: Stored Argon2id verifier for the lock PIN.
 
     Returns:
-        True when the PIN matches; otherwise False.
+        True when a five-digit ASCII PIN matches; otherwise False.
 
     Raises:
         ValueError: Raised when the server-side PIN pepper is empty.
     """
-    if not pin or not encoded_pin:
+    if (
+        not isinstance(pin, str)
+        or re.fullmatch(AUTH_PIN_PATTERN, pin) is None
+        or not encoded_pin
+    ):
         return False
 
     pin_pepper: str = _get_pin_pepper()

@@ -15,6 +15,7 @@ class LoginHeader extends StatelessWidget {
         width: 74.w,
         height: 118.w,
         fit: BoxFit.contain,
+        color: AppColors.brand,
         excludeFromSemantics: true,
       ),
       SizedBox(height: 10.h),

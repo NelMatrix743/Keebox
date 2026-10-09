@@ -30,14 +30,39 @@ void main() {
     );
   });
 
-  test('PIN request preserves leading zeroes', () {
+  test('five-digit PIN request preserves leading zeroes', () {
     expect(
       const LoginPinRequest(
         loginChallengeId: 'challenge-id',
-        pin: '0012',
+        pin: '00123',
       ).toJson(),
-      {'login_challenge_id': 'challenge-id', 'pin': '0012'},
+      {'login_challenge_id': 'challenge-id', 'pin': '00123'},
     );
+  });
+
+  test('PIN request rejects values other than five ASCII digits', () {
+    for (final pin in [
+      '',
+      '1234',
+      '123456',
+      'abcde',
+      '12a45',
+      '１２３４５',
+      '١٢٣٤٥',
+      ' 12345',
+      '12345 ',
+      '12345\n',
+      '12 45',
+    ]) {
+      expect(
+        () => LoginPinRequest(
+          loginChallengeId: 'challenge-id',
+          pin: pin,
+        ).toJson(),
+        throwsFormatException,
+        reason: 'Invalid PIN: $pin',
+      );
+    }
   });
 
   test(

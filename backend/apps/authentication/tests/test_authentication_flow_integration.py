@@ -73,7 +73,7 @@ class AuthenticationFlowIntegrationTests(TestCase):
             f"/api/auth{Routes.Registration.CREATE_PIN}",
             data={
                 "registration_id": str(registration_id),
-                "pin": "123456",
+                "pin": "12345",
             },
             content_type="application/json",
         )
@@ -99,7 +99,7 @@ class AuthenticationFlowIntegrationTests(TestCase):
             f"/api/auth{Routes.Login.VERIFY_PIN}",
             data={
                 "login_challenge_id": str(login_challenge_id),
-                "pin": "123456",
+                "pin": "12345",
             },
             content_type="application/json",
         )

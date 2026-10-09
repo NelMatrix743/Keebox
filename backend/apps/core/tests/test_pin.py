@@ -8,6 +8,58 @@ from apps.core.pin import encrypt_lock_pin, verify_lock_pin
 
 @override_settings(KEEBOX_PIN_PEPPER="test-pin-pepper")
 class LockPINSecurityTests(SimpleTestCase):
+    def test_five_digit_pin_preserves_leading_zeroes(self: Self) -> None:
+        """
+        Verify a five-digit PIN retains every digit during hashing and verification.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when leading zeroes are lost or ignored.
+        """
+        encoded_pin: str = encrypt_lock_pin("00123")
+
+        self.assertTrue(verify_lock_pin("00123", encoded_pin))
+        self.assertFalse(verify_lock_pin("123", encoded_pin))
+
+    def test_invalid_pin_formats_cannot_be_hashed_or_verified(self: Self) -> None:
+        """
+        Verify PIN protection accepts exactly five ASCII digits.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a malformed PIN is accepted.
+        """
+        encoded_pin: str = encrypt_lock_pin("00123")
+        invalid_pins: tuple[str, ...] = (
+            "",
+            "1234",
+            "123456",
+            "abcde",
+            "12a45",
+            "１２３４５",
+            "١٢٣٤٥",
+            " 12345",
+            "12345 ",
+            "12345\n",
+            "12 45",
+        )
+
+        for pin in invalid_pins:
+            with self.subTest(pin=pin):
+                with self.assertRaises(ValueError):
+                    encrypt_lock_pin(pin)
+                self.assertFalse(verify_lock_pin(pin, encoded_pin))
+
     def test_encrypt_lock_pin_returns_an_argon2id_verifier(self: Self) -> None:
         """
         Verify lock PIN encryption returns a non-reversible Argon2id verifier.
@@ -21,10 +73,10 @@ class LockPINSecurityTests(SimpleTestCase):
         Raises:
             AssertionError: Raised when the verifier is not an Argon2id hash.
         """
-        encoded_pin: str = encrypt_lock_pin("123456")
+        encoded_pin: str = encrypt_lock_pin("12345")
 
         self.assertTrue(encoded_pin.startswith("$argon2id$"))
-        self.assertNotEqual(encoded_pin, "123456")
+        self.assertNotEqual(encoded_pin, "12345")
         self.assertNotIn("test-pin-pepper", encoded_pin)
 
     def test_encrypt_and_verify_lock_pin_round_trip(self: Self) -> None:
@@ -40,9 +92,9 @@ class LockPINSecurityTests(SimpleTestCase):
         Raises:
             AssertionError: Raised when a valid PIN does not verify.
         """
-        encoded_pin: str = encrypt_lock_pin("123456")
+        encoded_pin: str = encrypt_lock_pin("12345")
 
-        self.assertTrue(verify_lock_pin("123456", encoded_pin))
+        self.assertTrue(verify_lock_pin("12345", encoded_pin))
 
     def test_verify_lock_pin_rejects_an_incorrect_pin(self: Self) -> None:
         """
@@ -57,9 +109,9 @@ class LockPINSecurityTests(SimpleTestCase):
         Raises:
             AssertionError: Raised when an incorrect PIN is accepted.
         """
-        encoded_pin: str = encrypt_lock_pin("123456")
+        encoded_pin: str = encrypt_lock_pin("12345")
 
-        self.assertFalse(verify_lock_pin("654321", encoded_pin))
+        self.assertFalse(verify_lock_pin("54321", encoded_pin))
 
     def test_encrypt_lock_pin_uses_a_unique_salt(self: Self) -> None:
         """
@@ -74,8 +126,8 @@ class LockPINSecurityTests(SimpleTestCase):
         Raises:
             AssertionError: Raised when a random salt is not used.
         """
-        first_encoded_pin: str = encrypt_lock_pin("123456")
-        second_encoded_pin: str = encrypt_lock_pin("123456")
+        first_encoded_pin: str = encrypt_lock_pin("12345")
+        second_encoded_pin: str = encrypt_lock_pin("12345")
 
         self.assertNotEqual(first_encoded_pin, second_encoded_pin)
 
@@ -94,10 +146,10 @@ class LockPINSecurityTests(SimpleTestCase):
         Raises:
             AssertionError: Raised when a different pepper still verifies a PIN.
         """
-        encoded_pin: str = encrypt_lock_pin("123456")
+        encoded_pin: str = encrypt_lock_pin("12345")
 
         with self.settings(KEEBOX_PIN_PEPPER="different-pin-pepper"):
-            self.assertFalse(verify_lock_pin("123456", encoded_pin))
+            self.assertFalse(verify_lock_pin("12345", encoded_pin))
 
     def test_encrypt_lock_pin_rejects_an_empty_pin(self: Self) -> None:
         """
@@ -128,4 +180,4 @@ class LockPINSecurityTests(SimpleTestCase):
         Raises:
             AssertionError: Raised when malformed verifier data is accepted.
         """
-        self.assertFalse(verify_lock_pin("123456", "not-an-argon2-verifier"))
+        self.assertFalse(verify_lock_pin("12345", "not-an-argon2-verifier"))

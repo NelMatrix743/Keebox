@@ -41,7 +41,7 @@ class PINResetCompletionServiceTests(TestCase):
             password="original strong password 5821",
             first_name="Ada",
             last_name="Lovelace",
-            pin_hash=encrypt_lock_pin("123456"),
+            pin_hash=encrypt_lock_pin("12345"),
             pin_version=2,
             pin_failed_attempts=5,
             pin_locked_until=timezone.now() + timedelta(hours=24),
@@ -100,14 +100,14 @@ class PINResetCompletionServiceTests(TestCase):
 
         completed: ResetChallenge = ResetService.complete_pin_reset(
             reset_id=challenge.id,
-            raw_pin="654321",
+            raw_pin="54321",
         )
         self.user.refresh_from_db()
 
         self.assertEqual(completed.status, ResetStatus.COMPLETED)
         self.assertIsNotNone(completed.completed_at)
-        self.assertTrue(verify_lock_pin("654321", self.user.pin_hash))
-        self.assertFalse(verify_lock_pin("123456", self.user.pin_hash))
+        self.assertTrue(verify_lock_pin("54321", self.user.pin_hash))
+        self.assertFalse(verify_lock_pin("12345", self.user.pin_hash))
         self.assertEqual(self.user.pin_version, 3)
         self.assertEqual(self.user.pin_failed_attempts, 0)
         self.assertIsNone(self.user.pin_locked_until)
@@ -138,16 +138,16 @@ class PINResetCompletionServiceTests(TestCase):
             reset_type=ResetType.PIN,
         )
         with self.assertRaises(InvalidResetChallengeError):
-            ResetService.complete_pin_reset(pending.reset_id, "654321")
+            ResetService.complete_pin_reset(pending.reset_id, "54321")
 
         password_challenge: ResetChallenge = self._start_and_verify(
             ResetType.PASSWORD,
         )
         with self.assertRaises(InvalidResetChallengeError):
-            ResetService.complete_pin_reset(password_challenge.id, "654321")
+            ResetService.complete_pin_reset(password_challenge.id, "54321")
 
         self.user.refresh_from_db()
-        self.assertTrue(verify_lock_pin("123456", self.user.pin_hash))
+        self.assertTrue(verify_lock_pin("12345", self.user.pin_hash))
         self.assertEqual(self.user.pin_version, 2)
         self.assertEqual(self.user.token_version, 0)
 
@@ -169,13 +169,13 @@ class PINResetCompletionServiceTests(TestCase):
         challenge.save(update_fields=["completion_expires_at"])
 
         with self.assertRaises(ExpiredResetChallengeError):
-            ResetService.complete_pin_reset(challenge.id, "654321")
+            ResetService.complete_pin_reset(challenge.id, "54321")
 
         challenge.refresh_from_db()
         self.user.refresh_from_db()
         self.assertEqual(challenge.status, ResetStatus.EXPIRED)
         self.assertIsNone(challenge.completed_at)
-        self.assertTrue(verify_lock_pin("123456", self.user.pin_hash))
+        self.assertTrue(verify_lock_pin("12345", self.user.pin_hash))
         self.assertEqual(self.user.pin_failed_attempts, 5)
         self.assertIsNotNone(self.user.pin_locked_until)
         self.assertEqual(self.user.token_version, 0)
@@ -194,19 +194,19 @@ class PINResetCompletionServiceTests(TestCase):
             AssertionError: Raised when a completed or unknown reset works.
         """
         with self.assertRaises(InvalidResetChallengeError):
-            ResetService.complete_pin_reset(uuid4(), "654321")
+            ResetService.complete_pin_reset(uuid4(), "54321")
 
         challenge: ResetChallenge = self._start_and_verify(ResetType.PIN)
-        ResetService.complete_pin_reset(challenge.id, "654321")
+        ResetService.complete_pin_reset(challenge.id, "54321")
         with self.assertRaises(InvalidResetChallengeError):
-            ResetService.complete_pin_reset(challenge.id, "987654")
+            ResetService.complete_pin_reset(challenge.id, "98765")
 
         self.user.refresh_from_db()
-        self.assertTrue(verify_lock_pin("654321", self.user.pin_hash))
+        self.assertTrue(verify_lock_pin("54321", self.user.pin_hash))
         self.assertEqual(self.user.pin_version, 3)
         self.assertEqual(self.user.token_version, 1)
 
-    def test_empty_pin_does_not_consume_the_verified_challenge(
+    def test_invalid_pin_does_not_consume_the_verified_challenge(
         self: Self,
     ) -> None:
         """
@@ -223,12 +223,13 @@ class PINResetCompletionServiceTests(TestCase):
         """
         challenge: ResetChallenge = self._start_and_verify(ResetType.PIN)
 
-        with self.assertRaises(ValueError):
-            ResetService.complete_pin_reset(challenge.id, "")
+        for pin in ("", "1234", "123456", "abcde", "１２３４５", "12345\n"):
+            with self.subTest(pin=pin), self.assertRaises(ValueError):
+                ResetService.complete_pin_reset(challenge.id, pin)
 
         challenge.refresh_from_db()
         self.user.refresh_from_db()
         self.assertEqual(challenge.status, ResetStatus.OTP_VERIFIED)
-        self.assertTrue(verify_lock_pin("123456", self.user.pin_hash))
+        self.assertTrue(verify_lock_pin("12345", self.user.pin_hash))
         self.assertEqual(self.user.pin_version, 2)
         self.assertEqual(self.user.token_version, 0)

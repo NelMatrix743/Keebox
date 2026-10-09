@@ -67,7 +67,7 @@ class RegistrationCompletionServiceTests(TestCase):
         kbkey: str
         user, kbkey = RegistrationService.complete_registration(
             challenge.id,
-            "123456",
+            "12345",
         )
 
         challenge.refresh_from_db()
@@ -79,7 +79,7 @@ class RegistrationCompletionServiceTests(TestCase):
         self.assertEqual(user.password, password_hash)
         self.assertTrue(user.check_password("correct horse battery staple"))
         self.assertIsNotNone(user.pin_hash)
-        self.assertTrue(verify_lock_pin("123456", user.pin_hash))
+        self.assertTrue(verify_lock_pin("12345", user.pin_hash))
         self.assertTrue(validate_kbkey(kbkey))
         self.assertIsNotNone(user.encrypted_kbkey)
         self.assertIsNotNone(user.kbkey_nonce)
@@ -96,7 +96,7 @@ class RegistrationCompletionServiceTests(TestCase):
         self.assertIsNotNone(challenge.completed_at)
 
         with self.assertRaises(InvalidRegistrationStateError):
-            RegistrationService.complete_registration(challenge.id, "123456")
+            RegistrationService.complete_registration(challenge.id, "12345")
 
         self.assertEqual(User.objects.count(), 1)
 
@@ -133,7 +133,7 @@ class RegistrationCompletionServiceTests(TestCase):
                 with self.assertRaises(InvalidRegistrationStateError):
                     RegistrationService.complete_registration(
                         challenge.id,
-                        "123456",
+                        "12345",
                     )
 
         self.assertFalse(User.objects.exists())
@@ -160,10 +160,10 @@ class RegistrationCompletionServiceTests(TestCase):
         challenge.save(update_fields=["expires_at", "updated_at"])
 
         with self.assertRaises(InvalidRegistrationStateError):
-            RegistrationService.complete_registration(challenge.id, "123456")
+            RegistrationService.complete_registration(challenge.id, "12345")
 
         with self.assertRaises(InvalidRegistrationStateError):
-            RegistrationService.complete_registration(uuid4(), "123456")
+            RegistrationService.complete_registration(uuid4(), "12345")
 
         self.assertFalse(User.objects.exists())
 
@@ -194,7 +194,7 @@ class RegistrationCompletionServiceTests(TestCase):
             ),
             self.assertRaises(RuntimeError),
         ):
-            RegistrationService.complete_registration(challenge.id, "123456")
+            RegistrationService.complete_registration(challenge.id, "12345")
 
         challenge.refresh_from_db()
         self.assertEqual(
@@ -204,9 +204,9 @@ class RegistrationCompletionServiceTests(TestCase):
         self.assertIsNone(challenge.completed_at)
         self.assertFalse(User.objects.exists())
 
-    def test_complete_registration_requires_a_lock_pin(self: Self) -> None:
+    def test_complete_registration_requires_a_five_digit_lock_pin(self: Self) -> None:
         """
-        Verify a permanent user cannot be created without a lock PIN.
+        Verify malformed PINs leave registration available without creating a user.
 
         Args:
             self: Current test case instance.
@@ -221,8 +221,9 @@ class RegistrationCompletionServiceTests(TestCase):
             self._create_otp_verified_registration()
         )
 
-        with self.assertRaises(ValueError):
-            RegistrationService.complete_registration(challenge.id, "")
+        for pin in ("", "1234", "123456", "abcde", "１２３４５", "12345\n"):
+            with self.subTest(pin=pin), self.assertRaises(ValueError):
+                RegistrationService.complete_registration(challenge.id, pin)
 
         challenge.refresh_from_db()
         self.assertEqual(

@@ -377,11 +377,10 @@ class RegistrationService:
             The persisted permanent user account and its plaintext KBKey.
 
         Raises:
-            ValueError: Raised when the lock PIN is empty or the configured
-                Keebox master key or PIN pepper is invalid.
+            ValueError: Raised when the lock PIN is not five ASCII digits or
+                the configured Keebox master key or PIN pepper is invalid.
         """
-        if not raw_pin:
-            raise ValueError("The lock PIN is required.")
+        protected_pin: str = encrypt_lock_pin(raw_pin)
 
         kbkey: str
         encrypted_kbkey: bytes
@@ -398,7 +397,7 @@ class RegistrationService:
             last_name=registration_challenge.last_name,
             email=registration_challenge.email,
             password=registration_challenge.password_hash,
-            pin_hash=encrypt_lock_pin(raw_pin),
+            pin_hash=protected_pin,
             encrypted_kbkey=encrypted_kbkey,
             kbkey_nonce=kbkey_nonce,
             kbkey_encryption_version=kbkey_encryption_version,
@@ -689,8 +688,8 @@ class RegistrationService:
         Raises:
             InvalidRegistrationStateError: Raised when the registration is missing,
                 expired, or not OTP-verified.
-            ValueError: Raised when the lock PIN is empty or the configured
-                Keebox master key or PIN pepper is invalid.
+            ValueError: Raised when the lock PIN is not five ASCII digits or
+                the configured Keebox master key or PIN pepper is invalid.
         """
         registration_challenge: RegistrationChallenge = (
             RegistrationService._get_locked_registration_challenge(

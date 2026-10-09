@@ -37,7 +37,7 @@
     },
     "pin": {
       "id": "ef30b9e4-e8db-4a7a-9037-74cfeaa4f940",
-      "syncValue": "123456",
+      "syncValue": "12345",
       "type": "string",
       "isEnabled": true,
       "rank": "a3",
