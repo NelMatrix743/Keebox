@@ -19,7 +19,7 @@ class PinCodeScreen extends ConsumerStatefulWidget {
 
   final PinSetupMode mode;
 
-  /// Invoked only after both five-digit entries match. API and storage work
+  /// Invoked when a complete five-digit PIN is confirmed. API and storage work
   /// belongs to the caller; the screen awaits it and allows retry on failure.
   final FutureOr<void> Function(String pin)? onPinConfirmed;
 
@@ -36,8 +36,7 @@ class _PinCodeScreenState extends ConsumerState<PinCodeScreen> {
     final state = ref.watch(provider);
     final controller = ref.read(provider.notifier);
     ref.listen(provider, (previous, next) {
-      if (next.error != PinSetupError.submission ||
-          next.error == previous?.error) {
+      if (!next.submissionFailed || previous?.submissionFailed == true) {
         return;
       }
       AppSnackBar.show(
@@ -59,7 +58,7 @@ class _PinCodeScreenState extends ConsumerState<PinCodeScreen> {
                   children: [
                     PinSetupHeader(mode: widget.mode, stage: state.stage),
                     SizedBox(height: 34.h),
-                    PinEntrySection(state: state),
+                    PinEntrySection(digits: state.digits),
                     PinNumpad(
                       onDigit: controller.enterDigit,
                       onDelete: controller.deleteDigit,
@@ -78,13 +77,14 @@ class _PinCodeScreenState extends ConsumerState<PinCodeScreen> {
                                     if (!mounted) return;
                                     await widget.onPinConfirmed?.call(pin);
                                   },
-                                  beforeValidation: () =>
+                                  beforeSubmit: () =>
                                       WidgetsBinding.instance.endOfFrame,
                                 ),
                               );
                             }
                           : null,
                       isComplete: state.stage == PinSetupStage.complete,
+                      isSubmitting: state.isSubmitting,
                     ),
                   ],
                 ),
