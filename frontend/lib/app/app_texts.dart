@@ -14,10 +14,8 @@ abstract final class AppTexts {
       'Create a lock PIN to locally secure your data';
   static const resetPinTitle = 'Reset Your PIN Code';
   static const resetPinSubtitle = 'Enter a new pin code to reset';
-  static const confirmPinInstruction = 'Enter your PIN code again to confirm';
   static const pinConfirmedTitle = 'PIN Code Confirmed';
-  static const pinConfirmedSubtitle = 'Your PIN entries match';
-  static const pinMismatchMessage = 'PIN codes do not match. Please try again.';
+  static const pinConfirmedSubtitle = 'Your PIN code has been confirmed';
   static const pinConfirmationFailed =
       'Could not confirm your PIN. Please try again.';
   static const confirm = 'Confirm';
