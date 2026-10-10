@@ -55,45 +55,20 @@ void main() {
     expect(current().stage, PinSetupStage.entry);
   });
 
-  test(
-    'first confirmation clears entry and matching second entry completes',
-    () async {
-      final submitted = <String>[];
-      enter('01234');
-      await controller.confirm(submitted.add);
-      expect(current().stage, PinSetupStage.confirmation);
-      expect(current().digits, isEmpty);
-      expect(submitted, isEmpty);
-      enter('01234');
-      await controller.confirm(submitted.add);
-      expect(submitted, ['01234']);
-      expect(current().stage, PinSetupStage.complete);
-      expect(current().digits, isEmpty);
-      controller.enterDigit(9);
-      await controller.confirm(submitted.add);
-      expect(submitted, hasLength(1));
-      expect(current().canConfirm, isFalse);
-    },
-  );
-
-  test('mismatch clears confirmation and permits a matching retry', () async {
-    String? submitted;
-    enter('12345');
-    await controller.confirm((pin) => submitted = pin);
-    enter('54321');
-    await controller.confirm((pin) => submitted = pin);
-    expect(current().error, PinSetupError.mismatch);
+  test('one complete entry invokes completion exactly once', () async {
+    final submitted = <String>[];
+    enter('01234');
+    await controller.confirm(submitted.add);
+    expect(submitted, ['01234']);
+    expect(current().stage, PinSetupStage.complete);
     expect(current().digits, isEmpty);
-    expect(submitted, isNull);
-    enter('12345');
-    expect(current().error, isNull);
-    await controller.confirm((pin) => submitted = pin);
-    expect(submitted, '12345');
+    controller.enterDigit(9);
+    await controller.confirm(submitted.add);
+    expect(submitted, hasLength(1));
+    expect(current().canConfirm, isFalse);
   });
 
   test('pending callback blocks editing and duplicate confirmation', () async {
-    enter('12345');
-    await controller.confirm((_) {});
     enter('12345');
     final pending = Completer<void>();
     var calls = 0;
@@ -116,14 +91,14 @@ void main() {
 
   test('callback failure allows confirmation to be retried', () async {
     enter('12345');
-    await controller.confirm((_) {});
-    enter('12345');
     await controller.confirm((_) => throw StateError('Unavailable'));
-    expect(current().error, PinSetupError.submission);
+    expect(current().submissionFailed, isTrue);
     expect(current().isSubmitting, isFalse);
-    enter('12345');
+    expect(current().digits, '12345');
+    expect(current().canConfirm, isTrue);
     await controller.confirm((_) {});
     expect(current().stage, PinSetupStage.complete);
+    expect(current().submissionFailed, isFalse);
   });
 
   test('separate screen instances keep independent entries', () {
@@ -138,38 +113,38 @@ void main() {
     expect(container.read(pinSetupControllerProvider(other)).digits, '9');
   });
 
-  test('second confirmation stays busy before mismatch validation', () async {
-    enter('12345');
-    await controller.confirm((_) {});
-    enter('54321');
-    final rendered = Completer<void>();
-    var submitted = false;
-    final confirmation = controller.confirm(
-      (_) => submitted = true,
-      beforeValidation: () => rendered.future,
-    );
-    expect(current().isSubmitting, isTrue);
-    expect(current().canConfirm, isFalse);
-    expect(current().error, isNull);
-    controller.deleteDigit();
-    expect(current().digits, '54321');
-    rendered.complete();
-    await confirmation;
-    expect(submitted, isFalse);
-    expect(current().isSubmitting, isFalse);
-    expect(current().error, PinSetupError.mismatch);
-    expect(current().digits, isEmpty);
-  });
+  test(
+    'confirmation stays busy while waiting for submission to start',
+    () async {
+      enter('54321');
+      final rendered = Completer<void>();
+      var submitted = false;
+      final confirmation = controller.confirm(
+        (_) => submitted = true,
+        beforeSubmit: () => rendered.future,
+      );
+      expect(current().isSubmitting, isTrue);
+      expect(current().canConfirm, isFalse);
+      expect(current().submissionFailed, isFalse);
+      expect(submitted, isFalse);
+      controller.deleteDigit();
+      expect(current().digits, '54321');
+      rendered.complete();
+      await confirmation;
+      expect(submitted, isTrue);
+      expect(current().isSubmitting, isFalse);
+      expect(current().stage, PinSetupStage.complete);
+      expect(current().digits, isEmpty);
+    },
+  );
 
-  test('leaving before validation prevents the completion callback', () async {
-    enter('12345');
-    await controller.confirm((_) {});
+  test('leaving before submission prevents the completion callback', () async {
     enter('12345');
     final rendered = Completer<void>();
     var submitted = false;
     final confirmation = controller.confirm(
       (_) => submitted = true,
-      beforeValidation: () => rendered.future,
+      beforeSubmit: () => rendered.future,
     );
     container.invalidate(pinSetupControllerProvider(screen));
     await container.pump();
@@ -181,10 +156,14 @@ void main() {
 
   test('leaving during completion safely disposes the PIN flow', () async {
     enter('12345');
-    await controller.confirm((_) {});
-    enter('12345');
     final pending = Completer<void>();
-    final confirmation = controller.confirm((_) => pending.future);
+    var called = false;
+    final confirmation = controller.confirm((_) {
+      called = true;
+      return pending.future;
+    });
+    await Future<void>.value();
+    expect(called, isTrue);
     container.invalidate(pinSetupControllerProvider(screen));
     pending.complete();
     await confirmation;
