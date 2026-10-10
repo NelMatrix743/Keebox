@@ -4,10 +4,9 @@ import 'package:keebox/features/pin/state/pin_setup_state.dart';
 import 'package:keebox/features/pin/widgets/pin_digit_cell.dart';
 
 class PinDigitRow extends StatelessWidget {
-  const PinDigitRow({required this.digits, this.hasError = false, super.key});
+  const PinDigitRow({required this.digits, super.key});
 
   final String digits;
-  final bool hasError;
 
   @override
   Widget build(BuildContext context) => Directionality(
@@ -21,7 +20,6 @@ class PinDigitRow extends StatelessWidget {
             PinDigitCell(
               position: index,
               digit: index < digits.length ? digits[index] : null,
-              hasError: hasError,
             ),
         ],
       ),
