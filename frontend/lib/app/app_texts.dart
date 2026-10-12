@@ -23,6 +23,16 @@ abstract final class AppTexts {
   static const enterPinToProceed = 'enter your pin code to proceed';
   static const forgotPin = 'Forgot your PIN code?';
   static const reset = 'Reset';
+  static const verifyingPin = 'Verifying PIN';
+  static const pinVerificationFailed =
+      'Unable to verify your PIN. Please try again.';
+  static const loginChallengeExpired =
+      'Your login has expired. Please log in again.';
+  static const loginSessionSaveFailed =
+      'Unable to save your session. Please log in again.';
+  static const home = 'Home';
+  static const homePlaceholder =
+      'You are signed in. Your home screen is coming soon.';
 
   static String pinIndicatorLabel(int position, bool filled) =>
       'PIN digit $position: ${filled ? 'Entered' : emptyPinDigit}';
