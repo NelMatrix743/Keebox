@@ -22,7 +22,7 @@ import 'package:keebox/network/api_session.dart';
 
 void main() {
   testWidgets(
-    'valid login posts credentials once and opens the home lock placeholder',
+    'valid login posts credentials once and opens the PIN lock screen',
     (tester) async {
       final adapter = _LoginAdapter();
       final container = await _pumpLogin(tester, adapter);
@@ -51,7 +51,7 @@ void main() {
             .path,
         AppRoutes.homeLock,
       );
-      expect(find.text(AppTexts.homeLockPlaceholder), findsOneWidget);
+      expect(find.text(AppTexts.enterPinToProceed), findsOneWidget);
       final pending =
           container.read(authenticationControllerProvider).requireValue
               as AwaitingPin;
@@ -62,7 +62,7 @@ void main() {
         isNull,
       );
       expect(adapter.requests, hasLength(1));
-      await tester.tap(find.text(AppTexts.backToLogin));
+      container.read(appRouterProvider).goNamed(AppRoutes.signInName);
       await tester.pumpAndSettle();
       expect(find.byType(TextFormField), findsNWidgets(2));
       expect(
@@ -129,7 +129,7 @@ void main() {
       await tester.tap(find.byType(FilledButton));
       await tester.pumpAndSettle();
       expect(adapter.requests, hasLength(2));
-      expect(find.text(AppTexts.homeLockPlaceholder), findsOneWidget);
+      expect(find.text(AppTexts.enterPinToProceed), findsOneWidget);
       expect(find.text('Invalid email address or password.'), findsNothing);
     },
   );
@@ -151,23 +151,18 @@ void main() {
     },
   );
 
-  testWidgets(
-    'the home lock placeholder cannot open without a login challenge',
-    (tester) async {
-      final container = await _pumpLogin(tester, _LoginAdapter());
-      container.read(appRouterProvider).goNamed(AppRoutes.homeLockName);
-      await tester.pumpAndSettle();
-      expect(
-        container
-            .read(appRouterProvider)
-            .routeInformationProvider
-            .value
-            .uri
-            .path,
-        AppRoutes.signIn,
-      );
-    },
-  );
+  testWidgets('the PIN lock screen cannot open without a login challenge', (
+    tester,
+  ) async {
+    final container = await _pumpLogin(tester, _LoginAdapter());
+    container.read(appRouterProvider).goNamed(AppRoutes.homeLockName);
+    await tester.pumpAndSettle();
+    expect(
+      container.read(appRouterProvider).routeInformationProvider.value.uri.path,
+      AppRoutes.signIn,
+    );
+  });
+
 }
 
 Future<ProviderContainer> _pumpLogin(
