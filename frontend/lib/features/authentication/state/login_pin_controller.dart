@@ -38,8 +38,9 @@ class LoginPinController extends Notifier<LoginPinState> {
     if (state.isSubmitting ||
         state.isAuthenticated ||
         state.requiresLogin ||
-        !RegExp(r'^[0-9]{5}$').hasMatch(pin))
+        !RegExp(r'^[0-9]{5}$').hasMatch(pin)) {
       return;
+    }
     final current = ref.read(authenticationControllerProvider).asData?.value;
     if (current is! AwaitingPin) {
       state = const LoginPinState(
