@@ -23,6 +23,13 @@ abstract final class AppTexts {
   static const confirmingPin = 'Confirming PIN';
   static const emptyPinDigit = 'Empty';
   static const deletePinDigit = 'Delete last digit';
+  static const authenticateWithFingerprint = 'Authenticate with fingerprint';
+  static const enterPinToProceed = 'enter your pin code to proceed';
+  static const forgotPin = 'Forgot your PIN code?';
+  static const reset = 'Reset';
+
+  static String pinIndicatorLabel(int position, bool filled) =>
+      'PIN digit $position: ${filled ? 'Entered' : emptyPinDigit}';
 
   static String pinDigitLabel(int position) => 'PIN digit $position';
 }
