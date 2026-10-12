@@ -70,6 +70,44 @@ void main() {
     expect(_count(tester), 0);
   });
 
+  for (final (size, textScale) in [
+    (const Size(402, 874), 1.0),
+    (const Size(320, 568), 2.0),
+    (const Size(874, 402), 2.0),
+  ]) {
+    testWidgets(
+      'all controls fit without scrolling at $size, text scale $textScale',
+      (tester) async {
+        var resets = 0;
+        final pins = <String>[];
+        await _pump(
+          tester,
+          PinCodeScreen(onPinEntered: pins.add, onResetPin: () => resets++),
+          size: size,
+          textScale: textScale,
+        );
+        expect(find.byType(Scrollable), findsNothing);
+        for (final key in [
+          for (var digit = 0; digit < 10; digit++) ValueKey('pin-key-$digit'),
+          const ValueKey('pin-delete'),
+          const ValueKey('pin-fingerprint'),
+        ]) {
+          final bounds = tester.getRect(find.byKey(key));
+          expect(bounds.top, greaterThanOrEqualTo(24));
+          expect(bounds.bottom, lessThanOrEqualTo(size.height - 34));
+          expect(bounds.left, greaterThanOrEqualTo(0));
+          expect(bounds.right, lessThanOrEqualTo(size.width));
+        }
+        await _enter(tester, '01234');
+        await tester.tap(find.text(AppTexts.reset));
+        await tester.pump();
+        expect(pins, ['01234']);
+        expect(resets, 1);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets('leaving the lock screen discards its partial PIN', (
     tester,
   ) async {
