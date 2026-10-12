@@ -163,6 +163,27 @@ void main() {
     );
   });
 
+  testWidgets('Reset opens PIN setup without completing authentication', (
+    tester,
+  ) async {
+    final adapter = _LoginAdapter();
+    final container = await _pumpLogin(tester, adapter);
+    await _enterCredentials(tester);
+    await tester.tap(find.byType(FilledButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(AppTexts.reset));
+    await tester.pumpAndSettle();
+    expect(find.text(AppTexts.resetPinTitle), findsOneWidget);
+    expect(
+      container.read(authenticationControllerProvider).requireValue,
+      isA<AwaitingPin>(),
+    );
+    expect(container.read(apiSessionProvider).accessToken, isNull);
+    expect(adapter.requests, hasLength(1));
+    container.read(appRouterProvider).pop();
+    await tester.pumpAndSettle();
+    expect(find.text(AppTexts.enterPinToProceed), findsOneWidget);
+  });
 }
 
 Future<ProviderContainer> _pumpLogin(
