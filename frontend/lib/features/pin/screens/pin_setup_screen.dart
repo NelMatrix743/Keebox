@@ -14,8 +14,8 @@ import 'package:keebox/features/pin/widgets/pin_numpad.dart';
 import 'package:keebox/features/pin/widgets/pin_setup_header.dart';
 import 'package:keebox/shared/widgets/app_snackbar.dart';
 
-class PinCodeScreen extends ConsumerStatefulWidget {
-  const PinCodeScreen({required this.mode, this.onPinConfirmed, super.key});
+class PinSetupScreen extends ConsumerStatefulWidget {
+  const PinSetupScreen({required this.mode, this.onPinConfirmed, super.key});
 
   final PinSetupMode mode;
 
@@ -24,10 +24,10 @@ class PinCodeScreen extends ConsumerStatefulWidget {
   final FutureOr<void> Function(String pin)? onPinConfirmed;
 
   @override
-  ConsumerState<PinCodeScreen> createState() => _PinCodeScreenState();
+  ConsumerState<PinSetupScreen> createState() => _PinSetupScreenState();
 }
 
-class _PinCodeScreenState extends ConsumerState<PinCodeScreen> {
+class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
   final _screenIdentity = Object();
 
   @override
