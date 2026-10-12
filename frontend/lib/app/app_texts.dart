@@ -4,10 +4,6 @@ abstract final class AppTexts {
   static const login = 'Login';
   static const loggingIn = 'Verifying your account';
   static const loginFailed = 'Unable to log in. Please try again.';
-  static const homeLockTitle = 'Unlock Keebox';
-  static const homeLockPlaceholder =
-      'Your password has been verified. PIN verification will be available here.';
-  static const backToLogin = 'Back to login';
 
   static const createPinTitle = 'Create a PIN Code';
   static const createPinSubtitle =

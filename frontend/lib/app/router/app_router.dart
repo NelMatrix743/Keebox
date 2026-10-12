@@ -5,11 +5,11 @@ import 'package:go_router/go_router.dart';
 import 'package:keebox/app/router/app_routes.dart';
 import 'package:keebox/features/onboarding/screens/onboarding_screen.dart';
 import 'package:keebox/features/authentication/screens/login_screen.dart';
-import 'package:keebox/features/authentication/screens/home_lock_placeholder_screen.dart';
 import 'package:keebox/features/authentication/state/authentication_controller.dart';
 import 'package:keebox/features/authentication/state/authentication_state.dart';
 import 'package:keebox/features/pin/models/pin_setup_mode.dart';
 import 'package:keebox/features/pin/screens/pin_setup_screen.dart';
+import 'package:keebox/features/pin/screens/pin_code_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
@@ -41,8 +41,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 is AwaitingPin
             ? null
             : AppRoutes.signIn,
-        builder: (context, state) => HomeLockPlaceholderScreen(
-          onBackToLogin: () => context.goNamed(AppRoutes.signInName),
+        builder: (context, state) => PinCodeScreen(
+          onResetPin: () => context.pushNamed(AppRoutes.resetPinName),
         ),
       ),
       GoRoute(
