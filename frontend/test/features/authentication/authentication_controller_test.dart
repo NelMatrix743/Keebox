@@ -136,6 +136,70 @@ void main() {
     );
   });
 
+  test('a stale PIN response cannot replace a newer login challenge', () async {
+    final controller = container.read(
+      authenticationControllerProvider.notifier,
+    );
+    await controller.setLoginChallenge(
+      LoginChallenge(
+        loginChallengeId: 'new-challenge',
+        expiresAt: DateTime.utc(2030),
+        message: 'Enter PIN.',
+      ),
+    );
+    await controller.completeAuthentication(
+      _result,
+      loginChallengeId: 'old-challenge',
+    );
+    await controller.clearLoginChallenge('old-challenge');
+    expect(
+      (container.read(authenticationControllerProvider).requireValue
+              as AwaitingPin)
+          .challenge
+          .loginChallengeId,
+      'new-challenge',
+    );
+    expect(container.read(apiSessionProvider).accessToken, isNull);
+    expect(
+      await container.read(authenticationSessionStorageProvider).read(),
+      isNull,
+    );
+    expect(
+      await container.read(authenticatedUserStorageProvider).read('user-id'),
+      isNull,
+    );
+  });
+
+  test(
+    'a cancelled verification cannot persist its authentication result',
+    () async {
+      final controller = container.read(
+        authenticationControllerProvider.notifier,
+      );
+      await controller.setLoginChallenge(
+        LoginChallenge(
+          loginChallengeId: 'challenge-id',
+          expiresAt: DateTime.utc(2030),
+          message: 'Enter PIN.',
+        ),
+      );
+      await controller.completeAuthentication(
+        _result,
+        loginChallengeId: 'challenge-id',
+        isActive: () => false,
+      );
+      expect(
+        container.read(authenticationControllerProvider).requireValue,
+        isA<AwaitingPin>(),
+      );
+      expect(
+        await container.read(authenticationSessionStorageProvider).read(),
+        isNull,
+      );
+      expect(container.read(apiSessionProvider).accessToken, isNull);
+    },
+  );
+
   test(
     'logout uses current token and clears local session even if server fails',
     () async {
