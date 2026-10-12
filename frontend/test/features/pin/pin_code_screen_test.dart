@@ -8,6 +8,53 @@ import 'package:keebox/features/pin/screens/pin_code_screen.dart';
 import 'package:keebox/features/pin/widgets/pin_indicator_row.dart';
 
 void main() {
+  testWidgets(
+    'pending verification keeps indicators in place and disables controls until retry',
+    (tester) async {
+      final state = ValueNotifier((busy: false, revision: 0));
+      addTearDown(state.dispose);
+      final pins = <String>[];
+      await _pump(
+        tester,
+        ValueListenableBuilder(
+          valueListenable: state,
+          builder: (context, value, child) => PinCodeScreen(
+            isSubmitting: value.busy,
+            entryRevision: value.revision,
+            onPinEntered: (pin) {
+              pins.add(pin);
+              state.value = (busy: true, revision: value.revision);
+            },
+            onResetPin: () {},
+            onFingerprintPressed: () {},
+          ),
+        ),
+      );
+      final initialPosition = tester.getRect(find.byType(PinIndicatorRow));
+      await _enter(tester, '01234');
+      expect(_count(tester), 5);
+      expect(tester.getRect(find.byType(PinIndicatorRow)), initialPosition);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      for (final button in tester.widgetList<OutlinedButton>(
+        find.byType(OutlinedButton),
+      )) {
+        expect(button.onPressed, isNull);
+      }
+      expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, AppTexts.reset))
+            .onPressed,
+        isNull,
+      );
+      state.value = (busy: false, revision: 1);
+      await tester.pump();
+      expect(_count(tester), 0);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      await _enter(tester, '54321');
+      expect(pins, ['01234', '54321']);
+    },
+  );
+
   testWidgets('five digits notify the caller once without revealing the PIN', (
     tester,
   ) async {
