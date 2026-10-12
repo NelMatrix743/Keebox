@@ -57,35 +57,55 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
         state = AsyncData(AwaitingPin(challenge));
       });
 
-  Future<void> completeAuthentication(AuthenticationResult result) =>
-      _serialize(() async {
-        await future;
-        if (!ref.mounted) {
-          return;
-        }
-        if (result.user.id != result.session.userId) {
-          throw StateError(
-            'Authentication user and session must belong to the same account.',
-          );
-        }
-        await ref.read(authenticatedUserStorageProvider).save(result.user);
-        await ref
-            .read(authenticationSessionStorageProvider)
-            .save(result.session);
-        if (!ref.mounted) {
-          return;
-        }
-        ref
-            .read(apiSessionProvider)
-            .set(
-              result.session.accessToken,
-              onInvalidSession: () =>
-                  _invalidateSession(result.session.accessToken),
-            );
-        state = AsyncData(
-          Authenticated(user: result.user, session: result.session),
+  Future<void> completeAuthentication(
+    AuthenticationResult result, {
+    String? loginChallengeId,
+    bool Function()? isActive,
+  }) => _serialize(() async {
+    await future;
+    bool canComplete() {
+      if (!ref.mounted || (isActive != null && !isActive())) return false;
+      if (loginChallengeId == null) return true;
+      final current = state.asData?.value;
+      return current is AwaitingPin &&
+          current.challenge.loginChallengeId == loginChallengeId;
+    }
+
+    if (!canComplete()) return;
+    if (result.user.id != result.session.userId) {
+      throw StateError(
+        'Authentication user and session must belong to the same account.',
+      );
+    }
+    final sessionStorage = ref.read(authenticationSessionStorageProvider);
+    await ref.read(authenticatedUserStorageProvider).save(result.user);
+    if (!canComplete()) return;
+    await sessionStorage.save(result.session);
+    if (!canComplete()) {
+      await sessionStorage.clear();
+      return;
+    }
+    ref
+        .read(apiSessionProvider)
+        .set(
+          result.session.accessToken,
+          onInvalidSession: () =>
+              _invalidateSession(result.session.accessToken),
         );
-      });
+    state = AsyncData(
+      Authenticated(user: result.user, session: result.session),
+    );
+  });
+
+  Future<void> clearLoginChallenge(String challengeId) => _serialize(() async {
+    await future;
+    if (!ref.mounted) return;
+    final current = state.asData?.value;
+    if (current is AwaitingPin &&
+        current.challenge.loginChallengeId == challengeId) {
+      await _clearSession();
+    }
+  });
 
   Future<void> signOut() => _serialize(() async {
     await future;
