@@ -10,7 +10,7 @@ import 'package:keebox/app/theme/app_colors.dart';
 import 'package:keebox/app/theme/app_fonts.dart';
 import 'package:keebox/app/theme/app_theme.dart';
 import 'package:keebox/features/pin/models/pin_setup_mode.dart';
-import 'package:keebox/features/pin/screens/pin_code_screen.dart';
+import 'package:keebox/features/pin/screens/pin_setup_screen.dart';
 import 'package:keebox/features/pin/widgets/pin_digit_cell.dart';
 import 'package:keebox/features/pin/widgets/pin_digit_row.dart';
 
@@ -34,7 +34,7 @@ void main() {
   ) async {
     _viewport(tester);
     await tester.pumpWidget(
-      _app(const PinCodeScreen(mode: PinSetupMode.create)),
+      _app(const PinSetupScreen(mode: PinSetupMode.create)),
     );
     expect(find.byKey(const ValueKey('pin-delete')), findsNothing);
     expect(_confirm(tester).onPressed, isNull);
@@ -68,7 +68,7 @@ void main() {
       final pending = Completer<void>();
       await tester.pumpWidget(
         _app(
-          PinCodeScreen(
+          PinSetupScreen(
             mode: mode,
             onPinConfirmed: (pin) {
               pins.add(pin);
@@ -120,7 +120,7 @@ void main() {
     var calls = 0;
     await tester.pumpWidget(
       _app(
-        PinCodeScreen(
+        PinSetupScreen(
           mode: PinSetupMode.reset,
           onPinConfirmed: (_) {
             calls++;
@@ -192,7 +192,7 @@ void main() {
     final pending = Completer<void>();
     await tester.pumpWidget(
       _app(
-        PinCodeScreen(
+        PinSetupScreen(
           mode: PinSetupMode.create,
           onPinConfirmed: (pin) {
             confirmed = pin;
