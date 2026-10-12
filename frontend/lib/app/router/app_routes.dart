@@ -10,6 +10,9 @@ abstract final class AppRoutes {
   static const homeLock = '/home-lock';
   static const homeLockName = 'home-lock';
 
+  static const home = '/home';
+  static const homeName = 'home';
+
   // register route
   static const register = '/register';
   static const registerName = 'register';

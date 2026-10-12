@@ -5,11 +5,12 @@ import 'package:go_router/go_router.dart';
 import 'package:keebox/app/router/app_routes.dart';
 import 'package:keebox/features/onboarding/screens/onboarding_screen.dart';
 import 'package:keebox/features/authentication/screens/login_screen.dart';
+import 'package:keebox/features/authentication/screens/login_pin_screen.dart';
 import 'package:keebox/features/authentication/state/authentication_controller.dart';
 import 'package:keebox/features/authentication/state/authentication_state.dart';
 import 'package:keebox/features/pin/models/pin_setup_mode.dart';
 import 'package:keebox/features/pin/screens/pin_setup_screen.dart';
-import 'package:keebox/features/pin/screens/pin_code_screen.dart';
+import 'package:keebox/features/home/screens/home_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
@@ -41,9 +42,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 is AwaitingPin
             ? null
             : AppRoutes.signIn,
-        builder: (context, state) => PinCodeScreen(
+        builder: (context, state) => LoginPinScreen(
+          onAuthenticated: () => context.goNamed(AppRoutes.homeName),
+          onLoginRequired: () => context.goNamed(AppRoutes.signInName),
           onResetPin: () => context.pushNamed(AppRoutes.resetPinName),
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.home,
+        name: AppRoutes.homeName,
+        redirect: (context, state) =>
+            ref.read(authenticationControllerProvider).asData?.value
+                is Authenticated
+            ? null
+            : AppRoutes.signIn,
+        builder: (context, state) => const HomeScreen(),
       ),
       GoRoute(
         path: AppRoutes.forgotPassword,
@@ -79,6 +92,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+  ref.listen(authenticationControllerProvider, (_, next) {
+    if (router.routeInformationProvider.value.uri.path == AppRoutes.home) {
+      router.refresh();
+    }
+  });
   ref.onDispose(router.dispose);
   return router;
 });
