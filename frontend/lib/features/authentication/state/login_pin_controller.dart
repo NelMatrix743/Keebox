@@ -79,6 +79,7 @@ class LoginPinController extends Notifier<LoginPinState> {
             .completeAuthentication(
               result,
               loginChallengeId: challenge.loginChallengeId,
+              verifiedPin: pin,
               isActive: () => _isActive(request, challenge.loginChallengeId),
             );
       } catch (_) {
