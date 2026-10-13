@@ -4,7 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keebox/app/app_texts.dart';
 import 'package:keebox/app/theme/app_theme.dart';
-import 'package:keebox/features/pin/screens/lock_screen.dart';
+import 'package:keebox/shared/screens/lock_screen.dart';
 import 'package:keebox/features/pin/widgets/pin_indicator_row.dart';
 
 void main() {
