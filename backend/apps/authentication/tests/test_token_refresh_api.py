@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Any, Self
 
 from django.http import HttpRequest, HttpResponse
@@ -89,3 +90,37 @@ class TokenRefreshAPITests(TestCase):
         self.assertEqual(RefreshToken(self.refresh_token).payload, original_refresh)
         self.user.refresh_from_db()
         self.assertEqual(self.user.token_version, 0)
+
+    def test_invalid_tokens_return_a_consistent_unauthorized_error(self: Self) -> None:
+        """
+        Verify invalid, wrong-type, and expired tokens return the agreed failure.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an unusable token renews access.
+        """
+        expired: RefreshToken = RefreshToken(self.refresh_token)
+        expired.set_exp(lifetime=timedelta(seconds=-1))
+        for token in ("not-a-jwt", " ", self.access_token, str(expired)):
+            with self.subTest(token_type=token[:12]):
+                response: HttpResponse = self._post_refresh({"refresh_token": token})
+
+                self.assertEqual(response.status_code, 401)
+                self.assertEqual(
+                    response.json(),
+                    {
+                        "success": False,
+                        "data": None,
+                        "error": {
+                            "code": "invalid_refresh_token",
+                            "message": "The refresh token is invalid or no longer usable.",
+                            "details": None,
+                        },
+                        "meta": None,
+                    },
+                )
