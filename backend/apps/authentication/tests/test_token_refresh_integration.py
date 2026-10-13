@@ -216,3 +216,46 @@ class TokenRefreshIntegrationTests(TestCase):
                 access_token=renewed_access[-1],
             )
             self.assertEqual(accepted.status_code, 200)
+
+    def test_logout_revokes_refresh_and_the_access_it_issued(self: Self) -> None:
+        """
+        Verify logout prevents further renewal and invalidates refreshed access.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when logged-out session tokens remain usable.
+        """
+        session: dict[str, Any] = self._login()
+        refreshed: HttpResponse = self._post(
+            Routes.Refresh.BASE,
+            {"refresh_token": session["refresh_token"]},
+        )
+        self.assertEqual(refreshed.status_code, 200)
+        refreshed_access: str = refreshed.json()["data"]["access_token"]
+        logged_out: HttpResponse = self._post(
+            Routes.Logout.BASE,
+            {},
+            access_token=session["access_token"],
+        )
+        self.assertEqual(logged_out.status_code, 200)
+        rejected_refresh: HttpResponse = self._post(
+            Routes.Refresh.BASE,
+            {"refresh_token": session["refresh_token"]},
+        )
+        rejected_access: HttpResponse = self._post(
+            Routes.Logout.BASE,
+            {},
+            access_token=refreshed_access,
+        )
+
+        self.assertEqual(rejected_refresh.status_code, 401)
+        self.assertEqual(
+            rejected_refresh.json()["error"]["code"], "invalid_refresh_token",
+        )
+        self.assertEqual(rejected_access.status_code, 401)
+        self.assertEqual(rejected_access.json()["error"]["code"], "invalid_session")
