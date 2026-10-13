@@ -1,3 +1,5 @@
+import base64
+import json
 from datetime import datetime, timedelta, timezone
 from typing import Self
 
@@ -60,6 +62,94 @@ class TokenServiceTests(TestCase):
 
         self.user.refresh_from_db()
         self.assertEqual(self.user.token_version, 0)
+
+    def test_refresh_rejects_malformed_wrong_type_expired_and_tampered_tokens(
+        self: Self,
+    ) -> None:
+        """
+        Verify access renewal requires an authentic unexpired refresh token.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an invalid token renews access.
+        """
+        access_raw: str
+        refresh_raw: str
+        access_raw, refresh_raw = TokenService.issue_tokens(self.user)
+        expired: RefreshToken = RefreshToken(refresh_raw)
+        expired.set_exp(lifetime=timedelta(seconds=-1))
+        missing_expiry: RefreshToken = RefreshToken(refresh_raw)
+        del missing_expiry["exp"]
+        header: str
+        _original_payload: str
+        signature: str
+        header, _original_payload, signature = refresh_raw.split(".")
+        tampered_payload: dict[str, object] = dict(RefreshToken(refresh_raw).payload)
+        tampered_payload["token_version"] = 99
+        encoded_payload: str = base64.urlsafe_b64encode(
+            json.dumps(tampered_payload).encode("utf-8"),
+        ).decode("ascii").rstrip("=")
+        tampered: str = f"{header}.{encoded_payload}.{signature}"
+        invalid_tokens: tuple[str, ...] = (
+            "", " ", "not-a-jwt", access_raw, str(expired), str(missing_expiry),
+            tampered,
+        )
+
+        for token in invalid_tokens:
+            with self.subTest(token_type=token[:12]), self.assertRaises(InvalidToken):
+                TokenService.refresh_access_token(token)
+
+    def test_refresh_rejects_missing_or_malformed_user_claims(self: Self) -> None:
+        """
+        Verify signed refresh tokens must identify an existing UUID account.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a malformed user claim renews access.
+        """
+        invalid_user_ids: tuple[object, ...] = (None, "not-a-uuid", "", 123, [])
+        for user_id in invalid_user_ids:
+            with self.subTest(user_id=user_id):
+                refresh: RefreshToken = RefreshToken.for_user(self.user)
+                refresh["token_version"] = self.user.token_version
+                refresh["user_id"] = user_id
+                with self.assertRaises(InvalidToken):
+                    TokenService.refresh_access_token(str(refresh))
+
+        del refresh["user_id"]
+        with self.assertRaises(InvalidToken):
+            TokenService.refresh_access_token(str(refresh))
+
+    def test_refresh_rejects_malformed_session_versions(self: Self) -> None:
+        """
+        Verify session versions require an integer matching the account's version.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a malformed session version is accepted.
+        """
+        invalid_versions: tuple[object, ...] = (None, False, True, "0", 0.0, [])
+        for version in invalid_versions:
+            with self.subTest(version=version):
+                refresh: RefreshToken = RefreshToken.for_user(self.user)
+                refresh["token_version"] = version
+                with self.assertRaises(InvalidToken):
+                    TokenService.refresh_access_token(str(refresh))
 
     def setUp(self: Self) -> None:
         """
