@@ -56,6 +56,26 @@ void main() {
     api.client.close();
   });
 
+  test(
+    'a lock requested at backend completion prevents login navigation success',
+    () async {
+      container.listen(authenticationControllerProvider, (_, next) {
+        if (next.asData?.value is AuthenticatedUnlocked) {
+          container.read(authenticationControllerProvider.notifier).lock();
+        }
+      });
+      final operation = container.read(provider.notifier).submit('01234');
+      api.response.complete(_result);
+      await operation;
+      expect(
+        container.read(authenticationControllerProvider).requireValue,
+        isA<AuthenticatedLocked>(),
+      );
+      expect(container.read(provider).isAuthenticated, isFalse);
+      expect(container.read(provider).isSubmitting, isFalse);
+    },
+  );
+
   test('submits once with leading zero and persists user and tokens before success', () async {
     final controller = container.read(provider.notifier);
     final operation = controller.submit('01234');
@@ -71,7 +91,7 @@ void main() {
     expect(container.read(provider).isAuthenticated, isTrue);
     expect(
       container.read(authenticationControllerProvider).requireValue,
-      isA<Authenticated>(),
+      isA<AuthenticatedUnlocked>(),
     );
     expect(
       (await container.read(authenticatedUserStorageProvider).read('user'))!
