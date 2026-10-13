@@ -19,6 +19,10 @@ import 'package:keebox/features/authentication/storage/user_storage.dart';
 import 'package:keebox/network/api_client.dart';
 import 'package:keebox/network/api_exception.dart';
 import 'package:keebox/network/api_session.dart';
+import 'package:keebox/features/pin/services/local_pin_hasher.dart';
+import 'package:keebox/features/pin/services/local_pin_service.dart';
+import 'package:keebox/features/pin/storage/local_pin_storage.dart';
+import 'package:keebox/features/pin/models/local_pin_verification.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -31,7 +35,10 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({});
     api = _API();
     container = ProviderContainer(
-      overrides: [authenticationApiProvider.overrideWithValue(api)],
+      overrides: [
+        authenticationApiProvider.overrideWithValue(api),
+        localPinHasherProvider.overrideWithValue(_Hasher()),
+      ],
     );
     container.listen(provider, (_, _) {});
     await container
@@ -77,11 +84,21 @@ void main() {
       'refresh',
     );
     expect(container.read(apiSessionProvider).accessToken, 'access');
+    expect(
+      (await container.read(localPinServiceProvider).verify('user', '01234'))
+          .status,
+      LocalPinStatus.matched,
+    );
   });
 
   test(
     'invalid PIN permits an explicit retry without authenticating',
     () async {
+      final local = container.read(localPinServiceProvider);
+      await local.enrollVerifiedPin('user', '01234');
+      for (var i = 0; i < 5; i++) {
+        await local.verify('user', '99999');
+      }
       final operation = container.read(provider.notifier).submit('11111');
       api.response.completeError(
         const APIException(
@@ -94,6 +111,11 @@ void main() {
       await operation;
       expect(container.read(provider).errorMessage, 'Incorrect PIN.');
       expect(container.read(provider).requiresLogin, isFalse);
+      expect(
+        (await container.read(localPinStorageProvider).read('user'))!
+            .requiresReauthentication,
+        isTrue,
+      );
       expect(
         container.read(authenticationControllerProvider).requireValue,
         isA<AwaitingPin>(),
@@ -108,6 +130,11 @@ void main() {
       await retry;
       expect(api.requests, hasLength(2));
       expect(container.read(provider).isAuthenticated, isTrue);
+      expect(
+        (await container.read(localPinStorageProvider).read('user'))!
+            .requiresReauthentication,
+        isFalse,
+      );
     },
   );
 
@@ -225,6 +252,7 @@ void main() {
       container = ProviderContainer(
         overrides: [
           authenticationApiProvider.overrideWithValue(api),
+          localPinHasherProvider.overrideWithValue(_Hasher()),
           authenticatedUserStorageProvider.overrideWithValue(
             _FailingUserStorage(),
           ),
@@ -294,4 +322,10 @@ class _FailingUserStorage extends AuthenticatedUserStorage {
   @override
   Future<void> save(AuthenticatedUser user) async =>
       throw StateError('Storage unavailable');
+}
+
+class _Hasher extends LocalPinHasher {
+  @override
+  Future<List<int>> derive(String pin, List<int> salt) async =>
+      List.generate(32, (index) => pin.codeUnitAt(index % pin.length));
 }
