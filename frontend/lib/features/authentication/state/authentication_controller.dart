@@ -51,7 +51,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
         session.accessToken,
         onInvalidSession: () => _invalidateSession(session.accessToken),
       );
-      return Authenticated(user: user, session: session);
+      return AuthenticatedLocked(user: user, session: session);
     } on FormatException {
       await sessionStorage.clear();
       return const Unauthenticated();
@@ -115,7 +115,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
               _invalidateSession(result.session.accessToken),
         );
     state = AsyncData(
-      Authenticated(user: result.user, session: result.session),
+      AuthenticatedUnlocked(user: result.user, session: result.session),
     );
   });
 
