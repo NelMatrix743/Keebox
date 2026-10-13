@@ -124,3 +124,26 @@ class TokenRefreshAPITests(TestCase):
                         "meta": None,
                     },
                 )
+
+    def test_superseded_session_cannot_refresh(self: Self) -> None:
+        """
+        Verify the endpoint rejects refresh tokens from an older session version.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a superseded session renews access.
+        """
+        self.user.token_version += 1
+        self.user.save(update_fields=["token_version"])
+
+        response: HttpResponse = self._post_refresh({"refresh_token": self.refresh_token})
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["error"]["code"], "invalid_refresh_token")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.token_version, 1)
