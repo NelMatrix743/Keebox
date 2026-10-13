@@ -171,3 +171,39 @@ class TokenRefreshAPITests(TestCase):
         self.assertEqual(deleted.status_code, 401)
         self.assertEqual(inactive.json(), deleted.json())
         self.assertEqual(deleted.json()["error"]["code"], "invalid_refresh_token")
+
+    def test_malformed_request_bodies_return_validation_errors(self: Self) -> None:
+        """
+        Verify request validation rejects malformed input without changing sessions.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when malformed input bypasses validation.
+        """
+        invalid_payloads: tuple[dict[str, object], ...] = (
+            {},
+            {"refresh_token": ""},
+            {"refresh_token": None},
+            {"refresh_token": 123},
+            {"refresh_token": True},
+            {"refresh_token": []},
+            {"refresh_token": {}},
+            {"refresh_token": self.refresh_token, "unexpected": "value"},
+        )
+        for payload in invalid_payloads:
+            with self.subTest(payload=payload):
+                response: HttpResponse = self._post_refresh(payload)
+                body: dict[str, Any] = response.json()
+
+                self.assertEqual(response.status_code, 422)
+                self.assertFalse(body["success"])
+                self.assertIsNone(body["data"])
+                self.assertEqual(body["error"]["code"], "validation_error")
+
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.token_version, 0)
