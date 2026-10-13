@@ -8,8 +8,8 @@ import 'package:keebox/features/pin/widgets/pin_lock_header.dart';
 import 'package:keebox/features/pin/widgets/pin_numpad.dart';
 import 'package:keebox/features/pin/widgets/pin_reset_prompt.dart';
 
-class PinCodeScreen extends ConsumerStatefulWidget {
-  const PinCodeScreen({
+class LockScreen extends ConsumerStatefulWidget {
+  const LockScreen({
     this.onPinEntered,
     this.onFingerprintPressed,
     this.onResetPin,
@@ -25,10 +25,10 @@ class PinCodeScreen extends ConsumerStatefulWidget {
   final int entryRevision;
 
   @override
-  ConsumerState<PinCodeScreen> createState() => _PinCodeScreenState();
+  ConsumerState<LockScreen> createState() => _LockScreenState();
 }
 
-class _PinCodeScreenState extends ConsumerState<PinCodeScreen> {
+class _LockScreenState extends ConsumerState<LockScreen> {
   final _screenIdentity = Object();
 
   @override

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keebox/features/authentication/state/login_pin_controller.dart';
-import 'package:keebox/features/pin/screens/pin_code_screen.dart';
+import 'package:keebox/features/pin/screens/lock_screen.dart';
 import 'package:keebox/shared/widgets/app_snackbar.dart';
 
 class LoginPinScreen extends ConsumerStatefulWidget {
@@ -47,7 +47,7 @@ class _LoginPinScreenState extends ConsumerState<LoginPinScreen> {
         widget.onAuthenticated();
       }
     });
-    return PinCodeScreen(
+    return LockScreen(
       isSubmitting: state.isSubmitting,
       entryRevision: _entryRevision,
       onPinEntered: (pin) {
