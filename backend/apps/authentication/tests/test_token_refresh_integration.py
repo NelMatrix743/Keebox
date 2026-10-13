@@ -328,3 +328,38 @@ class TokenRefreshIntegrationTests(TestCase):
         self.assertEqual(accepted.status_code, 200)
         access: AccessToken = AccessToken(accepted.json()["data"]["access_token"])
         self.assertEqual(access["token_version"], 3)
+
+    def test_pin_reset_revokes_refresh_until_a_new_login(self: Self) -> None:
+        """
+        Verify PIN recovery prevents old renewal and permits a fresh session.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when PIN recovery leaves old refresh usable.
+        """
+        previous: dict[str, Any] = self._login()
+        self._complete_reset(
+            Routes.Reset.PIN,
+            Routes.Reset.PIN_COMPLETE,
+            {"new_pin": "00543"},
+        )
+        rejected: HttpResponse = self._post(
+            Routes.Refresh.BASE,
+            {"refresh_token": previous["refresh_token"]},
+        )
+        current: dict[str, Any] = self._login(pin="00543")
+        accepted: HttpResponse = self._post(
+            Routes.Refresh.BASE,
+            {"refresh_token": current["refresh_token"]},
+        )
+
+        self.assertEqual(rejected.status_code, 401)
+        self.assertEqual(rejected.json()["error"]["code"], "invalid_refresh_token")
+        self.assertEqual(accepted.status_code, 200)
+        access: AccessToken = AccessToken(accepted.json()["data"]["access_token"])
+        self.assertEqual(access["token_version"], 3)
