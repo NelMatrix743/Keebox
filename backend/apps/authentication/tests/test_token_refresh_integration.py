@@ -293,3 +293,38 @@ class TokenRefreshIntegrationTests(TestCase):
         self.assertEqual(access["token_version"], 2)
         self.user.refresh_from_db()
         self.assertEqual(self.user.token_version, 2)
+
+    def test_password_reset_revokes_refresh_until_a_new_login(self: Self) -> None:
+        """
+        Verify password recovery prevents old renewal and permits a fresh session.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when password recovery leaves old refresh usable.
+        """
+        previous: dict[str, Any] = self._login()
+        self._complete_reset(
+            Routes.Reset.PASSWORD,
+            Routes.Reset.PASSWORD_COMPLETE,
+            {"new_password": "replacement strong password 7349"},
+        )
+        rejected: HttpResponse = self._post(
+            Routes.Refresh.BASE,
+            {"refresh_token": previous["refresh_token"]},
+        )
+        current: dict[str, Any] = self._login(password="replacement strong password 7349")
+        accepted: HttpResponse = self._post(
+            Routes.Refresh.BASE,
+            {"refresh_token": current["refresh_token"]},
+        )
+
+        self.assertEqual(rejected.status_code, 401)
+        self.assertEqual(rejected.json()["error"]["code"], "invalid_refresh_token")
+        self.assertEqual(accepted.status_code, 200)
+        access: AccessToken = AccessToken(accepted.json()["data"]["access_token"])
+        self.assertEqual(access["token_version"], 3)
