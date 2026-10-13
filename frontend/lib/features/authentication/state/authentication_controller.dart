@@ -6,7 +6,9 @@ import 'package:keebox/features/authentication/models/login_challenge.dart';
 import 'package:keebox/features/authentication/state/authentication_state.dart';
 import 'package:keebox/features/authentication/storage/auth_session_storage.dart';
 import 'package:keebox/features/authentication/storage/user_storage.dart';
+import 'package:keebox/features/pin/models/local_pin_verification.dart';
 import 'package:keebox/features/pin/services/local_pin_service.dart';
+import 'package:keebox/features/pin/storage/local_pin_storage.dart';
 import 'package:keebox/network/api_session.dart';
 
 final authenticationControllerProvider =
@@ -34,6 +36,14 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
         return const Unauthenticated();
       }
       if (user == null) {
+        await sessionStorage.clear();
+        return const Unauthenticated();
+      }
+      final localPin = await ref
+          .read(localPinStorageProvider)
+          .read(session.userId);
+      if (!ref.mounted) return const Unauthenticated();
+      if (localPin?.requiresReauthentication == true) {
         await sessionStorage.clear();
         return const Unauthenticated();
       }
@@ -119,6 +129,30 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
     }
   });
 
+  Future<LocalPinVerification> verifyLocalPin(String pin) =>
+      _serialize(() async {
+        await future;
+        if (!ref.mounted) {
+          return const LocalPinVerification(LocalPinStatus.unavailable);
+        }
+        final current = state.asData?.value;
+        if (current is! Authenticated) {
+          return const LocalPinVerification(
+            LocalPinStatus.requiresReauthentication,
+          );
+        }
+        final result = await ref
+            .read(localPinServiceProvider)
+            .verify(current.user.id, pin);
+        if (!ref.mounted) {
+          return const LocalPinVerification(LocalPinStatus.unavailable);
+        }
+        if (result.status == LocalPinStatus.requiresReauthentication) {
+          await _clearSession();
+        }
+        return result;
+      });
+
   Future<void> signOut() => _serialize(() async {
     await future;
     if (!ref.mounted) {
@@ -158,7 +192,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
     await ref.read(authenticationSessionStorageProvider).clear();
   }
 
-  Future<void> _serialize(Future<void> Function() action) {
+  Future<T> _serialize<T>(Future<T> Function() action) {
     final operation = _pending.then((_) => action());
     _pending = operation.then<void>(
       (_) {},
