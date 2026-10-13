@@ -147,3 +147,27 @@ class TokenRefreshAPITests(TestCase):
         self.assertEqual(response.json()["error"]["code"], "invalid_refresh_token")
         self.user.refresh_from_db()
         self.assertEqual(self.user.token_version, 1)
+
+    def test_inactive_or_deleted_accounts_cannot_refresh(self: Self) -> None:
+        """
+        Verify unavailable accounts receive the same safe refresh failure.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an unavailable account renews access.
+        """
+        self.user.is_active = False
+        self.user.save(update_fields=["is_active"])
+        inactive: HttpResponse = self._post_refresh({"refresh_token": self.refresh_token})
+        self.user.delete()
+        deleted: HttpResponse = self._post_refresh({"refresh_token": self.refresh_token})
+
+        self.assertEqual(inactive.status_code, 401)
+        self.assertEqual(deleted.status_code, 401)
+        self.assertEqual(inactive.json(), deleted.json())
+        self.assertEqual(deleted.json()["error"]["code"], "invalid_refresh_token")
