@@ -6,6 +6,7 @@ import 'package:keebox/features/authentication/models/login_challenge.dart';
 import 'package:keebox/features/authentication/state/authentication_state.dart';
 import 'package:keebox/features/authentication/storage/auth_session_storage.dart';
 import 'package:keebox/features/authentication/storage/user_storage.dart';
+import 'package:keebox/features/pin/services/local_pin_service.dart';
 import 'package:keebox/network/api_session.dart';
 
 final authenticationControllerProvider =
@@ -60,6 +61,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
   Future<void> completeAuthentication(
     AuthenticationResult result, {
     String? loginChallengeId,
+    String? verifiedPin,
     bool Function()? isActive,
   }) => _serialize(() async {
     await future;
@@ -78,6 +80,16 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
       );
     }
     final sessionStorage = ref.read(authenticationSessionStorageProvider);
+    if (verifiedPin != null) {
+      final enrolled = await ref
+          .read(localPinServiceProvider)
+          .enrollVerifiedPin(
+            result.user.id,
+            verifiedPin,
+            isActive: canComplete,
+          );
+      if (!enrolled || !canComplete()) return;
+    }
     await ref.read(authenticatedUserStorageProvider).save(result.user);
     if (!canComplete()) return;
     await sessionStorage.save(result.session);
