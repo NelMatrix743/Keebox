@@ -4,7 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keebox/app/app_texts.dart';
 import 'package:keebox/app/theme/app_theme.dart';
-import 'package:keebox/features/pin/screens/pin_code_screen.dart';
+import 'package:keebox/features/pin/screens/lock_screen.dart';
 import 'package:keebox/features/pin/widgets/pin_indicator_row.dart';
 
 void main() {
@@ -18,7 +18,7 @@ void main() {
         tester,
         ValueListenableBuilder(
           valueListenable: state,
-          builder: (context, value, child) => PinCodeScreen(
+          builder: (context, value, child) => LockScreen(
             isSubmitting: value.busy,
             entryRevision: value.revision,
             onPinEntered: (pin) {
@@ -59,7 +59,7 @@ void main() {
     tester,
   ) async {
     final pins = <String>[];
-    await _pump(tester, PinCodeScreen(onPinEntered: pins.add));
+    await _pump(tester, LockScreen(onPinEntered: pins.add));
     expect(_count(tester), 0);
     expect(find.byType(TextField), findsNothing);
     expect(find.byType(FilledButton), findsNothing);
@@ -79,7 +79,7 @@ void main() {
     'delete clears indicators in reverse order and permits correction',
     (tester) async {
       final pins = <String>[];
-      await _pump(tester, PinCodeScreen(onPinEntered: pins.add));
+      await _pump(tester, LockScreen(onPinEntered: pins.add));
       expect(_delete(tester).onPressed, isNull);
       await _enter(tester, '01234');
       await tester.tap(find.byKey(const ValueKey('pin-delete')));
@@ -103,7 +103,7 @@ void main() {
     var resets = 0;
     await _pump(
       tester,
-      PinCodeScreen(
+      LockScreen(
         onFingerprintPressed: () => fingerprints++,
         onResetPin: () => resets++,
       ),
@@ -129,7 +129,7 @@ void main() {
         final pins = <String>[];
         await _pump(
           tester,
-          PinCodeScreen(onPinEntered: pins.add, onResetPin: () => resets++),
+          LockScreen(onPinEntered: pins.add, onResetPin: () => resets++),
           size: size,
           textScale: textScale,
         );
@@ -158,11 +158,11 @@ void main() {
   testWidgets('leaving the lock screen discards its partial PIN', (
     tester,
   ) async {
-    await _pump(tester, const PinCodeScreen());
+    await _pump(tester, const LockScreen());
     await _enter(tester, '12');
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
-    await _pump(tester, const PinCodeScreen());
+    await _pump(tester, const LockScreen());
     expect(_count(tester), 0);
   });
 }
