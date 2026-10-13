@@ -1,7 +1,9 @@
+from datetime import datetime, timedelta, timezone
 from typing import Self
 
 from django.http import HttpRequest
 from django.test import TestCase
+from freezegun import freeze_time
 from ninja_jwt.exceptions import InvalidToken
 from ninja_jwt.tokens import AccessToken, RefreshToken
 
@@ -12,6 +14,53 @@ from apps.authentication.services.token_services import TokenService
 
 
 class TokenServiceTests(TestCase):
+    def test_refresh_renews_expired_access_without_changing_the_session(
+        self: Self,
+    ) -> None:
+        """
+        Verify repeated renewal issues current access tokens without extending refresh.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when renewal changes or invalidates the session.
+        """
+        issued_at: datetime = datetime(2026, 10, 13, 12, tzinfo=timezone.utc)
+        with freeze_time(issued_at):
+            original_access: str
+            refresh_raw: str
+            original_access, refresh_raw = TokenService.issue_tokens(self.user)
+            refresh: RefreshToken = RefreshToken(refresh_raw)
+            refresh_payload: dict[str, object] = dict(refresh.payload)
+
+        renewed_at: datetime = issued_at + AccessToken.lifetime + timedelta(seconds=1)
+        for renewal_time in (renewed_at, renewed_at + timedelta(seconds=1)):
+            with self.subTest(renewal_time=renewal_time), freeze_time(renewal_time):
+                with self.assertRaises(InvalidToken):
+                    VersionedJWTAuth().authenticate(HttpRequest(), original_access)
+                renewed_raw: str = TokenService.refresh_access_token(refresh_raw)
+                renewed: AccessToken = AccessToken(renewed_raw)
+
+                self.assertEqual(renewed["iat"], int(renewal_time.timestamp()))
+                self.assertEqual(
+                    renewed["exp"],
+                    int((renewal_time + AccessToken.lifetime).timestamp()),
+                )
+                self.assertEqual(renewed["user_id"], str(self.user.id))
+                self.assertEqual(renewed["token_version"], self.user.token_version)
+                self.assertEqual(
+                    VersionedJWTAuth().authenticate(HttpRequest(), renewed_raw),
+                    self.user,
+                )
+                self.assertEqual(RefreshToken(refresh_raw).payload, refresh_payload)
+
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.token_version, 0)
+
     def setUp(self: Self) -> None:
         """
         Create an account for token issuance and session-version checks.
