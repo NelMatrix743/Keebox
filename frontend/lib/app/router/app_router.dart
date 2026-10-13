@@ -10,6 +10,7 @@ import 'package:keebox/features/authentication/state/authentication_controller.d
 import 'package:keebox/features/authentication/state/authentication_state.dart';
 import 'package:keebox/features/pin/models/pin_setup_mode.dart';
 import 'package:keebox/features/pin/screens/pin_setup_screen.dart';
+import 'package:keebox/features/pin/screens/local_unlock_screen.dart';
 import 'package:keebox/features/home/screens/home_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -38,24 +39,34 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.homeLock,
         name: AppRoutes.homeLockName,
         redirect: (context, state) =>
+            switch (ref.read(authenticationControllerProvider).asData?.value) {
+              AwaitingPin() || AuthenticatedLocked() => null,
+              AuthenticatedUnlocked() => AppRoutes.home,
+              _ => AppRoutes.signIn,
+            },
+        builder: (context, state) =>
             ref.read(authenticationControllerProvider).asData?.value
-                is AwaitingPin
-            ? null
-            : AppRoutes.signIn,
-        builder: (context, state) => LoginPinScreen(
-          onAuthenticated: () => context.goNamed(AppRoutes.homeName),
-          onLoginRequired: () => context.goNamed(AppRoutes.signInName),
-          onResetPin: () => context.pushNamed(AppRoutes.resetPinName),
-        ),
+                is AuthenticatedLocked
+            ? LocalUnlockScreen(
+                onUnlocked: () => context.goNamed(AppRoutes.homeName),
+                onLoginRequired: () => context.goNamed(AppRoutes.signInName),
+                onResetPin: () => context.pushNamed(AppRoutes.resetPinName),
+              )
+            : LoginPinScreen(
+                onAuthenticated: () => context.goNamed(AppRoutes.homeName),
+                onLoginRequired: () => context.goNamed(AppRoutes.signInName),
+                onResetPin: () => context.pushNamed(AppRoutes.resetPinName),
+              ),
       ),
       GoRoute(
         path: AppRoutes.home,
         name: AppRoutes.homeName,
         redirect: (context, state) =>
-            ref.read(authenticationControllerProvider).asData?.value
-                is AuthenticatedUnlocked
-            ? null
-            : AppRoutes.signIn,
+            switch (ref.read(authenticationControllerProvider).asData?.value) {
+              AuthenticatedUnlocked() => null,
+              AuthenticatedLocked() => AppRoutes.homeLock,
+              _ => AppRoutes.signIn,
+            },
         builder: (context, state) => const HomeScreen(),
       ),
       GoRoute(
@@ -93,7 +104,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ],
   );
   ref.listen(authenticationControllerProvider, (_, next) {
-    if (router.routeInformationProvider.value.uri.path == AppRoutes.home) {
+    final path = router.routeInformationProvider.value.uri.path;
+    if (path == AppRoutes.home || path == AppRoutes.homeLock) {
       router.refresh();
     }
   });
