@@ -32,6 +32,7 @@ void main() {
         authenticationControllerProvider.notifier,
       );
       await controller.completeAuthentication(_result, verifiedPin: '01234');
+      controller.lock();
       for (var i = 0; i < 4; i++) {
         expect(
           (await controller.verifyLocalPin('99999')).status,
@@ -39,7 +40,7 @@ void main() {
         );
         expect(
           container.read(authenticationControllerProvider).requireValue,
-          isA<Authenticated>(),
+          isA<AuthenticatedLocked>(),
         );
       }
       expect(
@@ -81,6 +82,7 @@ void main() {
         authenticationControllerProvider.notifier,
       );
       await controller.completeAuthentication(_result, verifiedPin: '01234');
+      controller.lock();
       for (var i = 0; i < 5; i++) {
         await controller.verifyLocalPin('99999');
       }
@@ -107,6 +109,7 @@ void main() {
         authenticationControllerProvider.notifier,
       );
       await controller.completeAuthentication(_result, verifiedPin: '01234');
+      controller.lock();
       await controller.verifyLocalPin('99999');
       expect(
         (await controller.verifyLocalPin('01234')).status,
@@ -132,6 +135,7 @@ void main() {
       authenticationControllerProvider.notifier,
     );
     await controller.completeAuthentication(_result);
+    controller.lock();
     expect(
       (await controller.verifyLocalPin('01234')).status,
       LocalPinStatus.requiresReauthentication,
