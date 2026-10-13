@@ -1,6 +1,11 @@
 abstract final class AppTexts {
   static const appName = 'Keebox';
 
+  static const onboardingLoadFailed =
+      'Unable to load onboarding progress. Please try again.';
+  static const onboardingSaveFailed =
+      'Unable to save onboarding progress. Please try again.';
+
   static const login = 'Login';
   static const loggingIn = 'Verifying your account';
   static const loginFailed = 'Unable to log in. Please try again.';
