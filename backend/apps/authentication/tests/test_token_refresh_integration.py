@@ -259,3 +259,37 @@ class TokenRefreshIntegrationTests(TestCase):
         )
         self.assertEqual(rejected_access.status_code, 401)
         self.assertEqual(rejected_access.json()["error"]["code"], "invalid_session")
+
+    def test_replacement_login_revokes_only_the_previous_sessions_refresh(
+        self: Self,
+    ) -> None:
+        """
+        Verify a completed second login renews access while the first cannot.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when more than one login session can refresh.
+        """
+        previous: dict[str, Any] = self._login()
+        current: dict[str, Any] = self._login()
+        rejected: HttpResponse = self._post(
+            Routes.Refresh.BASE,
+            {"refresh_token": previous["refresh_token"]},
+        )
+        accepted: HttpResponse = self._post(
+            Routes.Refresh.BASE,
+            {"refresh_token": current["refresh_token"]},
+        )
+
+        self.assertEqual(rejected.status_code, 401)
+        self.assertEqual(rejected.json()["error"]["code"], "invalid_refresh_token")
+        self.assertEqual(accepted.status_code, 200)
+        access: AccessToken = AccessToken(accepted.json()["data"]["access_token"])
+        self.assertEqual(access["token_version"], 2)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.token_version, 2)
