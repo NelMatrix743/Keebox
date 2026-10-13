@@ -21,8 +21,68 @@ import 'package:keebox/features/pin/widgets/pin_indicator_row.dart';
 import 'package:keebox/network/api_client.dart';
 import 'package:keebox/network/api_endpoints.dart';
 import 'package:keebox/network/api_session.dart';
+import 'package:keebox/features/pin/services/local_pin_hasher.dart';
+import 'package:keebox/features/pin/storage/local_pin_storage.dart';
 
 void main() {
+  testWidgets(
+    'local exhaustion returns to login and only completed backend login restores local access',
+    (tester) async {
+      final container = await _pump(tester, _Adapter());
+      await _enterPin(tester, '01234');
+      await tester.pumpAndSettle();
+      final controller = container.read(
+        authenticationControllerProvider.notifier,
+      );
+      for (var i = 0; i < 5; i++) {
+        await controller.verifyLocalPin('99999');
+      }
+      await tester.pumpAndSettle();
+      expect(_path(container), AppRoutes.signIn);
+      expect(
+        (await container.read(localPinStorageProvider).read('user-id'))!
+            .requiresReauthentication,
+        isTrue,
+      );
+      expect(
+        (await container
+                .read(authenticatedUserStorageProvider)
+                .read('user-id'))!
+            .kbkey,
+        'permanent-key',
+      );
+      await tester.enterText(
+        find.byType(TextFormField).first,
+        'ada@example.com',
+      );
+      await tester.enterText(find.byType(TextFormField).last, 'secret');
+      await tester.ensureVisible(find.text(AppTexts.login));
+      await tester.tap(find.byType(FilledButton));
+      await tester.pumpAndSettle();
+      expect(_path(container), AppRoutes.homeLock);
+      expect(
+        (await container.read(localPinStorageProvider).read('user-id'))!
+            .requiresReauthentication,
+        isTrue,
+      );
+      await _enterPin(tester, '01234');
+      await tester.pumpAndSettle();
+      expect(_path(container), AppRoutes.home);
+      expect(
+        (await container.read(localPinStorageProvider).read('user-id'))!
+            .requiresReauthentication,
+        isFalse,
+      );
+      expect(
+        (await container
+                .read(authenticatedUserStorageProvider)
+                .read('user-id'))!
+            .kbkey,
+        'permanent-key',
+      );
+    },
+  );
+
   testWidgets(
     'password and PIN login store the session and open protected Home',
     (tester) async {
@@ -41,6 +101,11 @@ void main() {
       expect(adapter.requests, hasLength(2));
       expect(_path(container), AppRoutes.home);
       expect(find.text(AppTexts.homePlaceholder), findsOneWidget);
+      expect(
+        (await container.read(localPinStorageProvider).read('user-id'))!
+            .requiresReauthentication,
+        isFalse,
+      );
       expect(
         container.read(authenticationControllerProvider).requireValue,
         isA<Authenticated>(),
@@ -198,6 +263,7 @@ Future<ProviderContainer> _pump(WidgetTester tester, _Adapter adapter) async {
   final container = ProviderContainer(
     overrides: [
       apiClientProvider.overrideWithValue(client),
+      localPinHasherProvider.overrideWithValue(_Hasher()),
       authenticationApiProvider.overrideWithValue(
         AuthenticationAPI(client: client),
       ),
@@ -287,4 +353,10 @@ class _Adapter implements HttpClientAdapter {
 
   @override
   void close({bool force = false}) {}
+}
+
+class _Hasher extends LocalPinHasher {
+  @override
+  Future<List<int>> derive(String pin, List<int> salt) async =>
+      List.generate(32, (index) => pin.codeUnitAt(index % pin.length));
 }
