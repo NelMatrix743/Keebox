@@ -143,11 +143,16 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
     );
   }
 
-  Future<LocalPinVerification> verifyLocalPin(String pin) {
+  Future<LocalPinVerification> verifyLocalPin(
+    String pin, {
+    bool Function()? isActive,
+  }) {
     final revision = _localVerificationRevision;
     return _serialize(() async {
       await future;
-      if (!ref.mounted || revision != _localVerificationRevision) {
+      if (!ref.mounted ||
+          revision != _localVerificationRevision ||
+          (isActive != null && !isActive())) {
         return const LocalPinVerification(LocalPinStatus.unavailable);
       }
       final current = state.asData?.value;
@@ -164,6 +169,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
           .verify(current.user.id, pin);
       if (!ref.mounted ||
           revision != _localVerificationRevision ||
+          (isActive != null && !isActive()) ||
           !identical(state.asData?.value, current)) {
         return const LocalPinVerification(LocalPinStatus.unavailable);
       }
