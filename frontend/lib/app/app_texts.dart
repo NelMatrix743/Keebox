@@ -31,6 +31,10 @@ abstract final class AppTexts {
   static const verifyingPin = 'Verifying PIN';
   static const pinVerificationFailed =
       'Unable to verify your PIN. Please try again.';
+  static const localPinLoginRequired =
+      'For your security, please log in again to unlock the app.';
+  static String localPinIncorrect(int remainingAttempts) =>
+      'Incorrect PIN. $remainingAttempts ${remainingAttempts == 1 ? 'attempt' : 'attempts'} remaining.';
   static const loginChallengeExpired =
       'Your login has expired. Please log in again.';
   static const loginSessionSaveFailed =
