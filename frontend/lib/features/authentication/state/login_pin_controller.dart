@@ -24,7 +24,9 @@ class LoginPinController extends Notifier<LoginPinState> {
     ref.onDispose(() => _request?.cancel());
     ref.listen(authenticationControllerProvider, (_, next) {
       final current = next.asData?.value;
-      if (_request == null || _completing && current is Authenticated) return;
+      if (_request == null || _completing && current is AuthenticatedUnlocked) {
+        return;
+      }
       if (current is! AwaitingPin ||
           current.challenge.loginChallengeId != _challengeId) {
         _request?.cancel();
@@ -97,7 +99,7 @@ class LoginPinController extends Notifier<LoginPinState> {
           .read(authenticationControllerProvider)
           .asData
           ?.value;
-      if (authenticated is Authenticated &&
+      if (authenticated is AuthenticatedUnlocked &&
           authenticated.session.accessToken == result.session.accessToken) {
         state = const LoginPinState(isAuthenticated: true);
       }
