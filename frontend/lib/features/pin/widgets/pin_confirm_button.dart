@@ -11,17 +11,19 @@ class PinConfirmButton extends StatelessWidget {
   const PinConfirmButton({
     required this.onPressed,
     this.isComplete = false,
+    this.isSubmitting = false,
     super.key,
   });
 
   final VoidCallback? onPressed;
   final bool isComplete;
+  final bool isSubmitting;
 
   @override
   Widget build(BuildContext context) => SizedBox(
     width: 334.w,
     child: FilledButton(
-      onPressed: onPressed,
+      onPressed: isSubmitting ? null : onPressed,
       style: FilledButton.styleFrom(
         minimumSize: Size.fromHeight(math.max(48, 50.h)),
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
@@ -36,19 +38,41 @@ class PinConfirmButton extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          Flexible(
-            child: Text(isComplete ? AppTexts.confirmed : AppTexts.confirm),
+          Visibility(
+            visible: !isSubmitting,
+            maintainState: true,
+            maintainAnimation: true,
+            maintainSize: true,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    isComplete ? AppTexts.confirmed : AppTexts.confirm,
+                  ),
+                ),
+                SizedBox(width: 8.w),
+                Image.asset(
+                  AppAssets.pinConfirm,
+                  width: 24.r,
+                  height: 24.r,
+                  excludeFromSemantics: true,
+                ),
+              ],
+            ),
           ),
-          SizedBox(width: 8.w),
-          Image.asset(
-            AppAssets.pinConfirm,
-            width: 24.r,
-            height: 24.r,
-            excludeFromSemantics: true,
-          ),
+          if (isSubmitting)
+            SizedBox.square(
+              dimension: 24.r,
+              child: const CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+                semanticsLabel: AppTexts.confirmingPin,
+              ),
+            ),
         ],
       ),
     ),

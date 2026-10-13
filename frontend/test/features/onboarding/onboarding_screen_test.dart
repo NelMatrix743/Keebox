@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:keebox/app/theme/app_theme.dart';
 import 'package:keebox/features/onboarding/screens/onboarding_screen.dart';
+import 'package:keebox/features/onboarding/state/onboarding_controller.dart';
+import 'package:keebox/features/onboarding/state/onboarding_state.dart';
 
 void main() {
   testWidgets('bottom action keeps spacing above Android navigation controls', (
@@ -26,6 +29,7 @@ void main() {
         home: OnboardingScreen(onSignIn: () {}, onGetStarted: () {}),
       ),
     );
+    await tester.pumpAndSettle();
     final buttonBottom = tester.getBottomLeft(find.byType(FilledButton)).dy;
     expect(874 - 26 - buttonBottom, greaterThanOrEqualTo(26));
   });
@@ -45,10 +49,13 @@ void main() {
       ),
     );
 
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Sign In'));
+    await tester.pumpAndSettle();
     expect(signInCount, 1);
     expect(getStartedCount, 0);
     await tester.tap(find.text('Get Started'));
+    await tester.pumpAndSettle();
     expect(signInCount, 1);
     expect(getStartedCount, 1);
   });
@@ -80,8 +87,11 @@ void main() {
           ),
         );
 
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Sign In'));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Get Started'));
+        await tester.pumpAndSettle();
         expect(signInPressed, isTrue);
         expect(getStartedPressed, isTrue);
         expect(tester.takeException(), isNull);
@@ -95,11 +105,22 @@ Widget _buildApp({
   TransitionBuilder? builder,
   required Widget home,
 }) {
-  return ScreenUtilInit(
-    designSize: const Size(402, 874),
-    minTextAdapt: true,
-    splitScreenMode: true,
-    builder: (context, child) =>
-        MaterialApp(theme: theme, builder: builder, home: home),
+  return ProviderScope(
+    overrides: [
+      onboardingControllerProvider.overrideWith(_CompletedController.new),
+    ],
+    child: ScreenUtilInit(
+      designSize: const Size(402, 874),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) =>
+          MaterialApp(theme: theme, builder: builder, home: home),
+    ),
   );
+}
+
+class _CompletedController extends OnboardingController {
+  @override
+  Future<OnboardingState> build() async =>
+      const OnboardingState(isCompleted: true);
 }

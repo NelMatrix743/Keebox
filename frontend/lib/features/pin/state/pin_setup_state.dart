@@ -1,13 +1,11 @@
-enum PinSetupStage { entry, confirmation, complete }
-
-enum PinSetupError { mismatch, submission }
+enum PinSetupStage { entry, complete }
 
 class PinSetupState {
   const PinSetupState({
     this.digits = '',
     this.stage = PinSetupStage.entry,
     this.isSubmitting = false,
-    this.error,
+    this.submissionFailed = false,
   });
 
   static const length = 5;
@@ -15,7 +13,7 @@ class PinSetupState {
   final String digits;
   final PinSetupStage stage;
   final bool isSubmitting;
-  final PinSetupError? error;
+  final bool submissionFailed;
 
   bool get canEdit => !isSubmitting && stage != PinSetupStage.complete;
   bool get canConfirm => canEdit && digits.length == length;

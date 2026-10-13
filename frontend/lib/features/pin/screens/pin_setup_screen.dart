@@ -12,21 +12,22 @@ import 'package:keebox/features/pin/widgets/pin_confirm_button.dart';
 import 'package:keebox/features/pin/widgets/pin_entry_section.dart';
 import 'package:keebox/features/pin/widgets/pin_numpad.dart';
 import 'package:keebox/features/pin/widgets/pin_setup_header.dart';
+import 'package:keebox/shared/widgets/app_snackbar.dart';
 
-class PinCodeScreen extends ConsumerStatefulWidget {
-  const PinCodeScreen({required this.mode, this.onPinConfirmed, super.key});
+class PinSetupScreen extends ConsumerStatefulWidget {
+  const PinSetupScreen({required this.mode, this.onPinConfirmed, super.key});
 
   final PinSetupMode mode;
 
-  /// Invoked only after both five-digit entries match. API and storage work
+  /// Invoked when a complete five-digit PIN is confirmed. API and storage work
   /// belongs to the caller; the screen awaits it and allows retry on failure.
   final FutureOr<void> Function(String pin)? onPinConfirmed;
 
   @override
-  ConsumerState<PinCodeScreen> createState() => _PinCodeScreenState();
+  ConsumerState<PinSetupScreen> createState() => _PinSetupScreenState();
 }
 
-class _PinCodeScreenState extends ConsumerState<PinCodeScreen> {
+class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
   final _screenIdentity = Object();
 
   @override
@@ -35,22 +36,14 @@ class _PinCodeScreenState extends ConsumerState<PinCodeScreen> {
     final state = ref.watch(provider);
     final controller = ref.read(provider.notifier);
     ref.listen(provider, (previous, next) {
-      if (next.error != PinSetupError.submission ||
-          next.error == previous?.error) {
+      if (!next.submissionFailed || previous?.submissionFailed == true) {
         return;
       }
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text(
-              AppTexts.pinConfirmationFailed,
-              style: TextStyle(color: Colors.white),
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.fixed,
-          ),
-        );
+      AppSnackBar.show(
+        context,
+        message: AppTexts.pinConfirmationFailed,
+        type: AppSnackBarType.error,
+      );
     });
 
     return Scaffold(
@@ -65,7 +58,7 @@ class _PinCodeScreenState extends ConsumerState<PinCodeScreen> {
                   children: [
                     PinSetupHeader(mode: widget.mode, stage: state.stage),
                     SizedBox(height: 34.h),
-                    PinEntrySection(state: state),
+                    PinEntrySection(digits: state.digits),
                     PinNumpad(
                       onDigit: controller.enterDigit,
                       onDelete: controller.deleteDigit,
@@ -77,21 +70,21 @@ class _PinCodeScreenState extends ConsumerState<PinCodeScreen> {
                     PinConfirmButton(
                       onPressed: state.canConfirm
                           ? () {
-                              ScaffoldMessenger.of(context)
-                                  .removeCurrentSnackBar();
+                              AppSnackBar.dismiss(context);
                               unawaited(
                                 controller.confirm(
                                   (pin) async {
                                     if (!mounted) return;
                                     await widget.onPinConfirmed?.call(pin);
                                   },
-                                  beforeValidation: () =>
+                                  beforeSubmit: () =>
                                       WidgetsBinding.instance.endOfFrame,
                                 ),
                               );
                             }
                           : null,
                       isComplete: state.stage == PinSetupStage.complete,
+                      isSubmitting: state.isSubmitting,
                     ),
                   ],
                 ),

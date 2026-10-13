@@ -10,6 +10,9 @@ class PinNumpad extends StatelessWidget {
     required this.onDelete,
     required this.showDelete,
     this.enabled = true,
+    this.showFingerprint = false,
+    this.onFingerprint,
+    this.deleteEnabled = true,
     super.key,
   });
 
@@ -17,6 +20,9 @@ class PinNumpad extends StatelessWidget {
   final VoidCallback onDelete;
   final bool showDelete;
   final bool enabled;
+  final bool showFingerprint;
+  final VoidCallback? onFingerprint;
+  final bool deleteEnabled;
 
   @override
   Widget build(BuildContext context) => Directionality(
@@ -31,12 +37,18 @@ class PinNumpad extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 for (var column = 0; column < 3; column++)
-                  if (row == 3 && (column == 0 || (column == 2 && !showDelete)))
+                  if (row == 3 && column == 0 && showFingerprint)
+                    PinNumpadKey.fingerprint(
+                      key: const ValueKey('pin-fingerprint'),
+                      onPressed: enabled ? onFingerprint : null,
+                    )
+                  else if (row == 3 &&
+                      (column == 0 || (column == 2 && !showDelete)))
                     SizedBox.square(dimension: math.max(48, 74.r))
                   else if (row == 3 && column == 2)
                     PinNumpadKey.delete(
                       key: const ValueKey('pin-delete'),
-                      onPressed: enabled ? onDelete : null,
+                      onPressed: enabled && deleteEnabled ? onDelete : null,
                     )
                   else
                     _digit(row == 3 ? 0 : row * 3 + column + 1),

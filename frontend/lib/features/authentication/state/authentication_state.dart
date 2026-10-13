@@ -16,9 +16,17 @@ class AwaitingPin extends AuthenticationState {
   final LoginChallenge challenge;
 }
 
-class Authenticated extends AuthenticationState {
+sealed class Authenticated extends AuthenticationState {
   const Authenticated({required this.user, required this.session});
 
   final AuthenticatedUser user;
   final AuthenticationSession session;
+}
+
+final class AuthenticatedLocked extends Authenticated {
+  const AuthenticatedLocked({required super.user, required super.session});
+}
+
+final class AuthenticatedUnlocked extends Authenticated {
+  const AuthenticatedUnlocked({required super.user, required super.session});
 }

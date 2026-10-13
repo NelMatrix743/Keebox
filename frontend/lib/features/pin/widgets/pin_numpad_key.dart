@@ -8,13 +8,20 @@ import 'package:keebox/app/theme/app_fonts.dart';
 import 'package:keebox/assets/app_assets.dart';
 
 class PinNumpadKey extends StatelessWidget {
-  const PinNumpadKey({required this.digit, required this.onPressed, super.key});
+  const PinNumpadKey({required this.digit, required this.onPressed, super.key})
+    : isFingerprint = false;
 
   const PinNumpadKey.delete({required this.onPressed, super.key})
-    : digit = null;
+    : digit = null,
+      isFingerprint = false;
+
+  const PinNumpadKey.fingerprint({required this.onPressed, super.key})
+    : digit = null,
+      isFingerprint = true;
 
   final int? digit;
   final VoidCallback? onPressed;
+  final bool isFingerprint;
 
   @override
   Widget build(BuildContext context) => OutlinedButton(
@@ -43,7 +50,18 @@ class PinNumpadKey extends StatelessWidget {
         ),
       ),
     ),
-    child: digit == null
+    child: isFingerprint
+        ? Builder(
+            builder: (context) => Icon(
+              Icons.fingerprint_rounded,
+              size: 36.r,
+              color: DefaultTextStyle.of(context).style.color == Colors.white
+                  ? Colors.white
+                  : AppColors.brand,
+              semanticLabel: AppTexts.authenticateWithFingerprint,
+            ),
+          )
+        : digit == null
         ? Semantics(
             label: AppTexts.deletePinDigit,
             child: Builder(

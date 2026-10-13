@@ -20,17 +20,15 @@ void main() {
       final result = router.pushNamed<String>(route);
       await tester.pumpAndSettle();
       expect(find.text(title), findsOneWidget);
-      for (var pass = 0; pass < 2; pass++) {
-        for (final digit in [0, 1, 2, 3, 4]) {
-          final key = find.byKey(ValueKey('pin-key-$digit'));
-          await tester.ensureVisible(key);
-          await tester.tap(key);
-          await tester.pump();
-        }
-        await tester.ensureVisible(find.text('Confirm'));
-        await tester.tap(find.text('Confirm'));
-        await tester.pumpAndSettle();
+      for (final digit in [0, 1, 2, 3, 4]) {
+        final key = find.byKey(ValueKey('pin-key-$digit'));
+        await tester.ensureVisible(key);
+        await tester.tap(key);
+        await tester.pump();
       }
+      await tester.ensureVisible(find.text('Confirm'));
+      await tester.tap(find.text('Confirm'));
+      await tester.pumpAndSettle();
       expect(await result, '01234');
       expect(router.routeInformationProvider.value.uri.path, AppRoutes.root);
     });

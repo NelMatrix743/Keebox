@@ -10,10 +10,9 @@ import 'package:keebox/app/theme/app_colors.dart';
 import 'package:keebox/app/theme/app_fonts.dart';
 import 'package:keebox/app/theme/app_theme.dart';
 import 'package:keebox/features/pin/models/pin_setup_mode.dart';
-import 'package:keebox/features/pin/screens/pin_code_screen.dart';
+import 'package:keebox/features/pin/screens/pin_setup_screen.dart';
 import 'package:keebox/features/pin/widgets/pin_digit_cell.dart';
 import 'package:keebox/features/pin/widgets/pin_digit_row.dart';
-import 'package:keebox/features/pin/widgets/pin_entry_section.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +34,7 @@ void main() {
   ) async {
     _viewport(tester);
     await tester.pumpWidget(
-      _app(const PinCodeScreen(mode: PinSetupMode.create)),
+      _app(const PinSetupScreen(mode: PinSetupMode.create)),
     );
     expect(find.byKey(const ValueKey('pin-delete')), findsNothing);
     expect(_confirm(tester).onPressed, isNull);
@@ -61,13 +60,22 @@ void main() {
   });
 
   for (final mode in PinSetupMode.values) {
-    testWidgets('$mode requires two matching entries before completion', (
+    testWidgets('$mode submits once with a stationary row and button spinner', (
       tester,
     ) async {
       _viewport(tester);
       final pins = <String>[];
+      final pending = Completer<void>();
       await tester.pumpWidget(
-        _app(PinCodeScreen(mode: mode, onPinConfirmed: pins.add)),
+        _app(
+          PinSetupScreen(
+            mode: mode,
+            onPinConfirmed: (pin) {
+              pins.add(pin);
+              return pending.future;
+            },
+          ),
+        ),
       );
       expect(
         find.text(
@@ -78,29 +86,24 @@ void main() {
         findsOneWidget,
       );
       final buttonPosition = tester.getTopLeft(find.byType(FilledButton));
+      final rowPosition = tester.getTopLeft(find.byType(PinDigitRow));
       await _enter(tester, '01234');
       await tester.tap(find.text('Confirm'));
       await tester.pump();
-      expect(pins, isEmpty);
-      expect(_digits(tester), isEmpty);
+      expect(pins, ['01234']);
+      expect(_digits(tester), '01234');
       expect(
         find.descendant(
-          of: find.byType(PinEntrySection),
-          matching: find.text(AppTexts.confirmPinInstruction),
+          of: find.byType(FilledButton),
+          matching: find.byType(CircularProgressIndicator),
         ),
         findsOneWidget,
       );
-      expect(
-        tester.getTopLeft(find.text(AppTexts.confirmPinInstruction)).dy,
-        greaterThan(tester.getBottomLeft(find.byType(PinDigitRow)).dy),
-      );
       expect(_confirm(tester).onPressed, isNull);
       expect(tester.getTopLeft(find.byType(FilledButton)), buttonPosition);
-      await _enter(tester, '01234');
-      await tester.tap(find.text('Confirm'));
-      await tester.pump();
-      expect(find.byType(PinDigitCell), findsNothing);
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(tester.getTopLeft(find.byType(PinDigitRow)), rowPosition);
+      expect(find.byType(PinDigitCell), findsNWidgets(5));
+      pending.complete();
       await tester.pumpAndSettle();
       expect(pins, ['01234']);
       expect(find.text('PIN Code Confirmed'), findsOneWidget);
@@ -108,49 +111,6 @@ void main() {
       expect(_confirm(tester).onPressed, isNull);
     });
   }
-
-  testWidgets('mismatch restores red PIN boxes and an inline retry error', (
-    tester,
-  ) async {
-    _viewport(tester);
-    final pins = <String>[];
-    await tester.pumpWidget(
-      _app(PinCodeScreen(mode: PinSetupMode.create, onPinConfirmed: pins.add)),
-    );
-    await _enter(tester, '12345');
-    await tester.tap(find.text('Confirm'));
-    await tester.pump();
-    await _enter(tester, '54321');
-    await tester.tap(find.text('Confirm'));
-    await tester.pump();
-    expect(find.byType(PinDigitCell), findsNothing);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    await tester.pumpAndSettle();
-    expect(pins, isEmpty);
-    expect(_digits(tester), isEmpty);
-    expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(find.byType(SnackBar), findsNothing);
-    for (var i = 0; i < 5; i++) {
-      expect(_border(tester, i), Colors.red);
-    }
-    final error = find.text(AppTexts.pinMismatchMessage);
-    expect(tester.widget<Text>(error).style?.color, Colors.red);
-    expect(
-      tester.getTopLeft(error).dy,
-      greaterThan(tester.getBottomLeft(find.byType(PinDigitRow)).dy),
-    );
-    expect(error, findsOneWidget);
-    await _enter(tester, '1');
-    expect(error, findsNothing);
-    expect(_border(tester, 0), AppColors.brand);
-    expect(_border(tester, 1), AppColors.border);
-    await _enter(tester, '2345');
-    await tester.tap(find.text('Confirm'));
-    await tester.pumpAndSettle();
-    expect(pins, ['12345']);
-    expect(error, findsNothing);
-    expect(find.byType(SnackBar), findsNothing);
-  });
 
   testWidgets('pending callback disables input and failure permits retry', (
     tester,
@@ -160,7 +120,7 @@ void main() {
     var calls = 0;
     await tester.pumpWidget(
       _app(
-        PinCodeScreen(
+        PinSetupScreen(
           mode: PinSetupMode.reset,
           onPinConfirmed: (_) {
             calls++;
@@ -172,24 +132,21 @@ void main() {
     await _enter(tester, '12345');
     await tester.tap(find.text('Confirm'));
     await tester.pump();
-    await _enter(tester, '12345');
-    await tester.tap(find.text('Confirm'));
-    await tester.pump();
     expect(calls, 1);
-    expect(find.byType(PinDigitCell), findsNothing);
+    expect(find.byType(PinDigitCell), findsNWidgets(5));
     expect(
       find.descendant(
-        of: find.byType(PinEntrySection),
+        of: find.byType(PinDigitRow),
         matching: find.byType(CircularProgressIndicator),
       ),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.descendant(
         of: find.byType(FilledButton),
         matching: find.byType(CircularProgressIndicator),
       ),
-      findsNothing,
+      findsOneWidget,
     );
     expect(_confirm(tester).onPressed, isNull);
     expect(
@@ -210,14 +167,18 @@ void main() {
     expect(snackbar.backgroundColor, Colors.red);
     expect(snackbar.behavior, SnackBarBehavior.fixed);
     expect((snackbar.content as Text).style?.color, Colors.white);
-    expect(_digits(tester), isEmpty);
+    expect(_digits(tester), '12345');
+    for (var i = 0; i < 5; i++) {
+      expect(_border(tester, i), AppColors.brand);
+    }
+    expect(_confirm(tester).onPressed, isNotNull);
     expect(find.byType(PinDigitCell), findsNWidgets(5));
     expect(find.byType(CircularProgressIndicator), findsNothing);
     pending = Completer<void>();
-    await _enter(tester, '12345');
     await tester.tap(find.text('Confirm'));
     await tester.pump();
     expect(calls, 2);
+    expect(find.text(AppTexts.pinConfirmationFailed), findsNothing);
     pending.complete();
     await tester.pumpAndSettle();
     expect(find.text('Confirmed'), findsOneWidget);
@@ -228,21 +189,29 @@ void main() {
   ) async {
     _viewport(tester, size: const Size(320, 568));
     String? confirmed;
+    final pending = Completer<void>();
     await tester.pumpWidget(
       _app(
-        PinCodeScreen(
+        PinSetupScreen(
           mode: PinSetupMode.create,
-          onPinConfirmed: (pin) => confirmed = pin,
+          onPinConfirmed: (pin) {
+            confirmed = pin;
+            return pending.future;
+          },
         ),
         textScale: 2,
       ),
     );
-    for (var pass = 0; pass < 2; pass++) {
-      await _enter(tester, '12345');
-      await tester.ensureVisible(find.text('Confirm'));
-      await tester.tap(find.text('Confirm'));
-      await tester.pumpAndSettle();
-    }
+    await _enter(tester, '12345');
+    await tester.ensureVisible(find.text('Confirm'));
+    final rowPosition = tester.getTopLeft(find.byType(PinDigitRow));
+    final buttonBounds = tester.getRect(find.byType(FilledButton));
+    await tester.tap(find.text('Confirm'));
+    await tester.pump();
+    expect(tester.getTopLeft(find.byType(PinDigitRow)), rowPosition);
+    expect(tester.getRect(find.byType(FilledButton)), buttonBounds);
+    pending.complete();
+    await tester.pumpAndSettle();
     expect(confirmed, '12345');
     expect(tester.takeException(), isNull);
   });

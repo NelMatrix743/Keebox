@@ -4,8 +4,13 @@ import 'package:keebox/assets/app_assets.dart';
 import 'package:keebox/features/authentication/widgets/login_field_decoration.dart';
 
 class LoginEmailField extends StatelessWidget {
-  const LoginEmailField({required this.controller, super.key});
+  const LoginEmailField({
+    required this.controller,
+    this.enabled = true,
+    super.key,
+  });
   final TextEditingController controller;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -14,6 +19,7 @@ class LoginEmailField extends StatelessWidget {
       Text('Email address', style: loginFieldLabelStyle),
       SizedBox(height: 8.h),
       TextFormField(
+        enabled: enabled,
         controller: controller,
         style: loginFieldTextStyle,
         keyboardType: TextInputType.emailAddress,
