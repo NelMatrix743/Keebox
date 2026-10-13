@@ -10,7 +10,7 @@ import 'package:keebox/assets/app_assets.dart';
 class OnboardingSignInButton extends StatelessWidget {
   const OnboardingSignInButton({required this.onPressed, super.key});
 
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +41,7 @@ class OnboardingSignInButton extends StatelessWidget {
 class OnboardingGetStartedButton extends StatelessWidget {
   const OnboardingGetStartedButton({required this.onPressed, super.key});
 
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
