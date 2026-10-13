@@ -26,6 +26,51 @@ import 'package:keebox/features/pin/storage/local_pin_storage.dart';
 
 void main() {
   testWidgets(
+    'locking removes Home access while preserving the authenticated session',
+    (tester) async {
+      final container = await _pump(tester, _Adapter());
+      await _enterPin(tester, '01234');
+      await tester.pumpAndSettle();
+      expect(_path(container), AppRoutes.home);
+      container.read(authenticationControllerProvider.notifier).lock();
+      await tester.pumpAndSettle();
+      expect(
+        container.read(authenticationControllerProvider).requireValue,
+        isA<AuthenticatedLocked>(),
+      );
+      expect(_path(container), isNot(AppRoutes.home));
+      expect(find.text(AppTexts.homePlaceholder), findsNothing);
+      expect(container.read(apiSessionProvider).accessToken, 'access');
+      expect(
+        (await container.read(authenticationSessionStorageProvider).read())!
+            .refreshToken,
+        'refresh',
+      );
+      container.read(appRouterProvider).goNamed(AppRoutes.homeName);
+      await tester.pumpAndSettle();
+      expect(_path(container), isNot(AppRoutes.home));
+    },
+  );
+
+  testWidgets('restored sessions require local unlock before Home can open', (
+    tester,
+  ) async {
+    final container = await _pump(tester, _Adapter());
+    await _enterPin(tester, '01234');
+    await tester.pumpAndSettle();
+    container.invalidate(authenticationControllerProvider);
+    expect(
+      await container.read(authenticationControllerProvider.future),
+      isA<AuthenticatedLocked>(),
+    );
+    container.read(appRouterProvider).goNamed(AppRoutes.homeName);
+    await tester.pumpAndSettle();
+    expect(_path(container), isNot(AppRoutes.home));
+    expect(find.text(AppTexts.homePlaceholder), findsNothing);
+    expect(container.read(apiSessionProvider).accessToken, 'access');
+  });
+
+  testWidgets(
     'local exhaustion returns to login and only completed backend login restores local access',
     (tester) async {
       final container = await _pump(tester, _Adapter());
@@ -34,6 +79,7 @@ void main() {
       final controller = container.read(
         authenticationControllerProvider.notifier,
       );
+      controller.lock();
       for (var i = 0; i < 5; i++) {
         await controller.verifyLocalPin('99999');
       }
@@ -108,7 +154,7 @@ void main() {
       );
       expect(
         container.read(authenticationControllerProvider).requireValue,
-        isA<Authenticated>(),
+        isA<AuthenticatedUnlocked>(),
       );
       expect(container.read(apiSessionProvider).accessToken, 'access');
       expect(
