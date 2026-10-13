@@ -5,5 +5,8 @@
 # Generated Dart tooling files.
 .dart_tool/
 
+# Generated Flutter plugin metadata.
+.flutter-plugins-dependencies
+
 # Generated Flutter build output.
 build/
