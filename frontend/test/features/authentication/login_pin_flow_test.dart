@@ -25,6 +25,119 @@ import 'package:keebox/features/pin/services/local_pin_hasher.dart';
 import 'package:keebox/features/pin/storage/local_pin_storage.dart';
 
 void main() {
+  testWidgets('restored sessions unlock locally without another API request', (
+    tester,
+  ) async {
+    final adapter = _Adapter();
+    final container = await _pump(tester, adapter);
+    await _enterPin(tester, '01234');
+    await tester.pumpAndSettle();
+    container.invalidate(authenticationControllerProvider);
+    await container.read(authenticationControllerProvider.future);
+    container.read(appRouterProvider).goNamed(AppRoutes.homeName);
+    await tester.pumpAndSettle();
+    expect(_path(container), AppRoutes.homeLock);
+    await _enterPin(tester, '01234');
+    await tester.pumpAndSettle();
+    expect(_path(container), AppRoutes.home);
+    expect(adapter.requests, hasLength(2));
+  });
+
+  testWidgets(
+    'local errors clear indicators and render repeatable bottom snackbars',
+    (tester) async {
+      final adapter = _Adapter();
+      final container = await _pump(tester, adapter);
+      await _enterPin(tester, '01234');
+      await tester.pumpAndSettle();
+      container.read(authenticationControllerProvider.notifier).lock();
+      await tester.pumpAndSettle();
+      for (var remaining = 4; remaining >= 3; remaining--) {
+        await _enterPin(tester, '99999');
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<PinIndicatorRow>(find.byType(PinIndicatorRow))
+              .filledCount,
+          0,
+        );
+        expect(
+          find.text(AppTexts.localPinIncorrect(remaining)),
+          findsOneWidget,
+        );
+        final bar = tester.widget<SnackBar>(find.byType(SnackBar));
+        expect(bar.backgroundColor, Colors.red);
+        expect(bar.behavior, SnackBarBehavior.fixed);
+        expect(
+          tester
+              .widget<Text>(find.text(AppTexts.localPinIncorrect(remaining)))
+              .style!
+              .color,
+          Colors.white,
+        );
+      }
+      await _enterPin(tester, '01234');
+      await tester.pumpAndSettle();
+      expect(_path(container), AppRoutes.home);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(adapter.requests, hasLength(2));
+    },
+  );
+
+  testWidgets('local attempt exhaustion returns to login with feedback', (
+    tester,
+  ) async {
+    final adapter = _Adapter();
+    final container = await _pump(tester, adapter);
+    await _enterPin(tester, '01234');
+    await tester.pumpAndSettle();
+    container.read(authenticationControllerProvider.notifier).lock();
+    await tester.pumpAndSettle();
+    for (var attempt = 0; attempt < 5; attempt++) {
+      await _enterPin(tester, '99999');
+      await tester.pumpAndSettle();
+    }
+    expect(_path(container), AppRoutes.signIn);
+    expect(find.text(AppTexts.localPinLoginRequired), findsOneWidget);
+    expect(adapter.requests, hasLength(2));
+    expect(
+      (await container.read(localPinStorageProvider).read('user-id'))!
+          .failedAttempts,
+      5,
+    );
+  });
+
+  testWidgets('leaving a busy local lock screen keeps the session locked', (
+    tester,
+  ) async {
+    final hasher = _Hasher();
+    final adapter = _Adapter();
+    final container = await _pump(tester, adapter, hasher: hasher);
+    await _enterPin(tester, '01234');
+    await tester.pumpAndSettle();
+    container.read(authenticationControllerProvider.notifier).lock();
+    await tester.pumpAndSettle();
+    hasher.gate = Completer<void>();
+    await _enterPin(tester, '01234');
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    for (final button in tester.widgetList<OutlinedButton>(
+      find.byType(OutlinedButton),
+    )) {
+      expect(button.onPressed, isNull);
+    }
+    container.read(appRouterProvider).goNamed(AppRoutes.signInName);
+    await tester.pumpAndSettle();
+    hasher.gate!.complete();
+    await tester.pumpAndSettle();
+    expect(_path(container), AppRoutes.signIn);
+    expect(
+      container.read(authenticationControllerProvider).requireValue,
+      isA<AuthenticatedLocked>(),
+    );
+    expect(adapter.requests, hasLength(2));
+  });
+
   testWidgets(
     'locking removes Home access while preserving the authenticated session',
     (tester) async {
@@ -299,7 +412,11 @@ Future<void> _enterPin(WidgetTester tester, String pin) async {
   }
 }
 
-Future<ProviderContainer> _pump(WidgetTester tester, _Adapter adapter) async {
+Future<ProviderContainer> _pump(
+  WidgetTester tester,
+  _Adapter adapter, {
+  _Hasher? hasher,
+}) async {
   tester.view.physicalSize = const Size(402, 874);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -309,7 +426,7 @@ Future<ProviderContainer> _pump(WidgetTester tester, _Adapter adapter) async {
   final container = ProviderContainer(
     overrides: [
       apiClientProvider.overrideWithValue(client),
-      localPinHasherProvider.overrideWithValue(_Hasher()),
+      localPinHasherProvider.overrideWithValue(hasher ?? _Hasher()),
       authenticationApiProvider.overrideWithValue(
         AuthenticationAPI(client: client),
       ),
@@ -402,7 +519,10 @@ class _Adapter implements HttpClientAdapter {
 }
 
 class _Hasher extends LocalPinHasher {
+  Completer<void>? gate;
   @override
-  Future<List<int>> derive(String pin, List<int> salt) async =>
-      List.generate(32, (index) => pin.codeUnitAt(index % pin.length));
+  Future<List<int>> derive(String pin, List<int> salt) async {
+    if (gate != null) await gate!.future;
+    return List.generate(32, (index) => pin.codeUnitAt(index % pin.length));
+  }
 }
