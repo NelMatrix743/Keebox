@@ -18,12 +18,16 @@ final authenticationControllerProvider =
 
 class AuthenticationController extends AsyncNotifier<AuthenticationState> {
   Future<void> _pending = Future<void>.value();
+  int _localVerificationRevision = 0;
 
   @override
   Future<AuthenticationState> build() async {
     final sessionStorage = ref.read(authenticationSessionStorageProvider);
     final apiSession = ref.read(apiSessionProvider);
-    ref.onDispose(apiSession.clear);
+    ref.onDispose(() {
+      _localVerificationRevision++;
+      apiSession.clear();
+    });
     final session = await sessionStorage.read();
     if (!ref.mounted || session == null) {
       return const Unauthenticated();
@@ -59,7 +63,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
   }
 
   Future<void> setLoginChallenge(LoginChallenge challenge) =>
-      _serialize(() async {
+      _interruptLocalVerification(() async {
         await future;
         if (!ref.mounted) {
           return;
@@ -73,7 +77,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
     String? loginChallengeId,
     String? verifiedPin,
     bool Function()? isActive,
-  }) => _serialize(() async {
+  }) => _interruptLocalVerification(() async {
     await future;
     bool canComplete() {
       if (!ref.mounted || (isActive != null && !isActive())) return false;
@@ -129,31 +133,52 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
     }
   });
 
-  Future<LocalPinVerification> verifyLocalPin(String pin) =>
-      _serialize(() async {
-        await future;
-        if (!ref.mounted) {
-          return const LocalPinVerification(LocalPinStatus.unavailable);
-        }
-        final current = state.asData?.value;
-        if (current is! Authenticated) {
-          return const LocalPinVerification(
-            LocalPinStatus.requiresReauthentication,
-          );
-        }
-        final result = await ref
-            .read(localPinServiceProvider)
-            .verify(current.user.id, pin);
-        if (!ref.mounted) {
-          return const LocalPinVerification(LocalPinStatus.unavailable);
-        }
-        if (result.status == LocalPinStatus.requiresReauthentication) {
-          await _clearSession();
-        }
-        return result;
-      });
+  void lock() {
+    if (!ref.mounted) return;
+    final current = state.asData?.value;
+    if (current is! Authenticated) return;
+    _localVerificationRevision++;
+    state = AsyncData(
+      AuthenticatedLocked(user: current.user, session: current.session),
+    );
+  }
 
-  Future<void> signOut() => _serialize(() async {
+  Future<LocalPinVerification> verifyLocalPin(String pin) {
+    final revision = _localVerificationRevision;
+    return _serialize(() async {
+      await future;
+      if (!ref.mounted || revision != _localVerificationRevision) {
+        return const LocalPinVerification(LocalPinStatus.unavailable);
+      }
+      final current = state.asData?.value;
+      if (current is! Authenticated) {
+        return const LocalPinVerification(
+          LocalPinStatus.requiresReauthentication,
+        );
+      }
+      if (current is! AuthenticatedLocked) {
+        return const LocalPinVerification(LocalPinStatus.unavailable);
+      }
+      final result = await ref
+          .read(localPinServiceProvider)
+          .verify(current.user.id, pin);
+      if (!ref.mounted ||
+          revision != _localVerificationRevision ||
+          !identical(state.asData?.value, current)) {
+        return const LocalPinVerification(LocalPinStatus.unavailable);
+      }
+      if (result.status == LocalPinStatus.requiresReauthentication) {
+        await _clearSession();
+      } else if (result.status == LocalPinStatus.matched) {
+        state = AsyncData(
+          AuthenticatedUnlocked(user: current.user, session: current.session),
+        );
+      }
+      return result;
+    });
+  }
+
+  Future<void> signOut() => _interruptLocalVerification(() async {
     await future;
     if (!ref.mounted) {
       return;
@@ -170,23 +195,30 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
     }
   });
 
-  Future<void> clearSession() => _serialize(() async {
+  Future<void> clearSession() => _interruptLocalVerification(() async {
     await future;
     await _clearSession();
   });
 
-  Future<void> _invalidateSession(String token) => _serialize(() async {
-    await future;
+  Future<void> _invalidateSession(String token) {
     final current = state.asData?.value;
-    if (current is Authenticated && current.session.accessToken == token) {
-      await _clearSession();
+    if (current is! Authenticated || current.session.accessToken != token) {
+      return Future<void>.value();
     }
-  });
+    return _interruptLocalVerification(() async {
+      await future;
+      final current = state.asData?.value;
+      if (current is Authenticated && current.session.accessToken == token) {
+        await _clearSession();
+      }
+    });
+  }
 
   Future<void> _clearSession() async {
     if (!ref.mounted) {
       return;
     }
+    _localVerificationRevision++;
     ref.read(apiSessionProvider).clear();
     state = const AsyncData(Unauthenticated());
     await ref.read(authenticationSessionStorageProvider).clear();
@@ -199,5 +231,10 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
       onError: (Object error, StackTrace stackTrace) {},
     );
     return operation;
+  }
+
+  Future<T> _interruptLocalVerification<T>(Future<T> Function() action) {
+    _localVerificationRevision++;
+    return _serialize(action);
   }
 }
