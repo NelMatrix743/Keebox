@@ -9,3 +9,7 @@ if (
 ) {
   rq.globals.set("access_token", refreshResponse.data.access_token);
 }
+
+rq.test("Refresh returns a supported status code", () => {
+  rq.expect(rq.response.code).to.be.oneOf([200, 401, 422]);
+});
