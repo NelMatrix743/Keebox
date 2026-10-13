@@ -53,7 +53,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: AppRoutes.homeName,
         redirect: (context, state) =>
             ref.read(authenticationControllerProvider).asData?.value
-                is Authenticated
+                is AuthenticatedUnlocked
             ? null
             : AppRoutes.signIn,
         builder: (context, state) => const HomeScreen(),
