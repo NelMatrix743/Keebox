@@ -82,3 +82,16 @@ test("challenge endpoints save only their returned identifier", () => {
     assert.deepEqual(values, { ...initialValues, [field]: identifier }, request);
   }
 });
+
+test("authentication completion saves the complete credential set", () => {
+  for (const [request, status] of completions) {
+    const values = capture("Authentication/" + request, status, success(authenticatedData));
+    assert.deepEqual(values, {
+      ...initialValues,
+      user_id: identifier,
+      access_token: "new-access",
+      refresh_token: "new-refresh",
+      KBKEY: "KBK-test-key",
+    }, request);
+  }
+});
