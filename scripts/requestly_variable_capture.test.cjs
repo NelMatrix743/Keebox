@@ -7,6 +7,8 @@ const vm = require("node:vm");
 const apiDirectory = path.resolve(__dirname, "../backend/keebox-api-tests/apis");
 const identifier = "550e8400-e29b-41d4-a716-446655440000";
 const initialValues = {
+  first_name: "previous-first-name",
+  last_name: "previous-last-name",
   registration_id: "previous-registration",
   login_challenge_id: "previous-login",
   reset_id: "previous-reset",
@@ -32,6 +34,8 @@ const challenges = [
 ];
 const completions = [["create-pin", 201], ["verify-login-pin", 200]];
 const authenticatedData = {
+  first_name: "Ada",
+  last_name: "Lovelace",
   user_id: identifier,
   access_token: "new-access",
   refresh_token: "new-refresh",
@@ -92,6 +96,8 @@ test("authentication completion saves the complete credential set", () => {
       access_token: "new-access",
       refresh_token: "new-refresh",
       KBKEY: "KBK-test-key",
+      first_name: "Ada",
+      last_name: "Lovelace",
     }, request);
   }
 });
