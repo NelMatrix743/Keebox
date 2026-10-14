@@ -1,7 +1,9 @@
+from datetime import timedelta
 from typing import Any, Self
 
 from django.http import HttpResponse
 from django.test import TestCase
+from ninja_jwt.tokens import AccessToken
 
 from apps.authentication.models import User
 from apps.authentication.services.token_services import TokenService
@@ -118,3 +120,39 @@ class CurrentUserAPITests(TestCase):
                 "meta": None,
             },
         )
+
+    def test_current_user_rejects_invalid_expired_and_wrong_type_tokens(
+        self: Self,
+    ) -> None:
+        """
+        Verify only valid access tokens can retrieve account data.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an invalid token bypasses authentication.
+        """
+        expired: AccessToken = AccessToken(self.access_token)
+        expired.set_exp(lifetime=timedelta(seconds=-1))
+        for token in ("not-a-jwt", str(expired), self.refresh_token):
+            with self.subTest(token_type=token[:12]):
+                response: HttpResponse = self._get_current_user(token)
+
+                self.assertEqual(response.status_code, 401)
+                self.assertEqual(
+                    response.json(),
+                    {
+                        "success": False,
+                        "data": None,
+                        "error": {
+                            "code": "invalid_session",
+                            "message": "The session is no longer valid.",
+                            "details": None,
+                        },
+                        "meta": None,
+                    },
+                )
