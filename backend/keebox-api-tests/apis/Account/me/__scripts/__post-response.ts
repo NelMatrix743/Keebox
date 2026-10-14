@@ -4,10 +4,14 @@ if (
   rq.response.code === 200 &&
   currentUserResponse?.success === true &&
   currentUserResponse.error === null &&
+  typeof currentUserResponse.data?.first_name === "string" &&
+  typeof currentUserResponse.data?.last_name === "string" &&
   typeof currentUserResponse.data?.user_id === "string" &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentUserResponse.data.user_id)
 ) {
   rq.globals.set("user_id", currentUserResponse.data.user_id);
+  rq.globals.set("first_name", currentUserResponse.data.first_name);
+  rq.globals.set("last_name", currentUserResponse.data.last_name);
 }
 
 rq.test("Current user returns a supported status code", () => {

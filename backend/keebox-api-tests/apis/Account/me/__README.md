@@ -23,9 +23,10 @@ expired, revoked, and wrong-type tokens return `401` with `invalid_session`.
 Inactive or deleted accounts are also rejected. Logout, a completed replacement
 login, password reset, and PIN reset invalidate the previous session's access.
 
-The post-response script saves a valid successful `data.user_id` into the global
-`user_id` variable. Its checks validate the status, the four-field public profile,
-and the agreed authentication-error envelopes. It does not modify tokens or
-save other profile fields. To inspect failure behavior, temporarily disable the
-authorization header or use an invalid access token, then restore inherited
+The post-response script saves a valid successful `data.user_id`, `data.first_name`,
+and `data.last_name` into the corresponding global variables. Its checks validate
+the status, the four-field public profile, and the agreed authentication-error
+envelopes. It does not modify tokens or the email input. To inspect failure
+behavior, temporarily disable the authorization header or use an invalid access
+token, then restore inherited
 authorization afterward.
