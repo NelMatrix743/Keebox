@@ -95,3 +95,39 @@ test("authentication completion saves the complete credential set", () => {
     }, request);
   }
 });
+
+test("failed or malformed responses preserve saved variables", () => {
+  const endpoints = challenges.map(([request, status, state, field]) => [
+    request, status, { [field]: identifier, status: state }, [field],
+  ]).concat(completions.map(([request, status]) => [
+    request, status, authenticatedData, ["user_id", "access_token", "refresh_token", "kbkey"],
+  ]));
+  for (const [request, status, data, fields] of endpoints) {
+    const invalid = [
+      [401, success(data)],
+      [503, { success: false, data: null, error: { code: "unavailable" }, meta: null }],
+      [status, null],
+      [status, {}],
+      [status, { ...success(data), success: false }],
+      [status, { ...success(data), error: { code: "unexpected" } }],
+      [status, success({ ...data, status: "unexpected" })],
+      [status, success(null)],
+    ];
+    for (const field of fields) {
+      const missing = { ...data };
+      delete missing[field];
+      invalid.push([status, success(missing)]);
+      invalid.push([status, success({ ...data, [field]: "" })]);
+      invalid.push([status, success({ ...data, [field]: 123 })]);
+    }
+    const idField = fields.includes("user_id") ? "user_id" : fields[0];
+    invalid.push([status, success({ ...data, [idField]: "not-a-uuid" })]);
+    for (const [responseStatus, body] of invalid) {
+      assert.deepEqual(
+        capture("Authentication/" + request, responseStatus, body),
+        initialValues,
+        request,
+      );
+    }
+  }
+});
