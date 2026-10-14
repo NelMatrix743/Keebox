@@ -82,3 +82,39 @@ class CurrentUserAccountStateTests(TestCase):
                 "email": "grace@example.com",
             },
         )
+
+    def test_current_user_isolates_accounts_by_authenticated_identity(self: Self) -> None:
+        """
+        Verify each token retrieves only the account that owns that session.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when another account's public data is returned.
+        """
+        other: User = User.objects.create_user(
+            email="grace@example.com",
+            password="another strong account password",
+            first_name="Grace",
+            last_name="Hopper",
+        )
+        other_access: str
+        other_access, _ = TokenService.issue_tokens(other)
+
+        for user, access in ((self.user, self.access_token), (other, other_access)):
+            with self.subTest(user_id=user.id):
+                response: HttpResponse = self._get_current_user(access)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(
+                    response.json()["data"],
+                    {
+                        "user_id": str(user.id),
+                        "first_name": user.first_name,
+                        "last_name": user.last_name,
+                        "email": user.email,
+                    },
+                )
