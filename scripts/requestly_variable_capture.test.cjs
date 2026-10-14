@@ -152,3 +152,16 @@ test("current user capture preserves the session and ignores failed responses", 
     assert.deepEqual(capture("Account/me", status, body), initialValues);
   }
 });
+
+test("registration request reads names from the global variables", () => {
+  const request = JSON.parse(fs.readFileSync(
+    path.join(apiDirectory, "Authentication/register/__body.json"),
+    "utf8",
+  ));
+  const variables = { first_name: "Grace", last_name: "Hopper", email: "grace@example.com", password: "manual-password" };
+  const body = JSON.parse(request.raw.replace(/\{\{(\w+)\}\}/g, (match, name) => variables[name]));
+  assert.equal(body.first_name, "Grace");
+  assert.equal(body.last_name, "Hopper");
+  assert.equal(body.email, "grace@example.com");
+  assert.equal(body.password, "manual-password");
+});
