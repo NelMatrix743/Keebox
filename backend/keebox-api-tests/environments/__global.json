@@ -73,7 +73,7 @@
       "syncValue": "nelmatrix155@gmail.com",
       "type": "string",
       "isEnabled": true,
-      "rank": "a4",
+      "rank": "a5",
       "valueSource": {
         "kind": "inline"
       },
@@ -81,10 +81,10 @@
     },
     "password": {
       "id": "6948955b-82c7-44b2-a16d-6f7665f76892",
-      "syncValue": "correct horse battery staple",
+      "syncValue": "helloKeebox543210",
       "type": "string",
       "isEnabled": true,
-      "rank": "a5",
+      "rank": "a2G",
       "valueSource": {
         "kind": "inline"
       },
@@ -95,7 +95,7 @@
       "syncValue": "4a35bca9-58a1-4dda-8fd9-eea8c02d55fc",
       "type": "string",
       "isEnabled": true,
-      "rank": "a6",
+      "rank": "a1V",
       "valueSource": {
         "kind": "inline"
       },
@@ -106,7 +106,7 @@
       "syncValue": "",
       "type": "string",
       "isEnabled": true,
-      "rank": "a7",
+      "rank": "a1l",
       "valueSource": {
         "kind": "inline"
       },
@@ -117,7 +117,7 @@
       "syncValue": "",
       "type": "string",
       "isEnabled": true,
-      "rank": "a8",
+      "rank": "a2V",
       "valueSource": {
         "kind": "inline"
       },
@@ -128,7 +128,7 @@
       "syncValue": "",
       "type": "string",
       "isEnabled": true,
-      "rank": "a9",
+      "rank": "a3V",
       "valueSource": {
         "kind": "inline"
       },
@@ -150,7 +150,7 @@
       "syncValue": "d9de60ef-2ad9-4f1c-b754-a693443fe6ae",
       "type": "string",
       "isEnabled": true,
-      "rank": "hmuy98ipp",
+      "rank": "a3l",
       "valueSource": {
         "kind": "inline"
       },
@@ -161,7 +161,7 @@
       "syncValue": "KBK-dTl0JVvwZ4Go6ZpudYclZt-TmLGh2bMIrovYCOyBYNJ0",
       "type": "string",
       "isEnabled": true,
-      "rank": "hmuy98t7j",
+      "rank": "a6",
       "valueSource": {
         "kind": "inline"
       },
