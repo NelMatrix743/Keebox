@@ -11,6 +11,17 @@ from apps.core.constants import AUTH_PIN_LENGTH, AUTH_PIN_PATTERN
 
 
 
+class CurrentUserResponse(Schema):
+    """Represent the authenticated user's public account data without security fields."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: UUID
+    first_name: str
+    last_name: str
+    email: EmailStr
+
+
 class AuthenticationSuccessResponse(Schema):
     """Represent the shared payload returned after complete authentication."""
 
