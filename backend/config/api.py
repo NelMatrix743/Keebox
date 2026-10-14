@@ -8,6 +8,7 @@ from ninja_jwt.exceptions import AuthenticationFailed
 from apps.core.info import API_DESCRIPTION, API_TITLE, API_VERSION
 from apps.core.response import ErrorData, APIResponse
 from apps.authentication.api import router as authentication_router
+from apps.core.api import router as core_router
 
 
 
@@ -119,3 +120,4 @@ def handle_validation_error(
 
 
 api.add_router("/auth", authentication_router)
+api.add_router("", core_router)

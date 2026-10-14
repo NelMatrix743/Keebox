@@ -9,10 +9,11 @@ code is consumed and advances the registration challenge from `OTP_PENDING` to
 `OTP_VERIFIED`. This endpoint does not create the permanent user account; the
 user must still create a lock PIN to complete registration.
 
-First send the Register request. Copy the returned `data.registration_id` into
-the global `registration_id` variable, then copy the OTP delivered by email
-into the global `otp_code` variable. Both values are inserted into this
-request body automatically.
+First send the Register request. Its post-response script saves the returned
+`data.registration_id` into the global `registration_id` variable. Copy the OTP
+delivered by email into the global `otp_code` variable. Both values are inserted
+into this request body automatically. Successful verification preserves the
+returned registration ID through this request's own post-response script.
 
 A successful request returns `200 OK` with the registration ID, the
 `otp_verified` status, and a message directing the client to PIN creation.

@@ -7,8 +7,42 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from ninja import Schema
 from pydantic import ConfigDict, EmailStr, Field, field_validator
 
+from apps.authentication.models import User
 from apps.core.constants import AUTH_PIN_LENGTH, AUTH_PIN_PATTERN
 
+
+
+class CurrentUserResponse(Schema):
+    """Represent the authenticated user's public account data without security fields."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: UUID
+    first_name: str
+    last_name: str
+    email: EmailStr
+
+    @classmethod
+    def from_user(cls: type[Self], user: User) -> Self:
+        """
+        Map an already-resolved account to its approved public response fields.
+
+        Args:
+            cls: Current-user response schema class.
+            user: User resolved by the request's authentication layer.
+
+        Returns:
+            Public account data without credentials or protected key material.
+
+        Raises:
+            ValidationError: Raised when public account values violate the schema.
+        """
+        return cls(
+            user_id=user.id,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            email=user.email,
+        )
 
 
 class AuthenticationSuccessResponse(Schema):
