@@ -165,3 +165,20 @@ test("registration request reads names from the global variables", () => {
   assert.equal(body.email, "grace@example.com");
   assert.equal(body.password, "manual-password");
 });
+
+test("missing or nonstring profile names do not overwrite saved values", () => {
+  const endpoints = completions.map(([request, status]) => [
+    "Authentication/" + request, status, authenticatedData,
+  ]).concat([["Account/me", 200, {
+    user_id: identifier, first_name: "Ada", last_name: "Lovelace", email: "ada@example.com",
+  }]]);
+  for (const [request, status, data] of endpoints) {
+    for (const field of ["first_name", "last_name"]) {
+      const missing = { ...data };
+      delete missing[field];
+      for (const malformed of [missing, { ...data, [field]: null }, { ...data, [field]: 123 }]) {
+        assert.deepEqual(capture(request, status, success(malformed)), initialValues, request);
+      }
+    }
+  }
+});
