@@ -39,3 +39,16 @@ if (rq.response.code === 401) {
     rq.expect(refreshResponse.error.details).to.equal(null);
   });
 }
+
+if (rq.response.code === 422) {
+  rq.test("Malformed refresh requests return the validation error envelope", () => {
+    rq.expect(refreshResponse).to.have.all.keys("success", "data", "error", "meta");
+    rq.expect(refreshResponse.success).to.equal(false);
+    rq.expect(refreshResponse.data).to.equal(null);
+    rq.expect(refreshResponse.meta).to.equal(null);
+    rq.expect(refreshResponse.error).to.have.all.keys("code", "message", "details");
+    rq.expect(refreshResponse.error.code).to.equal("validation_error");
+    rq.expect(refreshResponse.error.message).to.equal("The request contains invalid data.");
+    rq.expect(refreshResponse.error.details).to.be.an("array").and.not.empty;
+  });
+}
