@@ -131,3 +131,18 @@ test("failed or malformed responses preserve saved variables", () => {
     }
   }
 });
+
+test("current user capture preserves the session and ignores failed responses", () => {
+  const profile = { user_id: identifier, first_name: "Ada", last_name: "Lovelace", email: "ada@example.com" };
+  assert.deepEqual(capture("Account/me", 200, success(profile)), {
+    ...initialValues, user_id: identifier,
+  });
+  for (const [status, body] of [
+    [401, { success: false, data: null, error: { code: "invalid_session" }, meta: null }],
+    [200, success({ ...profile, user_id: "not-a-uuid" })],
+    [200, success({ ...profile, user_id: "" })],
+    [200, null],
+  ]) {
+    assert.deepEqual(capture("Account/me", status, body), initialValues);
+  }
+});
