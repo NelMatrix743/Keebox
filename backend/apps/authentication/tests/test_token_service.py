@@ -1,7 +1,11 @@
+import base64
+import json
+from datetime import datetime, timedelta, timezone
 from typing import Self
 
 from django.http import HttpRequest
 from django.test import TestCase
+from freezegun import freeze_time
 from ninja_jwt.exceptions import InvalidToken
 from ninja_jwt.tokens import AccessToken, RefreshToken
 
@@ -12,6 +16,141 @@ from apps.authentication.services.token_services import TokenService
 
 
 class TokenServiceTests(TestCase):
+    def test_refresh_renews_expired_access_without_changing_the_session(
+        self: Self,
+    ) -> None:
+        """
+        Verify repeated renewal issues current access tokens without extending refresh.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when renewal changes or invalidates the session.
+        """
+        issued_at: datetime = datetime(2026, 10, 13, 12, tzinfo=timezone.utc)
+        with freeze_time(issued_at):
+            original_access: str
+            refresh_raw: str
+            original_access, refresh_raw = TokenService.issue_tokens(self.user)
+            refresh: RefreshToken = RefreshToken(refresh_raw)
+            refresh_payload: dict[str, object] = dict(refresh.payload)
+
+        renewed_at: datetime = issued_at + AccessToken.lifetime + timedelta(seconds=1)
+        for renewal_time in (renewed_at, renewed_at + timedelta(seconds=1)):
+            with self.subTest(renewal_time=renewal_time), freeze_time(renewal_time):
+                with self.assertRaises(InvalidToken):
+                    VersionedJWTAuth().authenticate(HttpRequest(), original_access)
+                renewed_raw: str = TokenService.refresh_access_token(refresh_raw)
+                renewed: AccessToken = AccessToken(renewed_raw)
+
+                self.assertEqual(renewed["iat"], int(renewal_time.timestamp()))
+                self.assertEqual(
+                    renewed["exp"],
+                    int((renewal_time + AccessToken.lifetime).timestamp()),
+                )
+                self.assertEqual(renewed["user_id"], str(self.user.id))
+                self.assertEqual(renewed["token_version"], self.user.token_version)
+                self.assertEqual(
+                    VersionedJWTAuth().authenticate(HttpRequest(), renewed_raw),
+                    self.user,
+                )
+                self.assertEqual(RefreshToken(refresh_raw).payload, refresh_payload)
+
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.token_version, 0)
+
+    def test_refresh_rejects_malformed_wrong_type_expired_and_tampered_tokens(
+        self: Self,
+    ) -> None:
+        """
+        Verify access renewal requires an authentic unexpired refresh token.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an invalid token renews access.
+        """
+        access_raw: str
+        refresh_raw: str
+        access_raw, refresh_raw = TokenService.issue_tokens(self.user)
+        expired: RefreshToken = RefreshToken(refresh_raw)
+        expired.set_exp(lifetime=timedelta(seconds=-1))
+        missing_expiry: RefreshToken = RefreshToken(refresh_raw)
+        del missing_expiry["exp"]
+        header: str
+        _original_payload: str
+        signature: str
+        header, _original_payload, signature = refresh_raw.split(".")
+        tampered_payload: dict[str, object] = dict(RefreshToken(refresh_raw).payload)
+        tampered_payload["token_version"] = 99
+        encoded_payload: str = base64.urlsafe_b64encode(
+            json.dumps(tampered_payload).encode("utf-8"),
+        ).decode("ascii").rstrip("=")
+        tampered: str = f"{header}.{encoded_payload}.{signature}"
+        invalid_tokens: tuple[str, ...] = (
+            "", " ", "not-a-jwt", access_raw, str(expired), str(missing_expiry),
+            tampered,
+        )
+
+        for token in invalid_tokens:
+            with self.subTest(token_type=token[:12]), self.assertRaises(InvalidToken):
+                TokenService.refresh_access_token(token)
+
+    def test_refresh_rejects_missing_or_malformed_user_claims(self: Self) -> None:
+        """
+        Verify signed refresh tokens must identify an existing UUID account.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a malformed user claim renews access.
+        """
+        invalid_user_ids: tuple[object, ...] = (None, "not-a-uuid", "", 123, [])
+        for user_id in invalid_user_ids:
+            with self.subTest(user_id=user_id):
+                refresh: RefreshToken = RefreshToken.for_user(self.user)
+                refresh["token_version"] = self.user.token_version
+                refresh["user_id"] = user_id
+                with self.assertRaises(InvalidToken):
+                    TokenService.refresh_access_token(str(refresh))
+
+        del refresh["user_id"]
+        with self.assertRaises(InvalidToken):
+            TokenService.refresh_access_token(str(refresh))
+
+    def test_refresh_rejects_malformed_session_versions(self: Self) -> None:
+        """
+        Verify session versions require an integer matching the account's version.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a malformed session version is accepted.
+        """
+        invalid_versions: tuple[object, ...] = (None, False, True, "0", 0.0, [])
+        for version in invalid_versions:
+            with self.subTest(version=version):
+                refresh: RefreshToken = RefreshToken.for_user(self.user)
+                refresh["token_version"] = version
+                with self.assertRaises(InvalidToken):
+                    TokenService.refresh_access_token(str(refresh))
+
     def setUp(self: Self) -> None:
         """
         Create an account for token issuance and session-version checks.

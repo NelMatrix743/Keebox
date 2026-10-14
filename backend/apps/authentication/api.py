@@ -58,6 +58,8 @@ from apps.authentication.schemas import (
     ResetCompletedResponse,
     ResetStartRequest,
     ResetStartedResponse,
+    TokenRefreshRequest,
+    TokenRefreshResponse,
 )
 from apps.core.choices import ResetType
 from apps.core.constants import OTP_MAX_RESENDS, OTP_RESEND_COOLDOWN, OTP_TTL
@@ -534,6 +536,46 @@ def verify_login_pin(
             "message": "Login completed successfully.",
         },
     )
+    return 200, APIResponse.success(response_data.model_dump())
+
+
+@router.post(
+    Routes.Refresh.BASE,
+    auth=None,
+    response={
+        200: SuccessResponse[TokenRefreshResponse],
+        Ellipsis: ErrorResponse[ErrorData],
+    },
+)
+def refresh_access_token(
+    request: HttpRequest,
+    payload: TokenRefreshRequest,
+) -> tuple[int, dict[str, Any]]:
+    """
+    Renew access for a current session using its refresh token.
+
+    Args:
+        request: HTTP request submitting the refresh token without bearer credentials.
+        payload: Validated request containing the existing refresh token.
+
+    Returns:
+        HTTP status and the standard response envelope containing renewed access
+        or a safe refresh-token failure.
+
+    Raises:
+        None: Expected token failures are mapped to the agreed API error response.
+    """
+    try:
+        access_token: str = TokenService.refresh_access_token(payload.refresh_token)
+    except InvalidToken:
+        return 401, APIResponse.error(
+            ErrorData(
+                code="invalid_refresh_token",
+                message="The refresh token is invalid or no longer usable.",
+            ).model_dump(),
+        )
+
+    response_data: TokenRefreshResponse = TokenRefreshResponse(access_token=access_token)
     return 200, APIResponse.success(response_data.model_dump())
 
 

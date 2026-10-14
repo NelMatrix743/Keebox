@@ -4,7 +4,7 @@ from uuid import UUID
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from ninja_jwt.exceptions import InvalidToken, TokenError
-from ninja_jwt.tokens import RefreshToken, Token
+from ninja_jwt.tokens import AccessToken, RefreshToken, Token
 
 from apps.authentication.models import User
 
@@ -86,13 +86,15 @@ class TokenService:
     @staticmethod
     def refresh_access_token(raw_refresh_token: str) -> str:
         """
-        Renew access only when a refresh token belongs to the active session.
+        Renew access for the active session without rotating its refresh token.
 
         Args:
             raw_refresh_token: Signed refresh token submitted by the client.
 
         Returns:
-            A newly signed access token for the active login generation.
+            A newly signed access token with current issuance and expiration
+            timestamps for the active login generation. The existing refresh
+            token and account session version remain unchanged.
 
         Raises:
             InvalidToken: Raised for malformed, expired, inactive, missing-user,
@@ -106,11 +108,13 @@ class TokenService:
         user_id: object = refresh_token.get("user_id")
         if not isinstance(user_id, str):
             raise InvalidToken("The refresh token has no valid user.")
-        
+
         try:
             user: User = User.objects.get(pk=user_id)
         except (User.DoesNotExist, ValueError, DjangoValidationError) as exception:
             raise InvalidToken("The refresh token has no valid user.") from exception
 
         TokenService.validate_token_version(user, refresh_token)
-        return str(refresh_token.access_token)
+        access_token: AccessToken = refresh_token.access_token
+        access_token.set_iat(at_time=refresh_token.current_time)
+        return str(access_token)

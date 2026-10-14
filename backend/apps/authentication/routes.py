@@ -23,6 +23,12 @@ class Routes:
 		VERIFY_PIN: Final[str] = BASE + "/verify-pin"
 
 
+	class Refresh:
+		"""Define the access-token renewal route."""
+
+		BASE: Final[str] = "/refresh"
+
+
 	class Logout:
 		"""Define the authenticated session termination route."""
 

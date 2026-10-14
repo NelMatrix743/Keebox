@@ -214,6 +214,22 @@ class LoginCompletedResponse(AuthenticationSuccessResponse):
     """Represent safe response data for a completed login."""
 
 
+class TokenRefreshRequest(Schema):
+    """Validate the refresh token submitted to renew an active session's access."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    refresh_token: str = Field(min_length=1, strict=True)
+
+
+class TokenRefreshResponse(Schema):
+    """Represent a renewed access token without rotating the refresh token."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    access_token: str = Field(min_length=1, strict=True)
+
+
 class LogoutResponse(Schema):
     """Represent confirmation that the active session has ended."""
 
