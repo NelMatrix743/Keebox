@@ -11,6 +11,10 @@ password. The backend creates a temporary registration challenge, generates an
 OTP, and delivers the code through Brevo. JWT credentials and the user's KBKey
 are not returned at this stage.
 
+Register reads `first_name` and `last_name` from the matching global variables.
+Set those values before starting registration. Successful registration completion,
+login completion, and Account → me update both names from the returned account data.
+
 ## Register
 
 `POST {{base_url}}/api/auth/register`
@@ -79,10 +83,10 @@ Each endpoint owns its script under Scripts → Post-response:
 - Register, Verify OTP, and Resend OTP save `registration_id`.
 - Login saves `login_challenge_id` for Verify Login PIN.
 - Create PIN and Verify Login PIN save `user_id`, `access_token`, `refresh_token`,
-  and `KBKEY` from the returned `kbkey` field.
+  `first_name`, `last_name`, and `KBKEY` from the returned `kbkey` field.
 - Reset initiation, resend, verification, and completion save `reset_id`.
 - Refresh saves the renewed `access_token` while preserving `refresh_token`.
-- Account → me saves `user_id` and preserves the token variables.
+- Account → me saves `user_id`, `first_name`, and `last_name`, preserving tokens.
 
 Scripts update the existing global variables only on successful responses with
 the expected status and usable returned values. Errors and incomplete responses
