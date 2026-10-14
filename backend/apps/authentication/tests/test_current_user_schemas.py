@@ -2,6 +2,7 @@ from typing import Self
 from uuid import UUID
 
 from django.test import SimpleTestCase
+from pydantic import ValidationError
 
 from apps.authentication.schemas import CurrentUserResponse
 from apps.core.response import APIResponse, SuccessResponse
@@ -50,3 +51,28 @@ class CurrentUserSchemaTests(SimpleTestCase):
                 "meta": None,
             },
         )
+
+    def test_current_user_requires_all_account_fields(self: Self) -> None:
+        """
+        Verify incomplete account data cannot produce a current-user response.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a required account field is missing.
+        """
+        payload: dict[str, object] = {
+            "user_id": "550e8400-e29b-41d4-a716-446655440000",
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "email": "ada@example.com",
+        }
+        for field in payload:
+            incomplete: dict[str, object] = dict(payload)
+            del incomplete[field]
+            with self.subTest(field=field), self.assertRaises(ValidationError):
+                CurrentUserResponse.model_validate(incomplete)
