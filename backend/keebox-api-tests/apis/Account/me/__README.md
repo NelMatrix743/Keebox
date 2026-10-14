@@ -6,8 +6,9 @@ Retrieve the authenticated account's current public profile from the database.
 The request has no body or query parameters and inherits the Account collection's
 bearer authorization using `{{access_token}}`.
 
-Complete registration or login and copy `data.access_token` into the global
-`access_token` variable. Set `base_url` to the running backend and send this request.
+Complete registration or login; its post-response script saves `data.access_token`
+into the global `access_token` variable. Set `base_url` to the running backend
+and send this request.
 A successful response returns `200` with `user_id`, `first_name`, `last_name`, and
 `email` under `data`. Passwords, PIN information, KBKeys, encryption metadata, and
 authentication tokens are excluded.
@@ -22,8 +23,9 @@ expired, revoked, and wrong-type tokens return `401` with `invalid_session`.
 Inactive or deleted accounts are also rejected. Logout, a completed replacement
 login, password reset, and PIN reset invalidate the previous session's access.
 
-Post-response checks validate the status, the four-field public profile on
-success, and the agreed authentication-error envelopes. They do not save profile
-data or modify tokens. To inspect failure behavior, temporarily disable the
+The post-response script saves a valid successful `data.user_id` into the global
+`user_id` variable. Its checks validate the status, the four-field public profile,
+and the agreed authentication-error envelopes. It does not modify tokens or
+save other profile fields. To inspect failure behavior, temporarily disable the
 authorization header or use an invalid access token, then restore inherited
 authorization afterward.

@@ -1,3 +1,15 @@
+const currentUserResponse = rq.response.json();
+
+if (
+  rq.response.code === 200 &&
+  currentUserResponse?.success === true &&
+  currentUserResponse.error === null &&
+  typeof currentUserResponse.data?.user_id === "string" &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentUserResponse.data.user_id)
+) {
+  rq.globals.set("user_id", currentUserResponse.data.user_id);
+}
+
 rq.test("Current user returns a supported status code", () => {
   rq.expect(rq.response.code).to.be.oneOf([200, 401]);
 });
