@@ -88,3 +88,33 @@ class CurrentUserAPITests(TestCase):
                 "meta": None,
             },
         )
+
+    def test_current_user_requires_bearer_credentials(self: Self) -> None:
+        """
+        Verify anonymous requests receive the standard authentication-required error.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when unauthenticated requests expose account data.
+        """
+        response: HttpResponse = self._get_current_user()
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(
+            response.json(),
+            {
+                "success": False,
+                "data": None,
+                "error": {
+                    "code": "authentication_required",
+                    "message": "Authentication is required.",
+                    "details": None,
+                },
+                "meta": None,
+            },
+        )
