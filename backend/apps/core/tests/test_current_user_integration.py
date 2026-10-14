@@ -251,3 +251,30 @@ class CurrentUserIntegrationTests(TestCase):
         self.assertEqual(after.json()["error"]["code"], "invalid_session")
         self.assertIsNone(after.json()["data"])
 
+    def test_replacement_login_limits_current_user_access_to_the_new_session(
+        self: Self,
+    ) -> None:
+        """
+        Verify a second completed login replaces the session allowed to retrieve data.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when old access survives a replacement login.
+        """
+        previous: dict[str, Any] = self._login()
+        current: dict[str, Any] = self._login()
+
+        rejected: HttpResponse = self._get_current_user(previous["access_token"])
+        accepted: HttpResponse = self._get_current_user(current["access_token"])
+
+        self.assertEqual(rejected.status_code, 401)
+        self.assertEqual(rejected.json()["error"]["code"], "invalid_session")
+        self.assertIsNone(rejected.json()["data"])
+        self.assertEqual(accepted.status_code, 200)
+        self.assertEqual(accepted.json()["data"]["user_id"], str(self.user.id))
+
