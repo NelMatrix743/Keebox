@@ -24,3 +24,18 @@ if (rq.response.code === 200) {
     rq.expect(refreshResponse.data.access_token).to.be.a("string").and.not.empty;
   });
 }
+
+if (rq.response.code === 401) {
+  rq.test("Invalid refresh tokens return the agreed unauthorized envelope", () => {
+    rq.expect(refreshResponse).to.have.all.keys("success", "data", "error", "meta");
+    rq.expect(refreshResponse.success).to.equal(false);
+    rq.expect(refreshResponse.data).to.equal(null);
+    rq.expect(refreshResponse.meta).to.equal(null);
+    rq.expect(refreshResponse.error).to.have.all.keys("code", "message", "details");
+    rq.expect(refreshResponse.error.code).to.equal("invalid_refresh_token");
+    rq.expect(refreshResponse.error.message).to.equal(
+      "The refresh token is invalid or no longer usable.",
+    );
+    rq.expect(refreshResponse.error.details).to.equal(null);
+  });
+}
