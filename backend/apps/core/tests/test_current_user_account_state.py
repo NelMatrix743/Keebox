@@ -1,4 +1,4 @@
-from typing import Self
+from typing import Any, Self
 
 from django.http import HttpResponse
 from django.test import TestCase
@@ -118,3 +118,25 @@ class CurrentUserAccountStateTests(TestCase):
                         "email": user.email,
                     },
                 )
+
+    def test_deactivated_account_cannot_retrieve_current_user(self: Self) -> None:
+        """
+        Verify account deactivation immediately rejects previously issued access.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when an inactive account retrieves user data.
+        """
+        User.objects.filter(pk=self.user.id).update(is_active=False)
+
+        response: HttpResponse = self._get_current_user(self.access_token)
+        body: dict[str, Any] = response.json()
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(body["error"]["code"], "invalid_session")
+        self.assertIsNone(body["data"])
