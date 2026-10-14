@@ -7,9 +7,10 @@ access token has expired. The refresh token is supplied in the JSON body;
 no authorization header is required. This request uses the Authentication
 collection's existing public authentication configuration.
 
-After completing registration or login, copy `data.refresh_token` into the
-global `refresh_token` variable. Send this request with `base_url` pointing to
-the running backend. A successful response returns `200` with
+Completing registration or login automatically saves `data.refresh_token` into
+the global `refresh_token` variable through that endpoint's post-response script.
+Send this request with `base_url` pointing to the running backend. A successful
+response returns `200` with
 `data.access_token` inside the standard Keebox response envelope.
 
 The post-response script saves a valid successful result to the global
