@@ -278,3 +278,32 @@ class CurrentUserIntegrationTests(TestCase):
         self.assertEqual(accepted.status_code, 200)
         self.assertEqual(accepted.json()["data"]["user_id"], str(self.user.id))
 
+    def test_password_reset_revokes_old_current_user_access(self: Self) -> None:
+        """
+        Verify password recovery requires a fresh login before retrieving user data.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when password recovery leaves old access usable.
+        """
+        previous: dict[str, Any] = self._login()
+        self._complete_reset(
+            Routes.Reset.PASSWORD,
+            Routes.Reset.PASSWORD_COMPLETE,
+            {"new_password": "replacement strong password 7349"},
+        )
+
+        rejected: HttpResponse = self._get_current_user(previous["access_token"])
+        self.assertEqual(rejected.status_code, 401)
+        self.assertEqual(rejected.json()["error"]["code"], "invalid_session")
+        self.assertIsNone(rejected.json()["data"])
+        current: dict[str, Any] = self._login(password="replacement strong password 7349")
+        accepted: HttpResponse = self._get_current_user(current["access_token"])
+        self.assertEqual(accepted.status_code, 200)
+        self.assertEqual(accepted.json()["data"]["user_id"], str(self.user.id))
+
