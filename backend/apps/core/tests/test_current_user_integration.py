@@ -222,3 +222,32 @@ class CurrentUserIntegrationTests(TestCase):
                 },
             )
 
+    def test_logout_prevents_current_user_retrieval(self: Self) -> None:
+        """
+        Verify logging out immediately revokes access to the current-user endpoint.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a logged-out session still retrieves data.
+        """
+        session: dict[str, Any] = self._login()
+        before: HttpResponse = self._get_current_user(session["access_token"])
+        self.assertEqual(before.status_code, 200)
+        logged_out: HttpResponse = self._post(
+            Routes.Logout.BASE,
+            {},
+            access_token=session["access_token"],
+        )
+        self.assertEqual(logged_out.status_code, 200)
+
+        after: HttpResponse = self._get_current_user(session["access_token"])
+
+        self.assertEqual(after.status_code, 401)
+        self.assertEqual(after.json()["error"]["code"], "invalid_session")
+        self.assertIsNone(after.json()["data"])
+
