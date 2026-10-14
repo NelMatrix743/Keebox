@@ -140,3 +140,25 @@ class CurrentUserAccountStateTests(TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertEqual(body["error"]["code"], "invalid_session")
         self.assertIsNone(body["data"])
+
+    def test_deleted_account_cannot_retrieve_current_user(self: Self) -> None:
+        """
+        Verify deleting an account prevents its existing token from returning data.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a deleted account's token retrieves data.
+        """
+        self.user.delete()
+
+        response: HttpResponse = self._get_current_user(self.access_token)
+        body: dict[str, Any] = response.json()
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(body["error"]["code"], "invalid_session")
+        self.assertIsNone(body["data"])
