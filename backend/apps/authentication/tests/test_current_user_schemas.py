@@ -112,3 +112,38 @@ class CurrentUserSchemaTests(SimpleTestCase):
                 self.assertRaises(ValidationError),
             ):
                 CurrentUserResponse.model_validate({**payload, field: value})
+
+    def test_current_user_rejects_sensitive_and_unexpected_fields(self: Self) -> None:
+        """
+        Verify authentication secrets and additional fields cannot enter the response.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when a sensitive or unexpected field is accepted.
+        """
+        payload: dict[str, object] = {
+            "user_id": "550e8400-e29b-41d4-a716-446655440000",
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "email": "ada@example.com",
+        }
+        excluded_fields: tuple[str, ...] = (
+            "password",
+            "pin_hash",
+            "pin_version",
+            "encrypted_kbkey",
+            "kbkey_nonce",
+            "kbkey_encryption_version",
+            "kbkey",
+            "access_token",
+            "refresh_token",
+            "unexpected",
+        )
+        for field in excluded_fields:
+            with self.subTest(field=field), self.assertRaises(ValidationError):
+                CurrentUserResponse.model_validate({**payload, field: "excluded"})
