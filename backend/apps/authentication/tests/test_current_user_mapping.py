@@ -50,3 +50,36 @@ class CurrentUserMappingTests(SimpleTestCase):
         self.assertEqual(user.password, "protected-password")
         self.assertEqual(user.pin_hash, "protected-pin")
         self.assertEqual(user.token_version, 3)
+
+    def test_from_user_uses_the_supplied_accounts_current_values(self: Self) -> None:
+        """
+        Verify each mapping reflects current account values without caching old data.
+
+        Args:
+            self: Current test case instance.
+
+        Returns:
+            None: This test does not return a value.
+
+        Raises:
+            AssertionError: Raised when changed account values are not reflected.
+        """
+        user: User = User(
+            first_name="Ada",
+            last_name="Lovelace",
+            email="ada@example.com",
+        )
+        previous: CurrentUserResponse = CurrentUserResponse.from_user(user)
+        user.first_name = "Grace"
+        user.last_name = "Hopper"
+        user.email = "grace@example.com"
+
+        current: CurrentUserResponse = CurrentUserResponse.from_user(user)
+
+        self.assertEqual(current.user_id, user.id)
+        self.assertEqual(current.first_name, "Grace")
+        self.assertEqual(current.last_name, "Hopper")
+        self.assertEqual(current.email, "grace@example.com")
+        self.assertEqual(previous.first_name, "Ada")
+        self.assertEqual(previous.last_name, "Lovelace")
+        self.assertEqual(previous.email, "ada@example.com")
