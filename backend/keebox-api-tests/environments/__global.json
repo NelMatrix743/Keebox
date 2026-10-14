@@ -2,6 +2,28 @@
   "$schema": "https://assets.requestly.com/local/v1.17.0/environment.json",
   "id": "c9422087-5e53-45cc-b7a4-1755b301f5bf",
   "variables": {
+    "first_name": {
+      "id": "f206e7a2-30d3-42e0-813e-de76003f47e5",
+      "syncValue": "Nelson",
+      "type": "string",
+      "isEnabled": true,
+      "rank": "a4G",
+      "valueSource": {
+        "kind": "inline"
+      },
+      "overrideMeta": null
+    },
+    "last_name": {
+      "id": "6260c812-f266-4897-b07d-0b721ec2118c",
+      "syncValue": "Ubochiegbu",
+      "type": "string",
+      "isEnabled": true,
+      "rank": "a4V",
+      "valueSource": {
+        "kind": "inline"
+      },
+      "overrideMeta": null
+    },
     "base_url": {
       "id": "f3fcc30b-391a-4fb8-a685-63ab688c48b0",
       "syncValue": "http://192.168.1.66:8000",
