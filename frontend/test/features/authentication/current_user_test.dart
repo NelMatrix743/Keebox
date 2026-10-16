@@ -49,7 +49,7 @@ void main() {
 
   for (final locked in [false, true]) {
     test(
-      'profile synchronization preserves KBKey and locked=$locked',
+      'explicit profile refresh preserves KBKey and locked=$locked',
       () async {
         final controller = container.read(
           authenticationControllerProvider.notifier,
@@ -57,7 +57,7 @@ void main() {
         if (locked) {
           controller.lock();
         }
-        expect(await controller.synchronizeUser(), isTrue);
+        expect(await controller.refreshCurrentUser(), isTrue);
         final current =
             container.read(authenticationControllerProvider).requireValue
                 as Authenticated;
@@ -73,12 +73,29 @@ void main() {
       },
     );
   }
+  test(
+    'session restoration does not fetch the profile until explicitly requested',
+    () async {
+      expect(adapter.calls, 0);
+      container.invalidate(authenticationControllerProvider);
+      await container.read(authenticationControllerProvider.future);
+      expect(adapter.calls, 0);
+      expect(
+        await container
+            .read(authenticationControllerProvider.notifier)
+            .refreshCurrentUser(),
+        isTrue,
+      );
+      expect(adapter.calls, 1);
+    },
+  );
+
   test('expired access refreshes before retrying current user', () async {
     adapter.expired = true;
     expect(
       await container
           .read(authenticationControllerProvider.notifier)
-          .synchronizeUser(),
+          .refreshCurrentUser(),
       isTrue,
     );
     final current =
@@ -94,7 +111,7 @@ void main() {
       await expectLater(
         container
             .read(authenticationControllerProvider.notifier)
-            .synchronizeUser(),
+            .refreshCurrentUser(),
         throwsA(isA<APIException>()),
       );
       final current =
@@ -110,7 +127,7 @@ void main() {
     await expectLater(
       container
           .read(authenticationControllerProvider.notifier)
-          .synchronizeUser(),
+          .refreshCurrentUser(),
       throwsA(isA<APIException>()),
     );
     expect(
@@ -130,7 +147,7 @@ void main() {
       final controller = container.read(
         authenticationControllerProvider.notifier,
       );
-      final operation = controller.synchronizeUser();
+      final operation = controller.refreshCurrentUser();
       await adapter.started.future;
       await controller.clearSession();
       adapter.gate!.complete();
