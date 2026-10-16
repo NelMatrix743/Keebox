@@ -23,6 +23,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
   Future<void> _pending = Future<void>.value();
   int _localVerificationRevision = 0;
   int _sessionRevision = 0;
+  bool _applicationActive = true;
 
   @override
   Future<AuthenticationState> build() async {
@@ -126,7 +127,9 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
           onRefresh: () => _refreshSession(result.session),
         );
     state = AsyncData(
-      AuthenticatedUnlocked(user: result.user, session: result.session),
+      _applicationActive
+          ? AuthenticatedUnlocked(user: result.user, session: result.session)
+          : AuthenticatedLocked(user: result.user, session: result.session),
     );
   });
 
@@ -148,6 +151,11 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
     state = AsyncData(
       AuthenticatedLocked(user: current.user, session: current.session),
     );
+  }
+
+  void setApplicationActive(bool active) {
+    _applicationActive = active;
+    if (!active) lock();
   }
 
   Future<LocalPinVerification> verifyLocalPin(
