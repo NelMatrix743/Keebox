@@ -12,6 +12,7 @@ abstract final class APIEndpoints {
   static final String login = '$authBaseUrl/login';
   static final String loginVerifyPin = '$login/verify-pin';
   static final String logout = '$authBaseUrl/logout';
+  static final String refresh = '$authBaseUrl/refresh';
 
   static final String resetBaseUrl = '$authBaseUrl/reset';
   static final String resetPassword = '$resetBaseUrl/password';
