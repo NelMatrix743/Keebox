@@ -25,6 +25,60 @@ import 'package:keebox/features/pin/services/local_pin_hasher.dart';
 import 'package:keebox/features/pin/storage/local_pin_storage.dart';
 
 void main() {
+  testWidgets(
+    'local unlock restores the protected route and its query parameters',
+    (tester) async {
+      final container = await _pump(tester, _Adapter());
+      await _enterPin(tester, '01234');
+      await tester.pumpAndSettle();
+      container.read(appRouterProvider).go('${AppRoutes.home}?section=notes');
+      await tester.pumpAndSettle();
+      container.read(authenticationControllerProvider.notifier).lock();
+      await tester.pumpAndSettle();
+      await _enterPin(tester, '01234');
+      await tester.pumpAndSettle();
+      expect(
+        container
+            .read(appRouterProvider)
+            .routeInformationProvider
+            .value
+            .uri
+            .toString(),
+        '${AppRoutes.home}?section=notes',
+      );
+    },
+  );
+  testWidgets(
+    'Home displays the public profile and logout removes protected navigation',
+    (tester) async {
+      final adapter = _Adapter();
+      final container = await _pump(tester, adapter);
+      await _enterPin(tester, '01234');
+      await tester.pumpAndSettle();
+      expect(find.text('Ada'), findsOneWidget);
+      expect(find.text('ada@example.com'), findsOneWidget);
+      expect(find.text('permanent-key'), findsNothing);
+      expect(
+        adapter.requests.where((request) => request.uri.path.endsWith('/me')),
+        hasLength(1),
+      );
+      await tester.tap(find.byTooltip(AppTexts.logout));
+      await tester.pumpAndSettle();
+      expect(_path(container), AppRoutes.signIn);
+      expect(container.read(appRouterProvider).canPop(), isFalse);
+      expect(
+        await container.read(authenticationSessionStorageProvider).read(),
+        isNull,
+      );
+      expect(
+        (await container
+                .read(authenticatedUserStorageProvider)
+                .read('user-id'))!
+            .kbkey,
+        'permanent-key',
+      );
+    },
+  );
   testWidgets('restored sessions unlock locally without another API request', (
     tester,
   ) async {
@@ -40,7 +94,7 @@ void main() {
     await _enterPin(tester, '01234');
     await tester.pumpAndSettle();
     expect(_path(container), AppRoutes.home);
-    expect(adapter.requests, hasLength(2));
+    expect(adapter.requests, hasLength(3));
   });
 
   testWidgets(
@@ -80,7 +134,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(_path(container), AppRoutes.home);
       expect(find.byType(SnackBar), findsNothing);
-      expect(adapter.requests, hasLength(2));
+      expect(adapter.requests, hasLength(3));
     },
   );
 
@@ -99,7 +153,7 @@ void main() {
     }
     expect(_path(container), AppRoutes.signIn);
     expect(find.text(AppTexts.localPinLoginRequired), findsOneWidget);
-    expect(adapter.requests, hasLength(2));
+    expect(adapter.requests, hasLength(3));
     expect(
       (await container.read(localPinStorageProvider).read('user-id'))!
           .failedAttempts,
@@ -135,7 +189,7 @@ void main() {
       container.read(authenticationControllerProvider).requireValue,
       isA<AuthenticatedLocked>(),
     );
-    expect(adapter.requests, hasLength(2));
+    expect(adapter.requests, hasLength(3));
   });
 
   testWidgets(
@@ -249,7 +303,9 @@ void main() {
       final container = await _pump(tester, adapter);
       await _enterPin(tester, '01234');
       await tester.pumpAndSettle();
-      final pinRequest = adapter.requests.last;
+      final pinRequest = adapter.requests.lastWhere(
+        (request) => request.uri.path.endsWith('/verify-pin'),
+      );
       expect(pinRequest.uri.toString(), APIEndpoints.loginVerifyPin);
       expect(pinRequest.method, 'POST');
       expect(pinRequest.data, {
@@ -257,7 +313,7 @@ void main() {
         'pin': '01234',
       });
       expect(pinRequest.headers['Authorization'], isNull);
-      expect(adapter.requests, hasLength(2));
+      expect(adapter.requests, hasLength(3));
       expect(_path(container), AppRoutes.home);
       expect(find.text(AppTexts.homePlaceholder), findsOneWidget);
       expect(
@@ -356,7 +412,7 @@ void main() {
       }
       adapter.gate!.complete();
       await tester.pumpAndSettle();
-      expect(adapter.requests, hasLength(2));
+      expect(adapter.requests, hasLength(3));
       expect(_path(container), AppRoutes.home);
     },
   );
@@ -422,10 +478,15 @@ Future<ProviderContainer> _pump(
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
   FlutterSecureStorage.setMockInitialValues({});
-  final client = APIClient(dio: Dio()..httpClientAdapter = adapter);
+  final session = APISession();
+  final client = APIClient(
+    dio: Dio()..httpClientAdapter = adapter,
+    session: session,
+  );
   final container = ProviderContainer(
     overrides: [
       apiClientProvider.overrideWithValue(client),
+      apiSessionProvider.overrideWithValue(session),
       localPinHasherProvider.overrideWithValue(hasher ?? _Hasher()),
       authenticationApiProvider.overrideWithValue(
         AuthenticationAPI(client: client),
@@ -474,7 +535,16 @@ class _Adapter implements HttpClientAdapter {
     final isPin = options.uri.path.endsWith('/verify-pin');
     if (isPin && gate != null) await gate!.future;
     final code = isPin ? errorCode : null;
-    final data = isPin
+    final data = options.uri.path.endsWith('/logout')
+        ? {'status': 'logged_out', 'message': 'Done'}
+        : options.uri.path.endsWith('/me')
+        ? {
+            'user_id': 'user-id',
+            'first_name': 'Ada',
+            'last_name': 'Lovelace',
+            'email': 'ada@example.com',
+          }
+        : isPin
         ? {
             'user_id': 'user-id',
             'first_name': 'Ada',

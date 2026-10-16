@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:keebox/app/startup/startup_coordinator.dart';
 
 import 'package:keebox/app/router/app_routes.dart';
 import 'package:keebox/features/onboarding/screens/onboarding_screen.dart';
@@ -14,8 +15,21 @@ import 'package:keebox/features/pin/screens/local_unlock_screen.dart';
 import 'package:keebox/features/home/screens/home_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  String? returnLocation;
+  String? returnUserId;
+  String unlockDestination() {
+    final auth = ref.read(authenticationControllerProvider).asData?.value;
+    final saved = returnLocation;
+    final permitted =
+        auth is AuthenticatedUnlocked &&
+        auth.user.id == returnUserId &&
+        saved != null &&
+        Uri.tryParse(saved)?.path == AppRoutes.home;
+    return permitted ? saved : AppRoutes.home;
+  }
+
   final router = GoRouter(
-    initialLocation: AppRoutes.root,
+    initialLocation: ref.read(initialRouteProvider),
     routes: [
       GoRoute(
         path: AppRoutes.root,
@@ -41,14 +55,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         redirect: (context, state) =>
             switch (ref.read(authenticationControllerProvider).asData?.value) {
               AwaitingPin() || AuthenticatedLocked() => null,
-              AuthenticatedUnlocked() => AppRoutes.home,
+              AuthenticatedUnlocked() => unlockDestination(),
               _ => AppRoutes.signIn,
             },
         builder: (context, state) =>
             ref.read(authenticationControllerProvider).asData?.value
                 is AuthenticatedLocked
             ? LocalUnlockScreen(
-                onUnlocked: () => context.goNamed(AppRoutes.homeName),
+                onUnlocked: () => context.go(unlockDestination()),
                 onLoginRequired: () => context.goNamed(AppRoutes.signInName),
                 onResetPin: () => context.pushNamed(AppRoutes.resetPinName),
               )
@@ -103,8 +117,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
-  ref.listen(authenticationControllerProvider, (_, next) {
+  ref.listen(authenticationControllerProvider, (previous, next) {
     final path = router.routeInformationProvider.value.uri.path;
+    final before = previous?.asData?.value;
+    final after = next.asData?.value;
+    if (before is AuthenticatedUnlocked &&
+        after is AuthenticatedLocked &&
+        path == AppRoutes.home) {
+      returnLocation = router.routeInformationProvider.value.uri.toString();
+      returnUserId = after.user.id;
+    } else if (after is Unauthenticated || after is AwaitingPin) {
+      returnLocation = null;
+      returnUserId = null;
+    }
     if (path == AppRoutes.home || path == AppRoutes.homeLock) {
       router.refresh();
     }

@@ -1,7 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:keebox/app/background_lock_policy.dart';
 
 import 'package:keebox/features/authentication/authentication_api.dart';
 import 'package:keebox/features/authentication/models/authentication_result.dart';
+import 'package:keebox/features/authentication/models/authenticated_user.dart';
+import 'package:keebox/features/authentication/models/authentication_session.dart';
+import 'package:keebox/network/api_exception.dart';
 import 'package:keebox/features/authentication/models/login_challenge.dart';
 import 'package:keebox/features/authentication/state/authentication_state.dart';
 import 'package:keebox/features/authentication/storage/auth_session_storage.dart';
@@ -19,12 +25,19 @@ final authenticationControllerProvider =
 class AuthenticationController extends AsyncNotifier<AuthenticationState> {
   Future<void> _pending = Future<void>.value();
   int _localVerificationRevision = 0;
+  int _sessionRevision = 0;
+  bool _applicationActive = true;
+  bool _profileFetchPending = false;
+  Timer? _backgroundTimer;
+  Duration? _backgroundStarted;
 
   @override
   Future<AuthenticationState> build() async {
     final sessionStorage = ref.read(authenticationSessionStorageProvider);
     final apiSession = ref.read(apiSessionProvider);
     ref.onDispose(() {
+      _backgroundTimer?.cancel();
+      _sessionRevision++;
       _localVerificationRevision++;
       apiSession.clear();
     });
@@ -54,6 +67,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
       apiSession.set(
         session.accessToken,
         onInvalidSession: () => _invalidateSession(session.accessToken),
+        onRefresh: () => _refreshSession(session),
       );
       return AuthenticatedLocked(user: user, session: session);
     } on FormatException {
@@ -117,9 +131,13 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
           result.session.accessToken,
           onInvalidSession: () =>
               _invalidateSession(result.session.accessToken),
+          onRefresh: () => _refreshSession(result.session),
         );
+    _profileFetchPending = true;
     state = AsyncData(
-      AuthenticatedUnlocked(user: result.user, session: result.session),
+      _applicationActive
+          ? AuthenticatedUnlocked(user: result.user, session: result.session)
+          : AuthenticatedLocked(user: result.user, session: result.session),
     );
   });
 
@@ -143,6 +161,37 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
     );
   }
 
+  void setApplicationActive(bool active) {
+    if (!ref.mounted || active == _applicationActive) return;
+    _applicationActive = active;
+    final elapsed = ref.read(backgroundElapsedProvider)();
+    if (!active) {
+      _backgroundStarted = elapsed;
+      _backgroundTimer = ref.read(backgroundTimerProvider)(
+        BackgroundLockPolicy.gracePeriod,
+        () {
+          if (ref.mounted && !_applicationActive) lock();
+        },
+      );
+      if (state.asData?.value is AuthenticatedLocked) lock();
+    } else {
+      _backgroundTimer?.cancel();
+      _backgroundTimer = null;
+      final started = _backgroundStarted;
+      _backgroundStarted = null;
+      if (started != null &&
+          elapsed - started >= BackgroundLockPolicy.gracePeriod) {
+        lock();
+      }
+    }
+  }
+
+  Future<bool> fetchProfileAfterLogin() async {
+    if (!_profileFetchPending) return false;
+    _profileFetchPending = false;
+    return refreshCurrentUser();
+  }
+
   Future<LocalPinVerification> verifyLocalPin(
     String pin, {
     bool Function()? isActive,
@@ -152,6 +201,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
       await future;
       if (!ref.mounted ||
           revision != _localVerificationRevision ||
+          !_applicationActive ||
           (isActive != null && !isActive())) {
         return const LocalPinVerification(LocalPinStatus.unavailable);
       }
@@ -169,6 +219,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
           .verify(current.user.id, pin);
       if (!ref.mounted ||
           revision != _localVerificationRevision ||
+          !_applicationActive ||
           (isActive != null && !isActive()) ||
           !identical(state.asData?.value, current)) {
         return const LocalPinVerification(LocalPinStatus.unavailable);
@@ -184,20 +235,121 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
     });
   }
 
+  Future<String?> _refreshSession(AuthenticationSession expected) async {
+    final revision = _sessionRevision;
+    try {
+      final response = await ref
+          .read(authenticationApiProvider)
+          .refresh(expected.refreshToken);
+      return await _serialize(() async {
+        if (!ref.mounted || revision != _sessionRevision) return null;
+        final current = state.asData?.value;
+        if (current is! Authenticated ||
+            !identical(current.session, expected)) {
+          return null;
+        }
+        final updated = AuthenticationSession(
+          userId: expected.userId,
+          accessToken: response.accessToken,
+          refreshToken: expected.refreshToken,
+        );
+        await ref.read(authenticationSessionStorageProvider).save(updated);
+        if (!ref.mounted || revision != _sessionRevision) return null;
+        final latest = state.asData?.value;
+        if (latest is! Authenticated || !identical(latest.session, expected)) {
+          return null;
+        }
+        ref
+            .read(apiSessionProvider)
+            .set(
+              updated.accessToken,
+              previousToken: expected.accessToken,
+              onInvalidSession: () => _invalidateSession(updated.accessToken),
+              onRefresh: () => _refreshSession(updated),
+            );
+        state = AsyncData(
+          latest is AuthenticatedLocked
+              ? AuthenticatedLocked(user: latest.user, session: updated)
+              : AuthenticatedUnlocked(user: latest.user, session: updated),
+        );
+        return updated.accessToken;
+      });
+    } on APIException catch (error) {
+      if (ref.mounted &&
+          error.statusCode == 401 &&
+          error.code == 'invalid_refresh_token') {
+        await _invalidateSession(expected.accessToken);
+      }
+      rethrow;
+    }
+  }
+
+  /// Explicitly fetches and caches profile details after login or a profile edit.
+  /// Session restoration and startup do not invoke this operation.
+  Future<bool> refreshCurrentUser() async {
+    await future;
+    if (!ref.mounted) return false;
+    final expected = state.asData?.value;
+    if (expected is! Authenticated) return false;
+    final revision = _sessionRevision;
+    final profile = await ref
+        .read(authenticationApiProvider)
+        .fetchCurrentUser();
+    return _serialize(() async {
+      if (!ref.mounted || revision != _sessionRevision) return false;
+      final current = state.asData?.value;
+      if (current is! Authenticated ||
+          current.user.id != expected.user.id ||
+          current.session.refreshToken != expected.session.refreshToken) {
+        return false;
+      }
+      if (profile.id != current.user.id) {
+        await _clearSession();
+        throw const APIException(
+          kind: APIErrorKind.invalidResponse,
+          message: 'The server returned an unexpected response.',
+        );
+      }
+      final updated = AuthenticatedUser(
+        id: current.user.id,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        email: profile.email,
+        kbkey: current.user.kbkey,
+      );
+      await ref.read(authenticatedUserStorageProvider).save(updated);
+      if (!ref.mounted || revision != _sessionRevision) return false;
+      final latest = state.asData?.value;
+      if (latest is! Authenticated) return false;
+      state = AsyncData(
+        latest is AuthenticatedLocked
+            ? AuthenticatedLocked(user: updated, session: latest.session)
+            : AuthenticatedUnlocked(user: updated, session: latest.session),
+      );
+      return true;
+    });
+  }
+
   Future<void> signOut() => _interruptLocalVerification(() async {
     await future;
     if (!ref.mounted) {
       return;
     }
     final current = state.asData?.value;
+    await _clearSession();
     try {
       if (current is Authenticated) {
-        await ref
-            .read(authenticationApiProvider)
-            .logout(accessToken: current.session.accessToken);
+        final api = ref.read(authenticationApiProvider);
+        try {
+          await api.logout(accessToken: current.session.accessToken);
+        } on APIException catch (error) {
+          if (error.statusCode != 401) rethrow;
+          final renewed = await api.refresh(current.session.refreshToken);
+          await api.logout(accessToken: renewed.accessToken);
+        }
       }
     } finally {
-      await _clearSession();
+      _profileFetchPending = false;
     }
   });
 
@@ -225,6 +377,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
       return;
     }
     _localVerificationRevision++;
+    _sessionRevision++;
     ref.read(apiSessionProvider).clear();
     state = const AsyncData(Unauthenticated());
     await ref.read(authenticationSessionStorageProvider).clear();
@@ -240,6 +393,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
   }
 
   Future<T> _interruptLocalVerification<T>(Future<T> Function() action) {
+    _sessionRevision++;
     _localVerificationRevision++;
     return _serialize(action);
   }

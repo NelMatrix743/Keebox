@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'package:keebox/app/app_texts.dart';
 import 'package:keebox/app/bootstrap.dart';
+import 'package:keebox/app/authentication_lifecycle.dart';
 import 'package:keebox/app/router/app_router.dart';
 import 'package:keebox/app/theme/app_theme.dart';
 import 'package:keebox/features/authentication/state/authentication_controller.dart';
@@ -31,7 +32,7 @@ class KeeboxApp extends ConsumerWidget {
         routerConfig: ref.watch(appRouterProvider),
         builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
           value: AppTheme.systemUiOverlayStyle,
-          child: child!,
+          child: AuthenticationLifecycle(child: child!),
         ),
       ),
     );

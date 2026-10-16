@@ -2,10 +2,12 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:keebox/features/authentication/models/authentication_result.dart';
+import 'package:keebox/features/authentication/models/current_user_response.dart';
 import 'package:keebox/features/authentication/models/login_challenge.dart';
 import 'package:keebox/features/authentication/models/login_pin_request.dart';
 import 'package:keebox/features/authentication/models/login_request.dart';
 import 'package:keebox/features/authentication/models/logout_response.dart';
+import 'package:keebox/features/authentication/models/token_refresh_response.dart';
 import 'package:keebox/network/api_client.dart';
 import 'package:keebox/network/api_endpoints.dart';
 
@@ -17,6 +19,24 @@ class AuthenticationAPI {
   const AuthenticationAPI({required this.client});
 
   final APIClient client;
+
+  Future<CurrentUserResponse> fetchCurrentUser() async {
+    final response = await client.get<CurrentUserResponse>(
+      APIEndpoints.currentUser,
+      authenticated: true,
+      decode: CurrentUserResponse.fromJson,
+    );
+    return response.data;
+  }
+
+  Future<TokenRefreshResponse> refresh(String refreshToken) async {
+    final response = await client.post<TokenRefreshResponse>(
+      APIEndpoints.refresh,
+      data: {'refresh_token': refreshToken},
+      decode: TokenRefreshResponse.fromJson,
+    );
+    return response.data;
+  }
 
   Future<LoginChallenge> login(
     LoginRequest request, {

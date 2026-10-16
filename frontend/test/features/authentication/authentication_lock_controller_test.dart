@@ -80,6 +80,41 @@ void main() {
   );
 
   test(
+    'returning within the background grace period retains unlocked access',
+    () async {
+      final controller = container.read(
+        authenticationControllerProvider.notifier,
+      );
+      await controller.completeAuthentication(_result, verifiedPin: '01234');
+      controller.setApplicationActive(false);
+      expect(
+        container.read(authenticationControllerProvider).requireValue,
+        isA<AuthenticatedUnlocked>(),
+      );
+      controller.setApplicationActive(true);
+      expect(
+        container.read(authenticationControllerProvider).requireValue,
+        isA<AuthenticatedUnlocked>(),
+      );
+    },
+  );
+
+  test(
+    'backend completion in the background cannot publish an unlocked session',
+    () async {
+      final controller = container.read(
+        authenticationControllerProvider.notifier,
+      );
+      controller.setApplicationActive(false);
+      await controller.completeAuthentication(_result, verifiedPin: '01234');
+      expect(
+        container.read(authenticationControllerProvider).requireValue,
+        isA<AuthenticatedLocked>(),
+      );
+    },
+  );
+
+  test(
     'incorrect PIN stays locked and correct PIN grants unlocked access',
     () async {
       final controller = container.read(
