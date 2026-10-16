@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:keebox/features/authentication/authentication_api.dart';
 import 'package:keebox/features/authentication/models/authentication_result.dart';
+import 'package:keebox/features/authentication/models/authenticated_user.dart';
 import 'package:keebox/features/authentication/models/authentication_session.dart';
 import 'package:keebox/network/api_exception.dart';
 import 'package:keebox/features/authentication/models/login_challenge.dart';
@@ -199,7 +200,8 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
       return await _serialize(() async {
         if (!ref.mounted || revision != _sessionRevision) return null;
         final current = state.asData?.value;
-        if (current is! Authenticated || !identical(current.session, expected)) {
+        if (current is! Authenticated ||
+            !identical(current.session, expected)) {
           return null;
         }
         final updated = AuthenticationSession(
@@ -235,6 +237,48 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
       }
       rethrow;
     }
+  }
+
+  Future<bool> synchronizeUser() async {
+    await future;
+    if (!ref.mounted) return false;
+    final expected = state.asData?.value;
+    if (expected is! Authenticated) return false;
+    final revision = _sessionRevision;
+    final profile = await ref.read(authenticationApiProvider).currentUser();
+    return _serialize(() async {
+      if (!ref.mounted || revision != _sessionRevision) return false;
+      final current = state.asData?.value;
+      if (current is! Authenticated ||
+          current.user.id != expected.user.id ||
+          current.session.refreshToken != expected.session.refreshToken) {
+        return false;
+      }
+      if (profile.id != current.user.id) {
+        await _clearSession();
+        throw const APIException(
+          kind: APIErrorKind.invalidResponse,
+          message: 'The server returned an unexpected response.',
+        );
+      }
+      final updated = AuthenticatedUser(
+        id: current.user.id,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        email: profile.email,
+        kbkey: current.user.kbkey,
+      );
+      await ref.read(authenticatedUserStorageProvider).save(updated);
+      if (!ref.mounted || revision != _sessionRevision) return false;
+      final latest = state.asData?.value;
+      if (latest is! Authenticated) return false;
+      state = AsyncData(
+        latest is AuthenticatedLocked
+            ? AuthenticatedLocked(user: updated, session: latest.session)
+            : AuthenticatedUnlocked(user: updated, session: latest.session),
+      );
+      return true;
+    });
   }
 
   Future<void> signOut() => _interruptLocalVerification(() async {
