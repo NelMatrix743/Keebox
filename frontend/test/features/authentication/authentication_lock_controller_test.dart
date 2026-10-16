@@ -80,7 +80,7 @@ void main() {
   );
 
   test(
-    'leaving the foreground locks immediately and resume stays locked',
+    'returning within the background grace period retains unlocked access',
     () async {
       final controller = container.read(
         authenticationControllerProvider.notifier,
@@ -89,12 +89,12 @@ void main() {
       controller.setApplicationActive(false);
       expect(
         container.read(authenticationControllerProvider).requireValue,
-        isA<AuthenticatedLocked>(),
+        isA<AuthenticatedUnlocked>(),
       );
       controller.setApplicationActive(true);
       expect(
         container.read(authenticationControllerProvider).requireValue,
-        isA<AuthenticatedLocked>(),
+        isA<AuthenticatedUnlocked>(),
       );
     },
   );
