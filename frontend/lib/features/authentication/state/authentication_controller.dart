@@ -239,13 +239,17 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
     }
   }
 
-  Future<bool> synchronizeUser() async {
+  /// Explicitly fetches and caches profile details after login or a profile edit.
+  /// Session restoration and startup do not invoke this operation.
+  Future<bool> refreshCurrentUser() async {
     await future;
     if (!ref.mounted) return false;
     final expected = state.asData?.value;
     if (expected is! Authenticated) return false;
     final revision = _sessionRevision;
-    final profile = await ref.read(authenticationApiProvider).currentUser();
+    final profile = await ref
+        .read(authenticationApiProvider)
+        .fetchCurrentUser();
     return _serialize(() async {
       if (!ref.mounted || revision != _sessionRevision) return false;
       final current = state.asData?.value;

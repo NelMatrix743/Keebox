@@ -20,7 +20,7 @@ class AuthenticationAPI {
 
   final APIClient client;
 
-  Future<CurrentUserResponse> currentUser() async {
+  Future<CurrentUserResponse> fetchCurrentUser() async {
     final response = await client.get<CurrentUserResponse>(
       APIEndpoints.currentUser,
       authenticated: true,
