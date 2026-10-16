@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:keebox/app/background_lock_policy.dart';
 
 import 'package:keebox/features/authentication/authentication_api.dart';
 import 'package:keebox/features/authentication/models/authentication_result.dart';
@@ -25,12 +28,15 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
   int _sessionRevision = 0;
   bool _applicationActive = true;
   bool _profileFetchPending = false;
+  Timer? _backgroundTimer;
+  Duration? _backgroundStarted;
 
   @override
   Future<AuthenticationState> build() async {
     final sessionStorage = ref.read(authenticationSessionStorageProvider);
     final apiSession = ref.read(apiSessionProvider);
     ref.onDispose(() {
+      _backgroundTimer?.cancel();
       _sessionRevision++;
       _localVerificationRevision++;
       apiSession.clear();
@@ -156,8 +162,28 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
   }
 
   void setApplicationActive(bool active) {
+    if (!ref.mounted || active == _applicationActive) return;
     _applicationActive = active;
-    if (!active) lock();
+    final elapsed = ref.read(backgroundElapsedProvider)();
+    if (!active) {
+      _backgroundStarted = elapsed;
+      _backgroundTimer = ref.read(backgroundTimerProvider)(
+        BackgroundLockPolicy.gracePeriod,
+        () {
+          if (ref.mounted && !_applicationActive) lock();
+        },
+      );
+      if (state.asData?.value is AuthenticatedLocked) lock();
+    } else {
+      _backgroundTimer?.cancel();
+      _backgroundTimer = null;
+      final started = _backgroundStarted;
+      _backgroundStarted = null;
+      if (started != null &&
+          elapsed - started >= BackgroundLockPolicy.gracePeriod) {
+        lock();
+      }
+    }
   }
 
   Future<bool> fetchProfileAfterLogin() async {
@@ -175,6 +201,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
       await future;
       if (!ref.mounted ||
           revision != _localVerificationRevision ||
+          !_applicationActive ||
           (isActive != null && !isActive())) {
         return const LocalPinVerification(LocalPinStatus.unavailable);
       }
@@ -192,6 +219,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
           .verify(current.user.id, pin);
       if (!ref.mounted ||
           revision != _localVerificationRevision ||
+          !_applicationActive ||
           (isActive != null && !isActive()) ||
           !identical(state.asData?.value, current)) {
         return const LocalPinVerification(LocalPinStatus.unavailable);
