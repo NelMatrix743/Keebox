@@ -8,6 +8,7 @@ class APISession {
   Future<String?> Function()? _onRefresh;
   Future<String?>? _refreshing;
   int _generation = 0;
+  String? _previousToken;
 
   String? get accessToken => _accessToken;
 
@@ -15,7 +16,9 @@ class APISession {
     String token, {
     required Future<void> Function() onInvalidSession,
     Future<String?> Function()? onRefresh,
+    String? previousToken,
   }) {
+    _previousToken = previousToken;
     _generation++;
     _refreshing = null;
     _accessToken = token;
@@ -24,6 +27,7 @@ class APISession {
   }
 
   void clear() {
+    _previousToken = null;
     _generation++;
     _refreshing = null;
     _accessToken = null;
@@ -33,7 +37,9 @@ class APISession {
 
   Future<String?> refresh(String rejectedToken) async {
     if (_accessToken == null) return null;
-    if (_accessToken != rejectedToken) return null;
+    if (_accessToken != rejectedToken) {
+      return _previousToken == rejectedToken ? _accessToken : null;
+    }
     final callback = _onRefresh;
     if (callback == null) {
       await invalidate(rejectedToken);

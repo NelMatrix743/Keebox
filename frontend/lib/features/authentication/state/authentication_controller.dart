@@ -219,6 +219,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
             .read(apiSessionProvider)
             .set(
               updated.accessToken,
+              previousToken: expected.accessToken,
               onInvalidSession: () => _invalidateSession(updated.accessToken),
               onRefresh: () => _refreshSession(updated),
             );
