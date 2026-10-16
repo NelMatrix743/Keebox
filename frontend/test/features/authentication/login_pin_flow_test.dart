@@ -26,6 +26,29 @@ import 'package:keebox/features/pin/storage/local_pin_storage.dart';
 
 void main() {
   testWidgets(
+    'local unlock restores the protected route and its query parameters',
+    (tester) async {
+      final container = await _pump(tester, _Adapter());
+      await _enterPin(tester, '01234');
+      await tester.pumpAndSettle();
+      container.read(appRouterProvider).go('${AppRoutes.home}?section=notes');
+      await tester.pumpAndSettle();
+      container.read(authenticationControllerProvider.notifier).lock();
+      await tester.pumpAndSettle();
+      await _enterPin(tester, '01234');
+      await tester.pumpAndSettle();
+      expect(
+        container
+            .read(appRouterProvider)
+            .routeInformationProvider
+            .value
+            .uri
+            .toString(),
+        '${AppRoutes.home}?section=notes',
+      );
+    },
+  );
+  testWidgets(
     'Home displays the public profile and logout removes protected navigation',
     (tester) async {
       final adapter = _Adapter();
