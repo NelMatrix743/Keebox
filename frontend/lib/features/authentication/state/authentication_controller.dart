@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:keebox/features/authentication/authentication_api.dart';
 import 'package:keebox/features/authentication/models/authentication_result.dart';
+import 'package:keebox/features/authentication/models/authentication_session.dart';
+import 'package:keebox/network/api_exception.dart';
 import 'package:keebox/features/authentication/models/login_challenge.dart';
 import 'package:keebox/features/authentication/state/authentication_state.dart';
 import 'package:keebox/features/authentication/storage/auth_session_storage.dart';
@@ -19,12 +21,14 @@ final authenticationControllerProvider =
 class AuthenticationController extends AsyncNotifier<AuthenticationState> {
   Future<void> _pending = Future<void>.value();
   int _localVerificationRevision = 0;
+  int _sessionRevision = 0;
 
   @override
   Future<AuthenticationState> build() async {
     final sessionStorage = ref.read(authenticationSessionStorageProvider);
     final apiSession = ref.read(apiSessionProvider);
     ref.onDispose(() {
+      _sessionRevision++;
       _localVerificationRevision++;
       apiSession.clear();
     });
@@ -54,6 +58,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
       apiSession.set(
         session.accessToken,
         onInvalidSession: () => _invalidateSession(session.accessToken),
+        onRefresh: () => _refreshSession(session),
       );
       return AuthenticatedLocked(user: user, session: session);
     } on FormatException {
@@ -117,6 +122,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
           result.session.accessToken,
           onInvalidSession: () =>
               _invalidateSession(result.session.accessToken),
+          onRefresh: () => _refreshSession(result.session),
         );
     state = AsyncData(
       AuthenticatedUnlocked(user: result.user, session: result.session),
@@ -184,6 +190,53 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
     });
   }
 
+  Future<String?> _refreshSession(AuthenticationSession expected) async {
+    final revision = _sessionRevision;
+    try {
+      final response = await ref
+          .read(authenticationApiProvider)
+          .refresh(expected.refreshToken);
+      return await _serialize(() async {
+        if (!ref.mounted || revision != _sessionRevision) return null;
+        final current = state.asData?.value;
+        if (current is! Authenticated || !identical(current.session, expected)) {
+          return null;
+        }
+        final updated = AuthenticationSession(
+          userId: expected.userId,
+          accessToken: response.accessToken,
+          refreshToken: expected.refreshToken,
+        );
+        await ref.read(authenticationSessionStorageProvider).save(updated);
+        if (!ref.mounted || revision != _sessionRevision) return null;
+        final latest = state.asData?.value;
+        if (latest is! Authenticated || !identical(latest.session, expected)) {
+          return null;
+        }
+        ref
+            .read(apiSessionProvider)
+            .set(
+              updated.accessToken,
+              onInvalidSession: () => _invalidateSession(updated.accessToken),
+              onRefresh: () => _refreshSession(updated),
+            );
+        state = AsyncData(
+          latest is AuthenticatedLocked
+              ? AuthenticatedLocked(user: latest.user, session: updated)
+              : AuthenticatedUnlocked(user: latest.user, session: updated),
+        );
+        return updated.accessToken;
+      });
+    } on APIException catch (error) {
+      if (ref.mounted &&
+          error.statusCode == 401 &&
+          error.code == 'invalid_refresh_token') {
+        await _invalidateSession(expected.accessToken);
+      }
+      rethrow;
+    }
+  }
+
   Future<void> signOut() => _interruptLocalVerification(() async {
     await future;
     if (!ref.mounted) {
@@ -225,6 +278,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
       return;
     }
     _localVerificationRevision++;
+    _sessionRevision++;
     ref.read(apiSessionProvider).clear();
     state = const AsyncData(Unauthenticated());
     await ref.read(authenticationSessionStorageProvider).clear();
@@ -240,6 +294,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
   }
 
   Future<T> _interruptLocalVerification<T>(Future<T> Function() action) {
+    _sessionRevision++;
     _localVerificationRevision++;
     return _serialize(action);
   }
