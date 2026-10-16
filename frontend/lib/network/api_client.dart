@@ -41,6 +41,62 @@ class APIClient {
     bool authenticated = false,
   }) async {
     final token = authenticated ? session?.accessToken : null;
+    try {
+      return await _requestOnce(
+        url,
+        method: method,
+        decode: decode,
+        data: data,
+        queryParameters: queryParameters,
+        headers: headers,
+        cancelToken: cancelToken,
+        authenticated: authenticated,
+      );
+    } on APIException catch (failure) {
+      if (token == null || !_isInvalidSession(failure)) rethrow;
+      if (cancelToken?.isCancelled == true) rethrow;
+      final renewed = await session?.refresh(token);
+      if (renewed == null) rethrow;
+      if (cancelToken?.isCancelled == true) {
+        throw _fromDio(
+          DioException.requestCancelled(
+            requestOptions: RequestOptions(path: url),
+            reason: cancelToken?.cancelError,
+          ),
+        );
+      }
+      // Only body-free read requests are automatically replayed.
+      if (data != null || !const {'GET', 'HEAD'}.contains(method.toUpperCase())) {
+        rethrow;
+      }
+      try {
+        return await _requestOnce(
+          url,
+          method: method,
+          decode: decode,
+          queryParameters: queryParameters,
+          headers: headers,
+          cancelToken: cancelToken,
+          authenticated: authenticated,
+        );
+      } on APIException catch (retryFailure) {
+        if (_isInvalidSession(retryFailure)) await session?.invalidate(renewed);
+        rethrow;
+      }
+    }
+  }
+
+  Future<APIResponse<T>> _requestOnce<T>(
+    String url, {
+    required String method,
+    required T Function(Object? data) decode,
+    Object? data,
+    Map<String, dynamic>? queryParameters,
+    Map<String, dynamic>? headers,
+    CancelToken? cancelToken,
+    bool authenticated = false,
+  }) async {
+    final token = authenticated ? session?.accessToken : null;
     if (authenticated && (token == null || token.isEmpty)) {
       throw const APIException(
         kind: APIErrorKind.api,
@@ -67,7 +123,6 @@ class APIClient {
       );
     } on DioException catch (error) {
       final failure = _fromDio(error);
-      await _handleInvalidSession(failure, token);
       throw failure;
     }
     final body = response.data;
@@ -78,7 +133,6 @@ class APIClient {
       final failure =
           _backendError(body, response.statusCode) ??
           _invalidResponse(response.statusCode);
-      await _handleInvalidSession(failure, token);
       throw failure;
     }
     if (!body.containsKey('data') || body['error'] != null) {
@@ -194,17 +248,10 @@ class APIClient {
 
   void close() => _dio.close(force: true);
 
-  Future<void> _handleInvalidSession(
-    APIException failure,
-    String? token,
-  ) async {
-    if (token != null &&
-        failure.statusCode == 401 &&
-        (failure.code == 'invalid_session' ||
-            failure.code == 'authentication_required')) {
-      await session?.invalidate(token);
-    }
-  }
+  static bool _isInvalidSession(APIException failure) =>
+      failure.statusCode == 401 &&
+      (failure.code == 'invalid_session' ||
+          failure.code == 'authentication_required');
 
   static APIException _invalidResponse(int? status) => APIException(
     kind: APIErrorKind.invalidResponse,
