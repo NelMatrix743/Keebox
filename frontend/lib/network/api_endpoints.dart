@@ -2,6 +2,7 @@ import 'package:keebox/config/environment_config.dart';
 
 abstract final class APIEndpoints {
   static final String baseUrl = EnvironmentConfig.apiBaseUrl;
+  static final String currentUser = '$baseUrl/me';
   static final String authBaseUrl = '$baseUrl/auth';
 
   static final String register = '$authBaseUrl/register';
