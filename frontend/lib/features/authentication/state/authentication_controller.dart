@@ -308,14 +308,20 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
       return;
     }
     final current = state.asData?.value;
+    await _clearSession();
     try {
       if (current is Authenticated) {
-        await ref
-            .read(authenticationApiProvider)
-            .logout(accessToken: current.session.accessToken);
+        final api = ref.read(authenticationApiProvider);
+        try {
+          await api.logout(accessToken: current.session.accessToken);
+        } on APIException catch (error) {
+          if (error.statusCode != 401) rethrow;
+          final renewed = await api.refresh(current.session.refreshToken);
+          await api.logout(accessToken: renewed.accessToken);
+        }
       }
     } finally {
-      await _clearSession();
+      _profileFetchPending = false;
     }
   });
 
