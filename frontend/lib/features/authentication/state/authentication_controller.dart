@@ -24,6 +24,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
   int _localVerificationRevision = 0;
   int _sessionRevision = 0;
   bool _applicationActive = true;
+  bool _profileFetchPending = false;
 
   @override
   Future<AuthenticationState> build() async {
@@ -126,6 +127,7 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
               _invalidateSession(result.session.accessToken),
           onRefresh: () => _refreshSession(result.session),
         );
+    _profileFetchPending = true;
     state = AsyncData(
       _applicationActive
           ? AuthenticatedUnlocked(user: result.user, session: result.session)
@@ -156,6 +158,12 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
   void setApplicationActive(bool active) {
     _applicationActive = active;
     if (!active) lock();
+  }
+
+  Future<bool> fetchProfileAfterLogin() async {
+    if (!_profileFetchPending) return false;
+    _profileFetchPending = false;
+    return refreshCurrentUser();
   }
 
   Future<LocalPinVerification> verifyLocalPin(
