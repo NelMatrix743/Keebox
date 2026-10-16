@@ -1,5 +1,18 @@
 abstract final class AppTexts {
   static const appName = 'Keebox';
+  static const startupFailed =
+      'Unable to read your saved settings. Please try again.';
+  static const retry = 'Retry';
+  static const logout = 'Log out';
+  static const logoutLocalOnly =
+      'Signed out on this device. The server could not be reached to end the remote session.';
+  static const refreshProfile = 'Refresh profile';
+  static const profileUnavailable =
+      'Unable to load your profile. Please try again.';
+  static const userId = 'User ID';
+  static const firstName = 'First name';
+  static const lastName = 'Last name';
+  static const email = 'Email';
 
   static const onboardingLoadFailed =
       'Unable to load onboarding progress. Please try again.';
