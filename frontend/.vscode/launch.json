@@ -9,7 +9,7 @@
       "cwd": "${workspaceFolder}",
       "program": "${workspaceFolder}/lib/main.dart",
       "flutterMode": "debug",
-      "toolArgs": ["--dart-define=API_BASE_URL=http://192.168.1.66:8000/api"]
+      "toolArgs": ["--dart-define=API_BASE_URL=http://192.168.1.76:8000/api"]
     },
     {
       "name": "Keebox (profile)",
@@ -18,7 +18,7 @@
       "cwd": "${workspaceFolder}",
       "program": "${workspaceFolder}/lib/main.dart",
       "flutterMode": "profile",
-      "toolArgs": ["--dart-define=API_BASE_URL=http://192.168.1.66:8000/api"]
+      "toolArgs": ["--dart-define=API_BASE_URL=http://192.168.1.76:8000/api"]
     },
     {
       "name": "Keebox (release)",
@@ -27,7 +27,7 @@
       "cwd": "${workspaceFolder}",
       "program": "${workspaceFolder}/lib/main.dart",
       "flutterMode": "release",
-      "toolArgs": ["--dart-define=API_BASE_URL=http://192.168.1.66:8000/api"]
+      "toolArgs": ["--dart-define=API_BASE_URL=http://192.168.1.76:8000/api"]
     }
   ]
 }
