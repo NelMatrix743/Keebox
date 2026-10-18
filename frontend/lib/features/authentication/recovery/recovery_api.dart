@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:keebox/features/authentication/recovery/models/recovery_challenge.dart';
+import 'package:keebox/features/authentication/recovery/models/recovery_resend_request.dart';
 import 'package:keebox/features/authentication/recovery/models/recovery_start_request.dart';
 import 'package:keebox/features/authentication/recovery/models/recovery_type.dart';
 import 'package:keebox/network/api_client.dart';
@@ -26,6 +27,19 @@ class RecoveryAPI {
     };
     final response = await client.post<RecoveryChallenge>(
       endpoint,
+      data: request.toJson(),
+      decode: RecoveryChallenge.fromJson,
+      cancelToken: cancelToken,
+    );
+    return response.data;
+  }
+
+  Future<RecoveryChallenge> resendOtp(
+    RecoveryResendRequest request, {
+    CancelToken? cancelToken,
+  }) async {
+    final response = await client.post<RecoveryChallenge>(
+      APIEndpoints.resetResendOtp,
       data: request.toJson(),
       decode: RecoveryChallenge.fromJson,
       cancelToken: cancelToken,
