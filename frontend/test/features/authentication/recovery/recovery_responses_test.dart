@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:keebox/features/recovery/models/recovery_challenge.dart';
-import 'package:keebox/features/recovery/models/recovery_verified.dart';
-import 'package:keebox/features/recovery/models/recovery_completed.dart';
+import 'package:keebox/features/authentication/recovery/models/recovery_challenge.dart';
+import 'package:keebox/features/authentication/recovery/models/recovery_verified.dart';
+import 'package:keebox/features/authentication/recovery/models/recovery_completed.dart';
 
 const resetId = '12345678-1234-1234-1234-123456789abc';
 
