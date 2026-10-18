@@ -1,4 +1,4 @@
-import 'package:keebox/features/recovery/models/recovery_json.dart';
+import 'package:keebox/features/authentication/recovery/models/recovery_json.dart';
 
 class PinResetRequest {
   const PinResetRequest({required this.resetId, required this.newPin});
