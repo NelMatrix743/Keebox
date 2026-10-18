@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:keebox/features/authentication/recovery/models/password_reset_request.dart';
 import 'package:keebox/features/authentication/recovery/models/recovery_challenge.dart';
+import 'package:keebox/features/authentication/recovery/models/recovery_completed.dart';
 import 'package:keebox/features/authentication/recovery/models/recovery_resend_request.dart';
 import 'package:keebox/features/authentication/recovery/models/recovery_start_request.dart';
 import 'package:keebox/features/authentication/recovery/models/recovery_type.dart';
@@ -57,6 +59,19 @@ class RecoveryAPI {
       APIEndpoints.resetVerifyOtp,
       data: request.toJson(),
       decode: RecoveryVerified.fromJson,
+      cancelToken: cancelToken,
+    );
+    return response.data;
+  }
+
+  Future<RecoveryCompleted> completePassword(
+    PasswordResetRequest request, {
+    CancelToken? cancelToken,
+  }) async {
+    final response = await client.post<RecoveryCompleted>(
+      APIEndpoints.resetPasswordComplete,
+      data: request.toJson(),
+      decode: RecoveryCompleted.fromJson,
       cancelToken: cancelToken,
     );
     return response.data;
