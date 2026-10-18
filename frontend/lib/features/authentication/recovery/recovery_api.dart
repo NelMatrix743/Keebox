@@ -5,6 +5,8 @@ import 'package:keebox/features/authentication/recovery/models/recovery_challeng
 import 'package:keebox/features/authentication/recovery/models/recovery_resend_request.dart';
 import 'package:keebox/features/authentication/recovery/models/recovery_start_request.dart';
 import 'package:keebox/features/authentication/recovery/models/recovery_type.dart';
+import 'package:keebox/features/authentication/recovery/models/recovery_verified.dart';
+import 'package:keebox/features/authentication/recovery/models/recovery_verify_request.dart';
 import 'package:keebox/network/api_client.dart';
 import 'package:keebox/network/api_endpoints.dart';
 
@@ -42,6 +44,19 @@ class RecoveryAPI {
       APIEndpoints.resetResendOtp,
       data: request.toJson(),
       decode: RecoveryChallenge.fromJson,
+      cancelToken: cancelToken,
+    );
+    return response.data;
+  }
+
+  Future<RecoveryVerified> verifyOtp(
+    RecoveryVerifyRequest request, {
+    CancelToken? cancelToken,
+  }) async {
+    final response = await client.post<RecoveryVerified>(
+      APIEndpoints.resetVerifyOtp,
+      data: request.toJson(),
+      decode: RecoveryVerified.fromJson,
       cancelToken: cancelToken,
     );
     return response.data;
