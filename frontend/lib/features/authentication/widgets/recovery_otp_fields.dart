@@ -99,6 +99,8 @@ class _RecoveryOtpFieldsState extends State<RecoveryOtpFields> {
                       controller: _controllers[index],
                       focusNode: _focus[index],
                       enabled: widget.enabled,
+                      expands: true,
+                      maxLines: null,
                       keyboardType: TextInputType.number,
                       textInputAction: index == 5
                           ? TextInputAction.done
