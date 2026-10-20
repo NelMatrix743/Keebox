@@ -9,6 +9,23 @@ abstract final class AppTexts {
   static const continueLabel = 'Continue';
   static const requestingRecovery = 'Requesting a verification code';
   static const recoveryOtpTitle = 'Verify your email';
+  static const recoveryOtpSent = 'An OTP code has been sent to your email';
+  static const recoveryOtpInstruction = 'Enter it below';
+  static const verifyingOtp = 'Verifying your code';
+  static const resendIn = 'Resend in:';
+  static const resendCode = 'Resend code';
+  static const resendingCode = 'Sending a new code';
+  static const restartRecovery = 'Start again';
+  static const resetPasswordTitle = 'Reset Password';
+  static const recoveryResetPlaceholder =
+      'Your email is verified. The reset form is coming next.';
+  static String otpDigitLabel(int position) =>
+      'Verification code digit $position';
+  static String recoveryCountdown(Duration remaining) {
+    final seconds = remaining.inSeconds;
+    return '${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}';
+  }
+
   static const recoveryOtpPlaceholder =
       'The verification screen is coming next.';
   static const recoveryFailed =
