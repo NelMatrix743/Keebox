@@ -131,7 +131,7 @@ class _RecoveryOtpScreenState extends ConsumerState<RecoveryOtpScreen>
                   padding: EdgeInsets.symmetric(horizontal: 24.w),
                   child: const RecoveryOtpHeader(),
                 ),
-                SizedBox(height: 35.h),
+                SizedBox(height: 32.h),
                 Center(
                   child: SizedBox(
                     width: 320.w,

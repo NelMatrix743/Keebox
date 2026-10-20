@@ -24,6 +24,7 @@ class RecoveryOtpHeader extends StatelessWidget {
         style: TextStyle(
           fontFamily: AppFonts.inter,
           fontSize: 15.sp,
+          height: 1.2,
           fontWeight: FontWeight.w500,
           color: AppColors.text,
         ),
@@ -35,6 +36,7 @@ class RecoveryOtpHeader extends StatelessWidget {
         style: TextStyle(
           fontFamily: AppFonts.inter,
           fontSize: 14.sp,
+          height: 1.22,
           fontWeight: FontWeight.w500,
           color: AppColors.mutedText,
         ),

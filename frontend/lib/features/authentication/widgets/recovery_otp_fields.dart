@@ -129,6 +129,7 @@ class _RecoveryOtpFieldsState extends State<RecoveryOtpFields> {
                       onChanged: (value) => _changed(index, value),
                       onSubmitted: (_) => widget.onSubmitted(),
                       decoration: InputDecoration(
+                        constraints: BoxConstraints.tightFor(height: height),
                         labelText: null,
                         hintText: null,
                         filled: true,
