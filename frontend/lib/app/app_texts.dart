@@ -26,6 +26,10 @@ abstract final class AppTexts {
   static const resettingPassword = 'Resetting your password';
   static const backToLogin = 'Back to login';
   static const recoveryCompletedTitle = 'Reset completed';
+  static const recoveryCompletedMessage = 'Reset completed successfully!';
+  static const finishingRecovery = 'Finishing recovery';
+  static const recoveryCleanupFailed =
+      'Your reset succeeded, but we could not clear this device\'s previous session. Retry to finish.';
   static String otpDigitLabel(int position) =>
       'Verification code digit $position';
   static String recoveryCountdown(Duration remaining) {
