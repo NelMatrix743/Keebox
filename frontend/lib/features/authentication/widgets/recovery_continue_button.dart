@@ -11,10 +11,12 @@ class RecoveryContinueButton extends StatelessWidget {
   const RecoveryContinueButton({
     required this.onPressed,
     this.isLoading = false,
+    this.loadingLabel = AppTexts.requestingRecovery,
     super.key,
   });
   final VoidCallback? onPressed;
   final bool isLoading;
+  final String loadingLabel;
 
   @override
   Widget build(BuildContext context) => FilledButton(
@@ -36,10 +38,10 @@ class RecoveryContinueButton extends StatelessWidget {
     child: isLoading
         ? SizedBox.square(
             dimension: 30.r,
-            child: const CircularProgressIndicator(
+            child: CircularProgressIndicator(
               color: Colors.white,
               strokeWidth: 2,
-              semanticsLabel: AppTexts.requestingRecovery,
+              semanticsLabel: loadingLabel,
             ),
           )
         : Row(
