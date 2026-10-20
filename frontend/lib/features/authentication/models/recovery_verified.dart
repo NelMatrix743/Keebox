@@ -1,4 +1,4 @@
-import 'package:keebox/features/authentication/recovery/models/recovery_json.dart';
+import 'package:keebox/features/authentication/models/recovery_json.dart';
 
 class RecoveryVerified {
   const RecoveryVerified({

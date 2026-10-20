@@ -1,4 +1,4 @@
-import 'package:keebox/features/authentication/recovery/models/recovery_json.dart';
+import 'package:keebox/features/authentication/models/recovery_json.dart';
 
 /// Shared response for recovery initiation and OTP resending.
 class RecoveryChallenge {
