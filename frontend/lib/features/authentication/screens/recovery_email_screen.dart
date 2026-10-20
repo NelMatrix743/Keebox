@@ -56,7 +56,8 @@ class _RecoveryEmailScreenState extends ConsumerState<RecoveryEmailScreen> {
     final state = ref.watch(provider);
     ref.listen(provider, (previous, next) {
       if (next.errorMessage != null &&
-          next.feedbackRevision != previous?.feedbackRevision) {
+          next.feedbackRevision != previous?.feedbackRevision &&
+          ModalRoute.of(context)?.isCurrent != false) {
         AppSnackBar.show(
           context,
           message: next.errorMessage!,
