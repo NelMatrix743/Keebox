@@ -9,7 +9,7 @@ import 'package:keebox/features/authentication/screens/login_screen.dart';
 import 'package:keebox/features/authentication/models/recovery_type.dart';
 import 'package:keebox/features/authentication/screens/recovery_email_screen.dart';
 import 'package:keebox/features/authentication/screens/recovery_otp_screen.dart';
-import 'package:keebox/features/authentication/screens/recovery_reset_placeholder_screen.dart';
+import 'package:keebox/features/authentication/screens/pin_reset_screen.dart';
 import 'package:keebox/features/authentication/screens/password_reset_screen.dart';
 import 'package:keebox/features/authentication/screens/recovery_completion_placeholder_screen.dart';
 import 'package:keebox/features/authentication/state/recovery_controller.dart';
@@ -140,7 +140,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final scope = state.extra! as RecoveryScope;
           if (scope.type == RecoveryType.pin) {
-            return RecoveryResetPlaceholderScreen(scope: scope);
+            return PinResetScreen(
+              scope: scope,
+              onCompleted: (scope) => context.pushReplacementNamed(
+                AppRoutes.recoveryCompletedName,
+                extra: scope,
+              ),
+              onRestart: () {
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.goNamed(AppRoutes.recoverPinName);
+                }
+              },
+              onLoginRequired: () => context.goNamed(AppRoutes.signInName),
+            );
           }
           return PasswordResetScreen(
             scope: scope,

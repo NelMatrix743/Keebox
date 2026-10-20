@@ -26,8 +26,6 @@ abstract final class AppTexts {
   static const resettingPassword = 'Resetting your password';
   static const backToLogin = 'Back to login';
   static const recoveryCompletedTitle = 'Reset completed';
-  static const recoveryResetPlaceholder =
-      'Your email is verified. The reset form is coming next.';
   static String otpDigitLabel(int position) =>
       'Verification code digit $position';
   static String recoveryCountdown(Duration remaining) {
