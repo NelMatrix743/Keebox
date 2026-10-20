@@ -40,8 +40,8 @@ void main() {
       await tester.ensureVisible(find.text('Forgot your password?'));
       await tester.tap(find.text('Forgot your password?'));
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(AppBar, 'Reset Password'), findsOneWidget);
-      await tester.pageBack();
+      expect(find.text('Enter your email'), findsOneWidget);
+      await tester.tap(find.byTooltip('Back'));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Register'));
       await tester.tap(find.text('Register'));

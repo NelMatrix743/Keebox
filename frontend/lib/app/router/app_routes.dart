@@ -20,6 +20,14 @@ abstract final class AppRoutes {
   // forgot-password route
   static const forgotPassword = '/forgot-password';
   static const forgotPasswordName = 'forgot-password';
+  static const recoverPin = '/recover-pin';
+  static const recoverPinName = 'recover-pin';
+  static const recoveryOtp = '/recovery-otp';
+  static const recoveryOtpName = 'recovery-otp';
+  static const recoveryReset = '/recovery-reset';
+  static const recoveryResetName = 'recovery-reset';
+  static const recoveryCompleted = '/recovery-completed';
+  static const recoveryCompletedName = 'recovery-completed';
 
   static const createPin = '/create-pin';
   static const createPinName = 'create-pin';

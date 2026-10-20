@@ -1,5 +1,58 @@
 abstract final class AppTexts {
   static const appName = 'Keebox';
+  static const back = 'Back';
+  static const recoveryEmailTitle = 'Enter your email';
+  static const recoveryEmailSubtitle =
+      'Enter the email address connected to your account';
+  static const recoveryEmailHint = 'Your email address';
+  static const recoveryEmailInvalid = 'Enter a valid email address.';
+  static const continueLabel = 'Continue';
+  static const requestingRecovery = 'Requesting a verification code';
+  static const recoveryOtpSent = 'An OTP code has been sent to your email';
+  static const recoveryOtpInstruction = 'Enter it below';
+  static const verifyingOtp = 'Verifying your code';
+  static const resendIn = 'Resend in:';
+  static const resendCode = 'Resend code';
+  static const resendingCode = 'Sending a new code';
+  static const restartRecovery = 'Start again';
+  static const resetPasswordTitle = 'Reset Password';
+  static const resetPasswordSubtitle = 'Enter a new password to reset';
+  static const newPasswordHint = 'Enter password';
+  static const confirmPasswordHint = 'Confirm password';
+  static const confirmPasswordRequired = 'Confirm your new password.';
+  static const passwordsDoNotMatch = 'The passwords do not match.';
+  static const showPassword = 'Show password';
+  static const hidePassword = 'Hide password';
+  static const resettingPassword = 'Resetting your password';
+  static const backToLogin = 'Back to login';
+  static const recoveryCompletedTitle = 'Reset completed';
+  static const recoveryCompletedMessage = 'Reset completed successfully!';
+  static const finishingRecovery = 'Finishing recovery';
+  static const recoveryCleanupFailed =
+      'Your reset succeeded, but we could not clear this device\'s previous session. Retry to finish.';
+  static String otpDigitLabel(int position) =>
+      'Verification code digit $position';
+  static String recoveryCountdown(Duration remaining) {
+    final seconds = remaining.inSeconds;
+    return '${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}';
+  }
+
+  static const recoveryFailed =
+      'Unable to complete this recovery request. Please try again.';
+  static const recoveryEmailRequired = 'Enter your email address.';
+  static const recoveryOtpInvalid = 'Enter the six-digit verification code.';
+  static const recoveryPasswordRequired = 'Enter your new password.';
+  static const recoveryPinInvalid = 'Enter a five-digit PIN.';
+  static const recoveryOtpExpired =
+      'Your verification code has expired. Start a new recovery request.';
+  static const recoveryCompletionExpired =
+      'Your recovery session has expired. Start a new recovery request.';
+  static const recoveryResendUnavailable =
+      'Please wait before requesting another verification code.';
+  static const recoveryResponseInvalid =
+      'The server returned an unexpected recovery response. Start a new recovery request.';
+  static const recoveryCompletionUncertain =
+      'We could not confirm whether your credential was changed. Try signing in with the new credential, or restart recovery.';
   static const startupFailed =
       'Unable to read your saved settings. Please try again.';
   static const retry = 'Retry';

@@ -42,6 +42,7 @@ dependencies:
   flutter_screenutil: ^5.9.3
   shared_preferences: ^2.5.6
   cryptography: ^2.9.0
+  lottie: ^3.6.1
 
 dev_dependencies:
   flutter_test:
@@ -67,6 +68,11 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/animations/success_check.json
+    - assets/icons/back.png
+    - assets/icons/recovery_email.png
+    - assets/icons/recovery_otp.png
+    - assets/icons/password_reset.png
     - assets/images/onboarding.png
     - assets/icons/get_started.png
     - assets/icons/email.png

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 abstract final class BackgroundLockPolicy {
-  static const gracePeriod = Duration(seconds: 20);
+  static const gracePeriod = Duration(seconds: 10);
 }
 
 final backgroundTimerProvider =
