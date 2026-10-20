@@ -6,6 +6,10 @@ import 'package:keebox/app/startup/startup_coordinator.dart';
 import 'package:keebox/app/router/app_routes.dart';
 import 'package:keebox/features/onboarding/screens/onboarding_screen.dart';
 import 'package:keebox/features/authentication/screens/login_screen.dart';
+import 'package:keebox/features/authentication/models/recovery_type.dart';
+import 'package:keebox/features/authentication/screens/recovery_email_screen.dart';
+import 'package:keebox/features/authentication/screens/recovery_otp_placeholder_screen.dart';
+import 'package:keebox/features/authentication/state/recovery_controller.dart';
 import 'package:keebox/features/authentication/screens/login_pin_screen.dart';
 import 'package:keebox/features/authentication/state/authentication_controller.dart';
 import 'package:keebox/features/authentication/state/authentication_state.dart';
@@ -64,12 +68,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ? LocalUnlockScreen(
                 onUnlocked: () => context.go(unlockDestination()),
                 onLoginRequired: () => context.goNamed(AppRoutes.signInName),
-                onResetPin: () => context.pushNamed(AppRoutes.resetPinName),
+                onResetPin: () => context.pushNamed(AppRoutes.recoverPinName),
               )
             : LoginPinScreen(
                 onAuthenticated: () => context.goNamed(AppRoutes.homeName),
                 onLoginRequired: () => context.goNamed(AppRoutes.signInName),
-                onResetPin: () => context.pushNamed(AppRoutes.resetPinName),
+                onResetPin: () => context.pushNamed(AppRoutes.recoverPinName),
               ),
       ),
       GoRoute(
@@ -86,8 +90,28 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.forgotPassword,
         name: AppRoutes.forgotPasswordName,
+        builder: (context, state) => RecoveryEmailScreen(
+          type: RecoveryType.password,
+          onStarted: (scope) =>
+              context.pushNamed(AppRoutes.recoveryOtpName, extra: scope),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.recoverPin,
+        name: AppRoutes.recoverPinName,
+        builder: (context, state) => RecoveryEmailScreen(
+          type: RecoveryType.pin,
+          onStarted: (scope) =>
+              context.pushNamed(AppRoutes.recoveryOtpName, extra: scope),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.recoveryOtp,
+        name: AppRoutes.recoveryOtpName,
+        redirect: (context, state) =>
+            state.extra is RecoveryScope ? null : AppRoutes.forgotPassword,
         builder: (context, state) =>
-            Scaffold(appBar: AppBar(title: const Text('Reset Password'))),
+            RecoveryOtpPlaceholderScreen(scope: state.extra! as RecoveryScope),
       ),
       GoRoute(
         path: AppRoutes.register,
