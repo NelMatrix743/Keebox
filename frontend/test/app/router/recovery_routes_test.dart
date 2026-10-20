@@ -9,6 +9,16 @@ import 'package:keebox/app/router/app_router.dart';
 import 'package:keebox/app/router/app_routes.dart';
 import 'package:keebox/app/theme/app_theme.dart';
 import 'package:keebox/features/authentication/models/recovery_type.dart';
+import 'package:keebox/features/authentication/models/authenticated_user.dart';
+import 'package:keebox/features/authentication/models/authentication_result.dart';
+import 'package:keebox/features/authentication/models/authentication_session.dart';
+import 'package:keebox/features/authentication/state/authentication_controller.dart';
+import 'package:keebox/features/authentication/state/authentication_state.dart';
+import 'package:keebox/features/authentication/storage/auth_session_storage.dart';
+import 'package:keebox/features/authentication/storage/user_storage.dart';
+import 'package:keebox/network/api_session.dart';
+import 'package:keebox/assets/app_assets.dart';
+import 'package:lottie/lottie.dart';
 import 'package:keebox/features/authentication/screens/recovery_email_screen.dart';
 import 'package:keebox/features/authentication/recovery_api.dart';
 import 'package:keebox/features/authentication/models/recovery_start_request.dart';
@@ -21,6 +31,10 @@ import 'package:keebox/features/authentication/models/recovery_completed.dart';
 import 'package:keebox/network/api_client.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() async {
+    await AssetLottie(AppAssets.successCheck).load();
+  });
   for (final (route, type) in [
     (AppRoutes.forgotPasswordName, RecoveryType.password),
     (AppRoutes.recoverPinName, RecoveryType.pin),
@@ -39,7 +53,29 @@ void main() {
           overrides: [recoveryApiProvider.overrideWithValue(api)],
         );
         addTearDown(container.dispose);
+        await container.read(authenticationControllerProvider.future);
+        await container
+            .read(authenticationControllerProvider.notifier)
+            .completeAuthentication(
+              const AuthenticationResult(
+                user: AuthenticatedUser(
+                  id: 'account-1',
+                  firstName: 'Ada',
+                  lastName: 'Lovelace',
+                  email: 'ada@example.com',
+                  kbkey: 'permanent-key',
+                ),
+                session: AuthenticationSession(
+                  userId: 'account-1',
+                  accessToken: 'old-access',
+                  refreshToken: 'old-refresh',
+                ),
+                message: 'Signed in.',
+              ),
+            );
+        container.read(authenticationControllerProvider.notifier).lock();
         final router = container.read(appRouterProvider);
+        router.goNamed(AppRoutes.homeLockName);
         await tester.pumpWidget(
           UncontrolledProviderScope(
             container: container,
@@ -53,6 +89,7 @@ void main() {
             ),
           ),
         );
+        await tester.pumpAndSettle();
         router.pushNamed(route);
         await tester.pumpAndSettle();
         final screen = tester.widget<RecoveryEmailScreen>(
@@ -88,31 +125,39 @@ void main() {
           );
           await tester.tap(find.text(AppTexts.continueLabel));
           await tester.pumpAndSettle();
-          expect(
-            find.text('Password reset completed. Sign in again.'),
-            findsOneWidget,
-          );
-          await tester.tap(find.text(AppTexts.backToLogin));
+        } else {
+          for (final digit in '00123'.split('')) {
+            final key = find.byKey(ValueKey('pin-key-$digit'));
+            await tester.ensureVisible(key);
+            await tester.tap(key);
+            await tester.pump();
+          }
+          await tester.ensureVisible(find.byType(FilledButton));
+          await tester.tap(find.byType(FilledButton));
           await tester.pumpAndSettle();
-          expect(find.text('Welcome Back!'), findsOneWidget);
-          return;
         }
-        for (final digit in '00123'.split('')) {
-          final key = find.byKey(ValueKey('pin-key-$digit'));
-          await tester.ensureVisible(key);
-          await tester.tap(key);
-          await tester.pump();
-        }
-        await tester.ensureVisible(find.byType(FilledButton));
-        await tester.tap(find.byType(FilledButton));
-        await tester.pumpAndSettle();
+        expect(find.text(AppTexts.recoveryCompletedMessage), findsOneWidget);
         expect(
-          find.text('PIN reset completed. Sign in again.'),
-          findsOneWidget,
+          container.read(authenticationControllerProvider).requireValue,
+          isA<Unauthenticated>(),
         );
-        await tester.tap(find.text(AppTexts.backToLogin));
+        expect(
+          await container.read(authenticationSessionStorageProvider).read(),
+          isNull,
+        );
+        expect(container.read(apiSessionProvider).accessToken, isNull);
+        expect(
+          (await container
+                  .read(authenticatedUserStorageProvider)
+                  .read('account-1'))!
+              .kbkey,
+          'permanent-key',
+        );
+        expect(router.canPop(), isFalse);
+        await tester.tap(find.text(AppTexts.continueLabel));
         await tester.pumpAndSettle();
         expect(find.text('Welcome Back!'), findsOneWidget);
+        expect(router.canPop(), isFalse);
       },
     );
   }
