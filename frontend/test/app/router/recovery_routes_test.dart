@@ -15,6 +15,8 @@ import 'package:keebox/features/authentication/models/recovery_start_request.dar
 import 'package:keebox/features/authentication/models/recovery_challenge.dart';
 import 'package:keebox/features/authentication/models/recovery_verified.dart';
 import 'package:keebox/features/authentication/models/recovery_verify_request.dart';
+import 'package:keebox/features/authentication/models/password_reset_request.dart';
+import 'package:keebox/features/authentication/models/recovery_completed.dart';
 import 'package:keebox/network/api_client.dart';
 
 void main() {
@@ -73,6 +75,27 @@ void main() {
           ),
           findsOneWidget,
         );
+        if (type == RecoveryType.password) {
+          expect(find.text(AppTexts.resetPasswordSubtitle), findsOneWidget);
+          await tester.enterText(
+            find.byType(TextFormField).first,
+            'a strong replacement password 7349',
+          );
+          await tester.enterText(
+            find.byType(TextFormField).last,
+            'a strong replacement password 7349',
+          );
+          await tester.tap(find.text(AppTexts.continueLabel));
+          await tester.pumpAndSettle();
+          expect(
+            find.text('Password reset completed. Sign in again.'),
+            findsOneWidget,
+          );
+          await tester.tap(find.text(AppTexts.backToLogin));
+          await tester.pumpAndSettle();
+          expect(find.text('Welcome Back!'), findsOneWidget);
+          return;
+        }
         expect(find.text(AppTexts.recoveryResetPlaceholder), findsOneWidget);
         await tester.tap(find.byTooltip(AppTexts.back));
         await tester.pumpAndSettle();
@@ -106,5 +129,13 @@ class _API extends RecoveryAPI {
     resetId: request.resetId,
     completionExpiresAt: DateTime.now().add(const Duration(minutes: 10)),
     message: 'Email verified.',
+  );
+  @override
+  Future<RecoveryCompleted> completePassword(
+    PasswordResetRequest request, {
+    CancelToken? cancelToken,
+  }) async => RecoveryCompleted(
+    resetId: request.resetId,
+    message: 'Password reset completed. Sign in again.',
   );
 }
