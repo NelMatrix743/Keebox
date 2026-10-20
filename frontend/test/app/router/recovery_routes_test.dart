@@ -13,6 +13,8 @@ import 'package:keebox/features/authentication/screens/recovery_email_screen.dar
 import 'package:keebox/features/authentication/recovery_api.dart';
 import 'package:keebox/features/authentication/models/recovery_start_request.dart';
 import 'package:keebox/features/authentication/models/recovery_challenge.dart';
+import 'package:keebox/features/authentication/models/recovery_verified.dart';
+import 'package:keebox/features/authentication/models/recovery_verify_request.dart';
 import 'package:keebox/network/api_client.dart';
 
 void main() {
@@ -57,11 +59,21 @@ void main() {
         await tester.enterText(find.byType(TextFormField), 'ada@example.com');
         await tester.tap(find.text(AppTexts.continueLabel));
         await tester.pumpAndSettle();
-        expect(find.text(AppTexts.recoveryOtpPlaceholder), findsOneWidget);
+        expect(find.text(AppTexts.recoveryOtpSent), findsOneWidget);
+        expect(find.byType(TextField), findsNWidgets(6));
+        await tester.enterText(find.byType(TextField).first, '001234');
+        await tester.pump();
+        await tester.tap(find.text(AppTexts.continueLabel));
+        await tester.pumpAndSettle();
         expect(
-          find.text('If an account exists, a code has been sent.'),
+          find.text(
+            type == RecoveryType.password
+                ? AppTexts.resetPasswordTitle
+                : AppTexts.resetPinTitle,
+          ),
           findsOneWidget,
         );
+        expect(find.text(AppTexts.recoveryResetPlaceholder), findsOneWidget);
         await tester.tap(find.byTooltip(AppTexts.back));
         await tester.pumpAndSettle();
         expect(find.text(AppTexts.recoveryEmailTitle), findsOneWidget);
@@ -85,5 +97,14 @@ class _API extends RecoveryAPI {
     otpExpiresAt: DateTime.now().add(const Duration(minutes: 5)),
     resendAvailableAt: DateTime.now().add(const Duration(seconds: 60)),
     message: 'If an account exists, a code has been sent.',
+  );
+  @override
+  Future<RecoveryVerified> verifyOtp(
+    RecoveryVerifyRequest request, {
+    CancelToken? cancelToken,
+  }) async => RecoveryVerified(
+    resetId: request.resetId,
+    completionExpiresAt: DateTime.now().add(const Duration(minutes: 10)),
+    message: 'Email verified.',
   );
 }
