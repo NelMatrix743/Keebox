@@ -15,9 +15,19 @@ import 'package:keebox/features/pin/widgets/pin_setup_header.dart';
 import 'package:keebox/shared/widgets/app_snackbar.dart';
 
 class PinSetupScreen extends ConsumerStatefulWidget {
-  const PinSetupScreen({required this.mode, this.onPinConfirmed, super.key});
+  const PinSetupScreen({
+    required this.mode,
+    this.onPinConfirmed,
+    this.enabled = true,
+    this.showSubmissionError = true,
+    this.footer,
+    super.key,
+  });
 
   final PinSetupMode mode;
+  final bool enabled;
+  final bool showSubmissionError;
+  final Widget? footer;
 
   /// Invoked when a complete five-digit PIN is confirmed. API and storage work
   /// belongs to the caller; the screen awaits it and allows retry on failure.
@@ -36,7 +46,9 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
     final state = ref.watch(provider);
     final controller = ref.read(provider.notifier);
     ref.listen(provider, (previous, next) {
-      if (!next.submissionFailed || previous?.submissionFailed == true) {
+      if (!widget.showSubmissionError ||
+          !next.submissionFailed ||
+          previous?.submissionFailed == true) {
         return;
       }
       AppSnackBar.show(
@@ -63,12 +75,12 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                       onDigit: controller.enterDigit,
                       onDelete: controller.deleteDigit,
                       showDelete: state.digits.isNotEmpty,
-                      enabled: state.canEdit,
+                      enabled: state.canEdit && widget.enabled,
                     ),
                     SizedBox(height: 40.h),
                     const Spacer(),
                     PinConfirmButton(
-                      onPressed: state.canConfirm
+                      onPressed: state.canConfirm && widget.enabled
                           ? () {
                               AppSnackBar.dismiss(context);
                               unawaited(
@@ -86,6 +98,10 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                       isComplete: state.stage == PinSetupStage.complete,
                       isSubmitting: state.isSubmitting,
                     ),
+                    if (widget.footer != null) ...[
+                      SizedBox(height: 8.h),
+                      widget.footer!,
+                    ],
                   ],
                 ),
               ),
