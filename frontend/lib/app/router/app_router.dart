@@ -10,6 +10,8 @@ import 'package:keebox/features/authentication/models/recovery_type.dart';
 import 'package:keebox/features/authentication/screens/recovery_email_screen.dart';
 import 'package:keebox/features/authentication/screens/recovery_otp_screen.dart';
 import 'package:keebox/features/authentication/screens/recovery_reset_placeholder_screen.dart';
+import 'package:keebox/features/authentication/screens/password_reset_screen.dart';
+import 'package:keebox/features/authentication/screens/recovery_completion_placeholder_screen.dart';
 import 'package:keebox/features/authentication/state/recovery_controller.dart';
 import 'package:keebox/features/authentication/screens/login_pin_screen.dart';
 import 'package:keebox/features/authentication/state/authentication_controller.dart';
@@ -135,8 +137,36 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: AppRoutes.recoveryResetName,
         redirect: (context, state) =>
             state.extra is RecoveryScope ? null : AppRoutes.forgotPassword,
-        builder: (context, state) => RecoveryResetPlaceholderScreen(
+        builder: (context, state) {
+          final scope = state.extra! as RecoveryScope;
+          if (scope.type == RecoveryType.pin) {
+            return RecoveryResetPlaceholderScreen(scope: scope);
+          }
+          return PasswordResetScreen(
+            scope: scope,
+            onCompleted: (scope) => context.pushReplacementNamed(
+              AppRoutes.recoveryCompletedName,
+              extra: scope,
+            ),
+            onRestart: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.goNamed(AppRoutes.forgotPasswordName);
+              }
+            },
+            onLoginRequired: () => context.goNamed(AppRoutes.signInName),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.recoveryCompleted,
+        name: AppRoutes.recoveryCompletedName,
+        redirect: (context, state) =>
+            state.extra is RecoveryScope ? null : AppRoutes.signIn,
+        builder: (context, state) => RecoveryCompletionPlaceholderScreen(
           scope: state.extra! as RecoveryScope,
+          onLogin: () => context.goNamed(AppRoutes.signInName),
         ),
       ),
       GoRoute(
