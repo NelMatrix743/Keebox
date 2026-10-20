@@ -16,6 +16,16 @@ abstract final class AppTexts {
   static const resendingCode = 'Sending a new code';
   static const restartRecovery = 'Start again';
   static const resetPasswordTitle = 'Reset Password';
+  static const resetPasswordSubtitle = 'Enter a new password to reset';
+  static const newPasswordHint = 'Enter password';
+  static const confirmPasswordHint = 'Confirm password';
+  static const confirmPasswordRequired = 'Confirm your new password.';
+  static const passwordsDoNotMatch = 'The passwords do not match.';
+  static const showPassword = 'Show password';
+  static const hidePassword = 'Hide password';
+  static const resettingPassword = 'Resetting your password';
+  static const backToLogin = 'Back to login';
+  static const recoveryCompletedTitle = 'Reset completed';
   static const recoveryResetPlaceholder =
       'Your email is verified. The reset form is coming next.';
   static String otpDigitLabel(int position) =>
