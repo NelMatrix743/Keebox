@@ -67,6 +67,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/animations/success_check.json
     - assets/icons/back.png
     - assets/icons/recovery_email.png
     - assets/icons/recovery_otp.png
