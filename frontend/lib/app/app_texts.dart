@@ -1,5 +1,16 @@
 abstract final class AppTexts {
   static const appName = 'Keebox';
+  static const back = 'Back';
+  static const recoveryEmailTitle = 'Enter your email';
+  static const recoveryEmailSubtitle =
+      'Enter the email address connected to your account';
+  static const recoveryEmailHint = 'Your email address';
+  static const recoveryEmailInvalid = 'Enter a valid email address.';
+  static const continueLabel = 'Continue';
+  static const requestingRecovery = 'Requesting a verification code';
+  static const recoveryOtpTitle = 'Verify your email';
+  static const recoveryOtpPlaceholder =
+      'The verification screen is coming next.';
   static const recoveryFailed =
       'Unable to complete this recovery request. Please try again.';
   static const recoveryEmailRequired = 'Enter your email address.';
