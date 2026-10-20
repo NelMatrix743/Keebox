@@ -1,5 +1,21 @@
 abstract final class AppTexts {
   static const appName = 'Keebox';
+  static const recoveryFailed =
+      'Unable to complete this recovery request. Please try again.';
+  static const recoveryEmailRequired = 'Enter your email address.';
+  static const recoveryOtpInvalid = 'Enter the six-digit verification code.';
+  static const recoveryPasswordRequired = 'Enter your new password.';
+  static const recoveryPinInvalid = 'Enter a five-digit PIN.';
+  static const recoveryOtpExpired =
+      'Your verification code has expired. Start a new recovery request.';
+  static const recoveryCompletionExpired =
+      'Your recovery session has expired. Start a new recovery request.';
+  static const recoveryResendUnavailable =
+      'Please wait before requesting another verification code.';
+  static const recoveryResponseInvalid =
+      'The server returned an unexpected recovery response. Start a new recovery request.';
+  static const recoveryCompletionUncertain =
+      'We could not confirm whether your credential was changed. Try signing in with the new credential, or restart recovery.';
   static const startupFailed =
       'Unable to read your saved settings. Please try again.';
   static const retry = 'Retry';
