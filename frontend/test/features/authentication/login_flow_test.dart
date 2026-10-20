@@ -163,7 +163,7 @@ void main() {
     );
   });
 
-  testWidgets('Reset opens PIN setup without completing authentication', (
+  testWidgets('Reset opens email recovery without completing authentication', (
     tester,
   ) async {
     final adapter = _LoginAdapter();
@@ -173,7 +173,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text(AppTexts.reset));
     await tester.pumpAndSettle();
-    expect(find.text(AppTexts.resetPinTitle), findsOneWidget);
+    expect(find.text(AppTexts.recoveryEmailTitle), findsOneWidget);
     expect(
       container.read(authenticationControllerProvider).requireValue,
       isA<AwaitingPin>(),
