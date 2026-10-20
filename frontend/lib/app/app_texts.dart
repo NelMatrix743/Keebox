@@ -8,7 +8,6 @@ abstract final class AppTexts {
   static const recoveryEmailInvalid = 'Enter a valid email address.';
   static const continueLabel = 'Continue';
   static const requestingRecovery = 'Requesting a verification code';
-  static const recoveryOtpTitle = 'Verify your email';
   static const recoveryOtpSent = 'An OTP code has been sent to your email';
   static const recoveryOtpInstruction = 'Enter it below';
   static const verifyingOtp = 'Verifying your code';
@@ -26,8 +25,6 @@ abstract final class AppTexts {
     return '${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}';
   }
 
-  static const recoveryOtpPlaceholder =
-      'The verification screen is coming next.';
   static const recoveryFailed =
       'Unable to complete this recovery request. Please try again.';
   static const recoveryEmailRequired = 'Enter your email address.';

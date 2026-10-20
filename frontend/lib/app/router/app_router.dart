@@ -8,7 +8,8 @@ import 'package:keebox/features/onboarding/screens/onboarding_screen.dart';
 import 'package:keebox/features/authentication/screens/login_screen.dart';
 import 'package:keebox/features/authentication/models/recovery_type.dart';
 import 'package:keebox/features/authentication/screens/recovery_email_screen.dart';
-import 'package:keebox/features/authentication/screens/recovery_otp_placeholder_screen.dart';
+import 'package:keebox/features/authentication/screens/recovery_otp_screen.dart';
+import 'package:keebox/features/authentication/screens/recovery_reset_placeholder_screen.dart';
 import 'package:keebox/features/authentication/state/recovery_controller.dart';
 import 'package:keebox/features/authentication/screens/login_pin_screen.dart';
 import 'package:keebox/features/authentication/state/authentication_controller.dart';
@@ -110,8 +111,33 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: AppRoutes.recoveryOtpName,
         redirect: (context, state) =>
             state.extra is RecoveryScope ? null : AppRoutes.forgotPassword,
-        builder: (context, state) =>
-            RecoveryOtpPlaceholderScreen(scope: state.extra! as RecoveryScope),
+        builder: (context, state) => RecoveryOtpScreen(
+          scope: state.extra! as RecoveryScope,
+          onVerified: (scope) => context.pushReplacementNamed(
+            AppRoutes.recoveryResetName,
+            extra: scope,
+          ),
+          onRestart: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.goNamed(
+                (state.extra! as RecoveryScope).type == RecoveryType.pin
+                    ? AppRoutes.recoverPinName
+                    : AppRoutes.forgotPasswordName,
+              );
+            }
+          },
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.recoveryReset,
+        name: AppRoutes.recoveryResetName,
+        redirect: (context, state) =>
+            state.extra is RecoveryScope ? null : AppRoutes.forgotPassword,
+        builder: (context, state) => RecoveryResetPlaceholderScreen(
+          scope: state.extra! as RecoveryScope,
+        ),
       ),
       GoRoute(
         path: AppRoutes.register,

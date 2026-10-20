@@ -24,6 +24,8 @@ abstract final class AppRoutes {
   static const recoverPinName = 'recover-pin';
   static const recoveryOtp = '/recovery-otp';
   static const recoveryOtpName = 'recovery-otp';
+  static const recoveryReset = '/recovery-reset';
+  static const recoveryResetName = 'recovery-reset';
 
   static const createPin = '/create-pin';
   static const createPinName = 'create-pin';
