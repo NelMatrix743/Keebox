@@ -16,6 +16,7 @@ import 'package:keebox/features/authentication/models/recovery_challenge.dart';
 import 'package:keebox/features/authentication/models/recovery_verified.dart';
 import 'package:keebox/features/authentication/models/recovery_verify_request.dart';
 import 'package:keebox/features/authentication/models/password_reset_request.dart';
+import 'package:keebox/features/authentication/models/pin_reset_request.dart';
 import 'package:keebox/features/authentication/models/recovery_completed.dart';
 import 'package:keebox/network/api_client.dart';
 
@@ -96,13 +97,22 @@ void main() {
           expect(find.text('Welcome Back!'), findsOneWidget);
           return;
         }
-        expect(find.text(AppTexts.recoveryResetPlaceholder), findsOneWidget);
-        await tester.tap(find.byTooltip(AppTexts.back));
+        for (final digit in '00123'.split('')) {
+          final key = find.byKey(ValueKey('pin-key-$digit'));
+          await tester.ensureVisible(key);
+          await tester.tap(key);
+          await tester.pump();
+        }
+        await tester.ensureVisible(find.byType(FilledButton));
+        await tester.tap(find.byType(FilledButton));
         await tester.pumpAndSettle();
-        expect(find.text(AppTexts.recoveryEmailTitle), findsOneWidget);
-        await tester.tap(find.byTooltip(AppTexts.back));
+        expect(
+          find.text('PIN reset completed. Sign in again.'),
+          findsOneWidget,
+        );
+        await tester.tap(find.text(AppTexts.backToLogin));
         await tester.pumpAndSettle();
-        expect(router.routeInformationProvider.value.uri.path, AppRoutes.root);
+        expect(find.text('Welcome Back!'), findsOneWidget);
       },
     );
   }
@@ -137,5 +147,13 @@ class _API extends RecoveryAPI {
   }) async => RecoveryCompleted(
     resetId: request.resetId,
     message: 'Password reset completed. Sign in again.',
+  );
+  @override
+  Future<RecoveryCompleted> completePin(
+    PinResetRequest request, {
+    CancelToken? cancelToken,
+  }) async => RecoveryCompleted(
+    resetId: request.resetId,
+    message: 'PIN reset completed. Sign in again.',
   );
 }
