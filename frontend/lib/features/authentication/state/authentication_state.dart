@@ -1,6 +1,6 @@
 import 'package:keebox/features/authentication/models/authenticated_user.dart';
 import 'package:keebox/features/authentication/models/authentication_session.dart';
-import 'package:keebox/features/authentication/models/login_challenge.dart';
+import 'package:keebox/features/authentication/models/login_response.dart';
 
 sealed class AuthenticationState {
   const AuthenticationState();

@@ -1,9 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keebox/features/authentication/models/authentication_result.dart';
 import 'package:keebox/features/authentication/models/authentication_session.dart';
-import 'package:keebox/features/authentication/models/login_challenge.dart';
-import 'package:keebox/features/authentication/models/login_request.dart';
-import 'package:keebox/features/authentication/models/login_pin_request.dart';
+import 'package:keebox/features/authentication/models/login_response.dart';
+import 'package:keebox/features/authentication/models/login_requests.dart';
 import 'package:keebox/features/authentication/models/logout_response.dart';
 
 void main() {

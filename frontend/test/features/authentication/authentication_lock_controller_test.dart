@@ -9,7 +9,7 @@ import 'package:keebox/features/authentication/authentication_api.dart';
 import 'package:keebox/features/authentication/models/authenticated_user.dart';
 import 'package:keebox/features/authentication/models/authentication_result.dart';
 import 'package:keebox/features/authentication/models/authentication_session.dart';
-import 'package:keebox/features/authentication/models/login_challenge.dart';
+import 'package:keebox/features/authentication/models/login_response.dart';
 import 'package:keebox/features/authentication/models/logout_response.dart';
 import 'package:keebox/features/authentication/state/authentication_controller.dart';
 import 'package:keebox/features/authentication/state/authentication_state.dart';

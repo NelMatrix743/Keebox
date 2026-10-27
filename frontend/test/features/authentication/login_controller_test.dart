@@ -7,8 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:keebox/app/app_texts.dart';
 import 'package:keebox/features/authentication/authentication_api.dart';
-import 'package:keebox/features/authentication/models/login_challenge.dart';
-import 'package:keebox/features/authentication/models/login_request.dart';
+import 'package:keebox/features/authentication/models/login_response.dart';
+import 'package:keebox/features/authentication/models/login_requests.dart';
 import 'package:keebox/features/authentication/state/authentication_controller.dart';
 import 'package:keebox/features/authentication/state/authentication_state.dart';
 import 'package:keebox/features/authentication/state/login_controller.dart';

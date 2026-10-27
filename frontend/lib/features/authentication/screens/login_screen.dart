@@ -4,7 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:keebox/features/authentication/models/login_challenge.dart';
+import 'package:keebox/features/authentication/models/login_response.dart';
 import 'package:keebox/features/authentication/state/login_controller.dart';
 import 'package:keebox/features/authentication/widgets/login_header.dart';
 import 'package:keebox/features/authentication/widgets/login_email_field.dart';

@@ -1,4 +1,4 @@
-import 'package:keebox/features/authentication/models/login_challenge.dart';
+import 'package:keebox/features/authentication/models/login_response.dart';
 
 class LoginState {
   const LoginState({

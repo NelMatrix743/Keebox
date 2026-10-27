@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:keebox/app/app_texts.dart';
 import 'package:keebox/features/authentication/authentication_api.dart';
-import 'package:keebox/features/authentication/models/login_request.dart';
+import 'package:keebox/features/authentication/models/login_requests.dart';
 import 'package:keebox/features/authentication/state/authentication_controller.dart';
 import 'package:keebox/features/authentication/state/login_state.dart';
 import 'package:keebox/network/api_exception.dart';
