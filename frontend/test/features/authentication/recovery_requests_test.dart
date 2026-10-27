@@ -1,9 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:keebox/features/authentication/models/recovery_start_request.dart';
-import 'package:keebox/features/authentication/models/recovery_resend_request.dart';
-import 'package:keebox/features/authentication/models/recovery_verify_request.dart';
-import 'package:keebox/features/authentication/models/password_reset_request.dart';
-import 'package:keebox/features/authentication/models/pin_reset_request.dart';
+import 'package:keebox/features/authentication/models/recovery_requests.dart';
 
 const resetId = '12345678-1234-1234-1234-123456789abc';
 

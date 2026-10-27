@@ -1,15 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:keebox/features/authentication/models/password_reset_request.dart';
-import 'package:keebox/features/authentication/models/pin_reset_request.dart';
-import 'package:keebox/features/authentication/models/recovery_challenge.dart';
-import 'package:keebox/features/authentication/models/recovery_completed.dart';
-import 'package:keebox/features/authentication/models/recovery_resend_request.dart';
-import 'package:keebox/features/authentication/models/recovery_start_request.dart';
+import 'package:keebox/features/authentication/models/recovery_requests.dart';
+import 'package:keebox/features/authentication/models/recovery_response.dart';
 import 'package:keebox/features/authentication/models/recovery_type.dart';
-import 'package:keebox/features/authentication/models/recovery_verified.dart';
-import 'package:keebox/features/authentication/models/recovery_verify_request.dart';
 import 'package:keebox/network/api_client.dart';
 import 'package:keebox/network/api_endpoints.dart';
 

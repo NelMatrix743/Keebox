@@ -1,7 +1,5 @@
 import 'package:keebox/features/authentication/models/recovery_type.dart';
-import 'package:keebox/features/authentication/models/recovery_challenge.dart';
-import 'package:keebox/features/authentication/models/recovery_verified.dart';
-import 'package:keebox/features/authentication/models/recovery_completed.dart';
+import 'package:keebox/features/authentication/models/recovery_response.dart';
 
 enum RecoveryStage {
   email,

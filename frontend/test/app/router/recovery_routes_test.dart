@@ -21,13 +21,8 @@ import 'package:keebox/assets/app_assets.dart';
 import 'package:lottie/lottie.dart';
 import 'package:keebox/features/authentication/screens/recovery_email_screen.dart';
 import 'package:keebox/features/authentication/recovery_api.dart';
-import 'package:keebox/features/authentication/models/recovery_start_request.dart';
-import 'package:keebox/features/authentication/models/recovery_challenge.dart';
-import 'package:keebox/features/authentication/models/recovery_verified.dart';
-import 'package:keebox/features/authentication/models/recovery_verify_request.dart';
-import 'package:keebox/features/authentication/models/password_reset_request.dart';
-import 'package:keebox/features/authentication/models/pin_reset_request.dart';
-import 'package:keebox/features/authentication/models/recovery_completed.dart';
+import 'package:keebox/features/authentication/models/recovery_requests.dart';
+import 'package:keebox/features/authentication/models/recovery_response.dart';
 import 'package:keebox/network/api_client.dart';
 
 void main() {
