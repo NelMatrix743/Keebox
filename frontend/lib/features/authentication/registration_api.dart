@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:keebox/features/authentication/models/authentication_result.dart';
 import 'package:keebox/features/authentication/models/registration_requests.dart';
 import 'package:keebox/features/authentication/models/registration_response.dart';
 import 'package:keebox/network/api_client.dart';
@@ -49,6 +50,19 @@ class RegistrationAPI {
       APIEndpoints.registerResendOtp,
       data: request.toJson(),
       decode: RegistrationOtpResent.fromJson,
+      cancelToken: cancelToken,
+    );
+    return response.data;
+  }
+
+  Future<AuthenticationResult> complete(
+    RegistrationCompletionRequest request, {
+    CancelToken? cancelToken,
+  }) async {
+    final response = await client.post<AuthenticationResult>(
+      APIEndpoints.registerCreatePin,
+      data: request.toJson(),
+      decode: AuthenticationResult.fromJson,
       cancelToken: cancelToken,
     );
     return response.data;
