@@ -11,9 +11,10 @@ import 'package:keebox/features/authentication/models/recovery_response.dart';
 import 'package:keebox/features/authentication/models/recovery_requests.dart';
 import 'package:keebox/features/authentication/models/recovery_type.dart';
 import 'package:keebox/features/authentication/recovery_api.dart';
-import 'package:keebox/features/authentication/screens/recovery_otp_screen.dart';
+import 'package:keebox/features/authentication/screens/otp_verification_screen.dart';
 import 'package:keebox/features/authentication/state/recovery_controller.dart';
 import 'package:keebox/features/authentication/state/recovery_state.dart';
+import 'package:keebox/features/authentication/state/otp_verification_flow.dart';
 import 'package:keebox/network/api_client.dart';
 import 'package:keebox/network/api_exception.dart';
 
@@ -77,9 +78,9 @@ void main() {
                         key: const ValueKey('open-otp'),
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute<void>(
-                            builder: (_) => RecoveryOtpScreen(
-                              scope: scope,
-                              onVerified: (_) => verified++,
+                            builder: (_) => OtpVerificationScreen(
+                              flow: OtpVerificationFlow.recovery(scope),
+                              onVerified: () => verified++,
                               onRestart: () => restarted++,
                             ),
                           ),
@@ -88,9 +89,9 @@ void main() {
                       ),
                     ),
                   )
-                : RecoveryOtpScreen(
-                    scope: scope,
-                    onVerified: (_) => verified++,
+                : OtpVerificationScreen(
+                    flow: OtpVerificationFlow.recovery(scope),
+                    onVerified: () => verified++,
                     onRestart: () => restarted++,
                   ),
           ),

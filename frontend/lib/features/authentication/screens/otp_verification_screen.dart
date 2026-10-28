@@ -4,8 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:keebox/app/app_texts.dart';
-import 'package:keebox/features/authentication/state/recovery_controller.dart';
-import 'package:keebox/features/authentication/state/recovery_state.dart';
+import 'package:keebox/features/authentication/state/otp_verification_flow.dart';
 import 'package:keebox/features/authentication/widgets/recovery_app_bar.dart';
 import 'package:keebox/features/authentication/widgets/recovery_continue_button.dart';
 import 'package:keebox/features/authentication/widgets/recovery_otp_fields.dart';
@@ -13,22 +12,25 @@ import 'package:keebox/features/authentication/widgets/recovery_otp_header.dart'
 import 'package:keebox/features/authentication/widgets/recovery_otp_resend.dart';
 import 'package:keebox/shared/widgets/app_snackbar.dart';
 
-class RecoveryOtpScreen extends ConsumerStatefulWidget {
-  const RecoveryOtpScreen({
-    required this.scope,
-    required this.onVerified,
+class OtpVerificationScreen extends ConsumerStatefulWidget {
+  const OtpVerificationScreen({
+    required this.flow,
+    this.onVerified,
     required this.onRestart,
+    this.onBack,
     super.key,
   });
-  final RecoveryScope scope;
-  final ValueChanged<RecoveryScope> onVerified;
+  final OtpVerificationFlow flow;
+  final VoidCallback? onVerified;
   final VoidCallback onRestart;
+  final VoidCallback? onBack;
 
   @override
-  ConsumerState<RecoveryOtpScreen> createState() => _RecoveryOtpScreenState();
+  ConsumerState<OtpVerificationScreen> createState() =>
+      _OtpVerificationScreenState();
 }
 
-class _RecoveryOtpScreenState extends ConsumerState<RecoveryOtpScreen>
+class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen>
     with WidgetsBindingObserver {
   late final Timer _timer;
   String _code = '';
@@ -43,9 +45,7 @@ class _RecoveryOtpScreenState extends ConsumerState<RecoveryOtpScreen>
 
   void _tick() {
     if (!mounted || ModalRoute.of(context)?.isCurrent == false) return;
-    ref
-        .read(recoveryControllerProvider(widget.scope).notifier)
-        .checkDeadlines();
+    ref.read(otpVerificationProvider(widget.flow)).checkDeadlines();
     setState(() {});
   }
 
@@ -62,29 +62,26 @@ class _RecoveryOtpScreenState extends ConsumerState<RecoveryOtpScreen>
   }
 
   void _submit() {
-    final provider = recoveryControllerProvider(widget.scope);
-    final state = ref.read(provider);
-    if (_code.length != 6 ||
-        state.isSubmitting ||
-        state.stage != RecoveryStage.otp) {
+    final state = ref.read(otpVerificationProvider(widget.flow));
+    if (_code.length != 6 || state.isSubmitting || !state.canVerify()) {
       return;
     }
     FocusScope.of(context).unfocus();
     AppSnackBar.dismiss(context);
-    unawaited(ref.read(provider.notifier).verifyOtp(_code));
+    unawaited(state.verify(_code));
   }
 
   void _restart() {
-    ref.read(recoveryControllerProvider(widget.scope).notifier).restart();
+    ref.read(otpVerificationProvider(widget.flow)).restart();
     widget.onRestart();
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = recoveryControllerProvider(widget.scope);
+    final provider = otpVerificationProvider(widget.flow);
     final state = ref.watch(provider);
     ref.listen(provider, (previous, next) {
-      if (previous?.challenge != next.challenge) {
+      if (previous?.inputKey != next.inputKey) {
         _code = '';
         _edited = false;
       }
@@ -99,27 +96,26 @@ class _RecoveryOtpScreenState extends ConsumerState<RecoveryOtpScreen>
           );
         }
       }
-      if (next.stage == RecoveryStage.credential &&
-          previous?.stage != RecoveryStage.credential) {
+      if (next.verified && previous?.verified != true) {
         _code = '';
-        widget.onVerified(widget.scope);
+        widget.onVerified?.call();
       }
     });
-    final active = state.stage == RecoveryStage.otp;
-    final now = ref.read(recoveryClockProvider)();
+    final active = state.active;
+    final now = state.now();
     final remainingMs =
-        state.challenge?.resendAvailableAt.difference(now).inMilliseconds ?? 0;
+        state.resendAvailableAt?.difference(now).inMilliseconds ?? 0;
     final remaining = Duration(
       seconds: remainingMs > 0 ? (remainingMs / 1000).ceil() : 0,
     );
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop && ref.read(provider).stage != RecoveryStage.credential) {
-          ref.read(provider.notifier).restart();
+        if (didPop && !ref.read(provider).verified) {
+          ref.read(provider).restart();
         }
       },
       child: Scaffold(
-        appBar: const RecoveryAppBar(),
+        appBar: RecoveryAppBar(onBack: widget.onBack),
         body: SafeArea(
           top: false,
           child: SingleChildScrollView(
@@ -139,8 +135,8 @@ class _RecoveryOtpScreenState extends ConsumerState<RecoveryOtpScreen>
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         RecoveryOtpFields(
-                          key: ValueKey(state.challenge),
-                          enabled: active && !state.isSubmitting,
+                          key: ValueKey(state.inputKey),
+                          enabled: active && state.canVerify(),
                           onChanged: (code) => setState(() {
                             _code = code;
                             _edited = true;
@@ -162,29 +158,25 @@ class _RecoveryOtpScreenState extends ConsumerState<RecoveryOtpScreen>
                         if (active)
                           RecoveryOtpResend(
                             remaining: remaining,
-                            isLoading:
-                                state.operation == RecoveryOperation.resend,
-                            onPressed: state.isSubmitting
+                            isLoading: state.isResending,
+                            onPressed: !state.canResend()
                                 ? null
                                 : () {
                                     FocusScope.of(context).unfocus();
                                     AppSnackBar.dismiss(context);
-                                    unawaited(
-                                      ref.read(provider.notifier).resendOtp(),
-                                    );
+                                    unawaited(ref.read(provider).resend());
                                   },
                           ),
                         SizedBox(height: 16.h),
                         RecoveryContinueButton(
                           onPressed:
-                              active && !state.isSubmitting && _code.length == 6
+                              active && state.canVerify() && _code.length == 6
                               ? _submit
                               : null,
-                          isLoading:
-                              state.operation == RecoveryOperation.verify,
+                          isLoading: state.isVerifying,
                           loadingLabel: AppTexts.verifyingOtp,
                         ),
-                        if (!active && state.stage != RecoveryStage.credential)
+                        if (!active && !state.verified)
                           TextButton(
                             onPressed: _restart,
                             child: const Text(AppTexts.restartRecovery),
