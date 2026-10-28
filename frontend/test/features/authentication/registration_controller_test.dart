@@ -10,7 +10,6 @@ import 'package:keebox/features/authentication/models/authentication_session.dar
 import 'package:keebox/features/authentication/models/registration_requests.dart';
 import 'package:keebox/features/authentication/models/registration_response.dart';
 import 'package:keebox/features/authentication/registration_api.dart';
-import 'package:keebox/features/authentication/state/registration_clock.dart';
 import 'package:keebox/features/authentication/state/registration_controller.dart';
 import 'package:keebox/features/authentication/state/registration_state.dart';
 import 'package:keebox/network/api_client.dart';

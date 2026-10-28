@@ -17,7 +17,7 @@ import 'package:keebox/features/authentication/authentication_api.dart';
 import 'package:keebox/features/authentication/registration_api.dart';
 import 'package:keebox/features/authentication/screens/registration_screen.dart';
 import 'package:keebox/features/authentication/screens/registration_pin_screen.dart';
-import 'package:keebox/features/authentication/state/registration_clock.dart';
+import 'package:keebox/features/authentication/state/registration_controller.dart';
 import 'package:keebox/features/authentication/storage/auth_session_storage.dart';
 import 'package:keebox/features/pin/services/local_pin_hasher.dart';
 import 'package:keebox/network/api_exception.dart';

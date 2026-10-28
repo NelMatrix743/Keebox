@@ -12,7 +12,6 @@ import 'package:keebox/features/authentication/models/registration_response.dart
 import 'package:keebox/features/authentication/registration_api.dart';
 import 'package:keebox/features/authentication/screens/otp_verification_screen.dart';
 import 'package:keebox/features/authentication/state/otp_verification_flow.dart';
-import 'package:keebox/features/authentication/state/registration_clock.dart';
 import 'package:keebox/features/authentication/state/registration_controller.dart';
 import 'package:keebox/features/authentication/state/registration_state.dart';
 import 'package:keebox/network/api_client.dart';
