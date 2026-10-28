@@ -40,4 +40,17 @@ class RegistrationAPI {
     );
     return response.data;
   }
+
+  Future<RegistrationOtpResent> resendOtp(
+    RegistrationResendRequest request, {
+    CancelToken? cancelToken,
+  }) async {
+    final response = await client.post<RegistrationOtpResent>(
+      APIEndpoints.registerResendOtp,
+      data: request.toJson(),
+      decode: RegistrationOtpResent.fromJson,
+      cancelToken: cancelToken,
+    );
+    return response.data;
+  }
 }
