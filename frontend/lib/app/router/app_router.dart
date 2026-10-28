@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:keebox/app/startup/startup_coordinator.dart';
@@ -6,6 +5,7 @@ import 'package:keebox/app/startup/startup_coordinator.dart';
 import 'package:keebox/app/router/app_routes.dart';
 import 'package:keebox/features/onboarding/screens/onboarding_screen.dart';
 import 'package:keebox/features/authentication/screens/login_screen.dart';
+import 'package:keebox/features/authentication/screens/registration_screen.dart';
 import 'package:keebox/features/authentication/models/recovery_type.dart';
 import 'package:keebox/features/authentication/screens/recovery_email_screen.dart';
 import 'package:keebox/features/authentication/screens/recovery_otp_screen.dart';
@@ -192,8 +192,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.register,
         name: AppRoutes.registerName,
-        builder: (context, state) =>
-            Scaffold(appBar: AppBar(title: const Text('Create Account'))),
+        builder: (context, state) => RegistrationScreen(
+          onSignIn: () => context.goNamed(AppRoutes.signInName),
+        ),
       ),
       GoRoute(
         path: AppRoutes.createPin,
