@@ -5,11 +5,15 @@ import 'package:keebox/app/theme/app_colors.dart';
 import 'package:keebox/app/theme/app_fonts.dart';
 
 class RecoverySuccessMessage extends StatelessWidget {
-  const RecoverySuccessMessage({super.key});
+  const RecoverySuccessMessage({
+    this.message = AppTexts.recoveryCompletedMessage,
+    super.key,
+  });
+  final String message;
 
   @override
   Widget build(BuildContext context) => Text(
-    AppTexts.recoveryCompletedMessage,
+    message,
     textAlign: TextAlign.center,
     style: TextStyle(
       fontFamily: AppFonts.inter,
