@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keebox/app/app_texts.dart';
 import 'package:keebox/features/authentication/screens/authentication_success_screen.dart';
-import 'package:keebox/features/authentication/state/recovery_completion.dart';
 import 'package:keebox/features/authentication/state/recovery_controller.dart';
 import 'package:keebox/shared/widgets/app_snackbar.dart';
 
