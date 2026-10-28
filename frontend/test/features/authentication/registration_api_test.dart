@@ -119,6 +119,26 @@ void main() {
         (409, 'invalid_registration_state'),
       ],
     ),
+    (
+      name: 'resend OTP',
+      endpoint: () => APIEndpoints.registerResendOtp,
+      payload: {'registration_id': _id},
+      invoke: (api, token) => api.resendOtp(
+        const RegistrationResendRequest(registrationId: _id),
+        cancelToken: token,
+      ),
+      invalid: (api) =>
+          api.resendOtp(const RegistrationResendRequest(registrationId: 'bad')),
+      result: isA<RegistrationOtpResent>()
+          .having((r) => r.registrationId, 'registration ID', _id)
+          .having((r) => r.resendsRemaining, 'remaining resends', 2),
+      failures: [
+        (429, 'otp_resend_cooldown'),
+        (429, 'otp_resend_limit_reached'),
+        (409, 'invalid_registration_state'),
+        (503, 'email_delivery_failed'),
+      ],
+    ),
   ];
   for (final operation in operations) {
     group(operation.name, () {
@@ -252,6 +272,7 @@ class _Adapter implements HttpClientAdapter {
       'expires_at': '2026-10-28T12:30:00Z',
       'otp_expires_at': '2026-10-28T12:05:00Z',
       'resend_available_at': '2026-10-28T12:01:00Z',
+      if (options.path.endsWith('/resend-otp')) 'resends_remaining': 2,
     };
     return ResponseBody.fromString(
       jsonEncode({
@@ -272,7 +293,11 @@ class _Adapter implements HttpClientAdapter {
               },
         'meta': null,
       }),
-      failure?.$1 ?? (options.path.endsWith('/verify-otp') ? 200 : 201),
+      failure?.$1 ??
+          (options.path.endsWith('/verify-otp') ||
+                  options.path.endsWith('/resend-otp')
+              ? 200
+              : 201),
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
       },
