@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:keebox/app/app_texts.dart';
+import 'package:keebox/features/onboarding/models/onboarding_step.dart';
 import 'package:keebox/features/onboarding/state/onboarding_controller.dart';
 import 'package:keebox/features/onboarding/storage/onboarding_storage.dart';
 
@@ -59,13 +60,19 @@ void main() {
     storage.failSave = true;
     await container.read(onboardingControllerProvider.future);
     final controller = container.read(onboardingControllerProvider.notifier);
+    controller.skip();
     expect(await controller.complete(), isFalse);
     final failed = container.read(onboardingControllerProvider).requireValue;
     expect(failed.isCompleted, isFalse);
     expect(failed.isSaving, isFalse);
     expect(failed.errorMessage, AppTexts.onboardingSaveFailed);
+    expect(failed.step, OnboardingStep.welcome);
     storage.failSave = false;
     expect(await controller.complete(), isTrue);
+    expect(
+      container.read(onboardingControllerProvider).requireValue.step,
+      OnboardingStep.welcome,
+    );
     expect(
       container.read(onboardingControllerProvider).requireValue.errorMessage,
       isNull,
