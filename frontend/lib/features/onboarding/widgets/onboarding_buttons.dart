@@ -3,9 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import 'package:keebox/app/app_texts.dart';
 import 'package:keebox/app/theme/app_colors.dart';
 import 'package:keebox/app/theme/app_fonts.dart';
-import 'package:keebox/assets/app_assets.dart';
 
 class OnboardingSignInButton extends StatelessWidget {
   const OnboardingSignInButton({required this.onPressed, super.key});
@@ -14,26 +14,10 @@ class OnboardingSignInButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(10.r),
-    );
-    final labelStyle = TextStyle(
-      fontFamily: AppFonts.inter,
-      fontSize: 16.sp,
-      fontWeight: FontWeight.w600,
-    );
-
     return OutlinedButton(
       onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.text,
-        minimumSize: Size.fromHeight(math.max(48, 50.h)),
-        padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
-        side: BorderSide(color: AppColors.border, width: 2.r),
-        shape: shape,
-        textStyle: labelStyle,
-      ),
-      child: const Text('Sign In'),
+      style: _welcomeStyle(primary: false),
+      child: const Text(AppTexts.signIn, textAlign: TextAlign.center),
     );
   }
 }
@@ -45,40 +29,38 @@ class OnboardingGetStartedButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(10.r),
-    );
-    final labelStyle = TextStyle(
-      fontFamily: AppFonts.inter,
-      fontSize: 16.sp,
-      fontWeight: FontWeight.w600,
-    );
-
     return FilledButton(
       onPressed: onPressed,
-      style: FilledButton.styleFrom(
-        backgroundColor: AppColors.brand,
-        foregroundColor: AppColors.background,
-        minimumSize: Size.fromHeight(math.max(48, 50.h)),
-        padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
-        shape: shape,
-        textStyle: labelStyle,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Flexible(
-            child: Text('Get Started', textAlign: TextAlign.center),
-          ),
-          SizedBox(width: 8.w),
-          Image.asset(
-            AppAssets.getStarted,
-            width: 24.r,
-            height: 24.r,
-            excludeFromSemantics: true,
-          ),
-        ],
-      ),
+      style: _welcomeStyle(primary: true),
+      child: const Text(AppTexts.getStarted, textAlign: TextAlign.center),
     );
   }
 }
+
+ButtonStyle _welcomeStyle({required bool primary}) => ButtonStyle(
+  minimumSize: WidgetStatePropertyAll(Size(0, math.max(48, 60.h))),
+  padding: WidgetStatePropertyAll(
+    EdgeInsets.symmetric(horizontal: 8.w, vertical: 12.h),
+  ),
+  backgroundColor: WidgetStateProperty.resolveWith((states) {
+    final color = primary ? AppColors.brand : AppColors.brandLight;
+    return states.contains(WidgetState.disabled)
+        ? color.withValues(alpha: 0.38)
+        : color;
+  }),
+  foregroundColor: WidgetStatePropertyAll(
+    primary ? Colors.white : AppColors.brand,
+  ),
+  shape: WidgetStatePropertyAll(
+    RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+  ),
+  side: const WidgetStatePropertyAll(BorderSide.none),
+  elevation: const WidgetStatePropertyAll(0),
+  textStyle: WidgetStatePropertyAll(
+    TextStyle(
+      fontFamily: AppFonts.poppins,
+      fontWeight: FontWeight.w600,
+      fontSize: 16.sp,
+    ),
+  ),
+);
