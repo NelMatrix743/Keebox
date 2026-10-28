@@ -1,2 +1,3 @@
 .vscode/
 /backend/keebox-api-tests/
+/scripts/requestly_variable_capture.test.cjs
