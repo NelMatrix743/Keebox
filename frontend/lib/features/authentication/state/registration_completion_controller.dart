@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keebox/app/app_texts.dart';
 import 'package:keebox/features/authentication/models/authentication_result.dart';
 import 'package:keebox/features/authentication/state/authentication_controller.dart';
+import 'package:keebox/features/authentication/state/authentication_state.dart';
 import 'package:keebox/features/authentication/state/registration_completion_state.dart';
 import 'package:keebox/features/authentication/state/registration_controller.dart';
 import 'package:keebox/features/authentication/state/registration_state.dart';

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:keebox/app/app_texts.dart';
 import 'package:keebox/features/authentication/state/authentication_controller.dart';
+import 'package:keebox/features/authentication/state/authentication_state.dart';
 import 'package:keebox/features/home/widgets/user_profile_card.dart';
 import 'package:keebox/shared/widgets/app_snackbar.dart';
 

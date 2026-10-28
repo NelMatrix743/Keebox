@@ -2,17 +2,19 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keebox/app/background_lock_policy.dart';
+
 import 'package:keebox/features/authentication/authentication_api.dart';
-import 'package:keebox/features/authentication/models/authenticated_user.dart';
 import 'package:keebox/features/authentication/models/authentication_result.dart';
+import 'package:keebox/features/authentication/models/authenticated_user.dart';
 import 'package:keebox/features/authentication/models/authentication_session.dart';
+import 'package:keebox/network/api_exception.dart';
 import 'package:keebox/features/authentication/models/login_response.dart';
+import 'package:keebox/features/authentication/state/authentication_state.dart';
 import 'package:keebox/features/authentication/storage/auth_session_storage.dart';
 import 'package:keebox/features/authentication/storage/user_storage.dart';
 import 'package:keebox/features/pin/models/local_pin_verification.dart';
 import 'package:keebox/features/pin/services/local_pin_service.dart';
 import 'package:keebox/features/pin/storage/local_pin_storage.dart';
-import 'package:keebox/network/api_exception.dart';
 import 'package:keebox/network/api_session.dart';
 
 final authenticationControllerProvider =
@@ -395,33 +397,4 @@ class AuthenticationController extends AsyncNotifier<AuthenticationState> {
     _localVerificationRevision++;
     return _serialize(action);
   }
-}
-
-sealed class AuthenticationState {
-  const AuthenticationState();
-}
-
-class Unauthenticated extends AuthenticationState {
-  const Unauthenticated();
-}
-
-class AwaitingPin extends AuthenticationState {
-  const AwaitingPin(this.challenge);
-
-  final LoginChallenge challenge;
-}
-
-sealed class Authenticated extends AuthenticationState {
-  const Authenticated({required this.user, required this.session});
-
-  final AuthenticatedUser user;
-  final AuthenticationSession session;
-}
-
-final class AuthenticatedLocked extends Authenticated {
-  const AuthenticatedLocked({required super.user, required super.session});
-}
-
-final class AuthenticatedUnlocked extends Authenticated {
-  const AuthenticatedUnlocked({required super.user, required super.session});
 }

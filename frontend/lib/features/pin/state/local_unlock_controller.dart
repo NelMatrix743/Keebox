@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:keebox/app/app_texts.dart';
 import 'package:keebox/features/authentication/state/authentication_controller.dart';
+import 'package:keebox/features/authentication/state/authentication_state.dart';
 import 'package:keebox/features/pin/local_pin_policy.dart';
 import 'package:keebox/features/pin/models/local_pin_verification.dart';
 import 'package:keebox/features/pin/state/local_unlock_state.dart';
