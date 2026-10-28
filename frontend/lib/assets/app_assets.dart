@@ -7,6 +7,11 @@ abstract final class AppAssets {
   static const recoveryOtp = 'assets/icons/recovery_otp.png';
   static const passwordReset = 'assets/icons/password_reset.png';
   static const onboarding = 'assets/images/onboarding.png';
+  static const onboardingNotes = 'assets/images/onboarding_notes.png';
+  static const onboardingCredentials = 'assets/images/onboarding_credentials.png';
+  static const onboardingPrivacy = 'assets/images/onboarding_privacy.png';
+  static const onboardingBackup = 'assets/images/onboarding_backup.png';
+  static const onboardingWelcome = 'assets/images/onboarding_welcome.png';
   static const getStarted = 'assets/icons/get_started.png';
   static const email = 'assets/icons/email.png';
   static const password = 'assets/icons/password.png';
