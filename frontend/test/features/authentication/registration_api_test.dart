@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:keebox/features/authentication/models/authentication_result.dart';
 import 'package:keebox/features/authentication/models/registration_requests.dart';
 import 'package:keebox/features/authentication/models/registration_response.dart';
 import 'package:keebox/features/authentication/registration_api.dart';
@@ -139,6 +140,28 @@ void main() {
         (503, 'email_delivery_failed'),
       ],
     ),
+    (
+      name: 'complete',
+      endpoint: () => APIEndpoints.registerCreatePin,
+      payload: {'registration_id': _id, 'pin': '00123'},
+      invoke: (api, token) => api.complete(
+        const RegistrationCompletionRequest(registrationId: _id, pin: '00123'),
+        cancelToken: token,
+      ),
+      invalid: (api) => api.complete(
+        const RegistrationCompletionRequest(registrationId: _id, pin: '1234'),
+      ),
+      result: isA<AuthenticationResult>()
+          .having((r) => r.user.id, 'user ID', _id)
+          .having((r) => r.user.kbkey, 'KBKey', 'permanent-key')
+          .having((r) => r.session.accessToken, 'access token', 'new-access')
+          .having(
+            (r) => r.session.refreshToken,
+            'refresh token',
+            'new-refresh',
+          ),
+      failures: [(409, 'invalid_registration_state'), (500, 'internal_error')],
+    ),
   ];
   for (final operation in operations) {
     group(operation.name, () {
@@ -263,9 +286,12 @@ class _Adapter implements HttpClientAdapter {
     if (transportFailure != null) {
       throw DioException(requestOptions: options, type: transportFailure!);
     }
+    final completion = options.path.endsWith('/create-pin');
     final data = <String, dynamic>{
       'registration_id': _id,
-      'status': options.path.endsWith('/verify-otp')
+      'status': completion
+          ? 'completed'
+          : options.path.endsWith('/verify-otp')
           ? 'otp_verified'
           : 'otp_pending',
       'message': 'Backend message',
@@ -273,6 +299,15 @@ class _Adapter implements HttpClientAdapter {
       'otp_expires_at': '2026-10-28T12:05:00Z',
       'resend_available_at': '2026-10-28T12:01:00Z',
       if (options.path.endsWith('/resend-otp')) 'resends_remaining': 2,
+      if (completion) ...{
+        'user_id': _id,
+        'first_name': 'Ada',
+        'last_name': 'Lovelace',
+        'email': 'ada@example.com',
+        'kbkey': 'permanent-key',
+        'access_token': 'new-access',
+        'refresh_token': 'new-refresh',
+      },
     };
     return ResponseBody.fromString(
       jsonEncode({
