@@ -1,4 +1,23 @@
 abstract final class AppTexts {
+  static const registrationDetailsInvalid =
+      'Enter your name, email address, and password correctly.';
+  static const registrationOtpInvalid =
+      'Enter the six-digit verification code.';
+  static const registrationPinInvalid = 'Enter a five-digit PIN.';
+  static const registrationFailed =
+      'Unable to complete this registration request. Please try again.';
+  static const registrationExpired =
+      'Your registration has expired. Start again.';
+  static const registrationOtpExpired =
+      'Your verification code has expired. Request a new code.';
+  static const registrationResendUnavailable =
+      'Please wait before requesting another verification code.';
+  static const registrationResendsExhausted =
+      'No more codes can be requested. Use your latest valid code or start again.';
+  static const registrationResponseInvalid =
+      'The server returned an unexpected registration response. Start again.';
+  static const registrationCompletionUncertain =
+      'We could not confirm whether your account was created. Try signing in with your email, password, and selected PIN. If needed, use account recovery.';
   static const appName = 'Keebox';
   static const back = 'Back';
   static const recoveryEmailTitle = 'Enter your email';
