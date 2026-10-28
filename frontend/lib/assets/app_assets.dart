@@ -1,4 +1,6 @@
 abstract final class AppAssets {
+  static const registrationIdentity = 'assets/icons/registration_identity.png';
+  static const user = 'assets/icons/user.png';
   static const successCheck = 'assets/animations/success_check.json';
   static const back = 'assets/icons/back.png';
   static const recoveryEmail = 'assets/icons/recovery_email.png';
