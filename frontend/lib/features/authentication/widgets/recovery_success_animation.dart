@@ -5,14 +5,18 @@ import 'package:keebox/assets/app_assets.dart';
 import 'package:lottie/lottie.dart';
 
 class RecoverySuccessAnimation extends StatelessWidget {
-  const RecoverySuccessAnimation({super.key});
+  const RecoverySuccessAnimation({
+    this.semanticsLabel = AppTexts.recoveryCompletedTitle,
+    super.key,
+  });
+  final String semanticsLabel;
 
   @override
   Widget build(BuildContext context) {
     final reducedMotion = MediaQuery.disableAnimationsOf(context);
     return Semantics(
       image: true,
-      label: AppTexts.recoveryCompletedTitle,
+      label: semanticsLabel,
       excludeSemantics: true,
       child: Lottie.asset(
         AppAssets.successCheck,
