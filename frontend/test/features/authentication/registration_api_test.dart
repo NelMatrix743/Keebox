@@ -95,6 +95,30 @@ void main() {
         (503, 'email_delivery_failed'),
       ],
     ),
+    (
+      name: 'verify OTP',
+      endpoint: () => APIEndpoints.registerVerifyOtp,
+      payload: {'registration_id': _id, 'otp_code': '001234'},
+      invoke: (api, token) => api.verifyOtp(
+        const RegistrationVerifyRequest(registrationId: _id, otpCode: '001234'),
+        cancelToken: token,
+      ),
+      invalid: (api) => api.verifyOtp(
+        const RegistrationVerifyRequest(registrationId: _id, otpCode: 'bad'),
+      ),
+      result: isA<RegistrationVerified>().having(
+        (r) => r.registrationId,
+        'registration ID',
+        _id,
+      ),
+      failures: [
+        (400, 'invalid_otp'),
+        (410, 'expired_otp'),
+        (423, 'locked_otp'),
+        (409, 'consumed_otp'),
+        (409, 'invalid_registration_state'),
+      ],
+    ),
   ];
   for (final operation in operations) {
     group(operation.name, () {
@@ -221,7 +245,9 @@ class _Adapter implements HttpClientAdapter {
     }
     final data = <String, dynamic>{
       'registration_id': _id,
-      'status': 'otp_pending',
+      'status': options.path.endsWith('/verify-otp')
+          ? 'otp_verified'
+          : 'otp_pending',
       'message': 'Backend message',
       'expires_at': '2026-10-28T12:30:00Z',
       'otp_expires_at': '2026-10-28T12:05:00Z',
@@ -246,7 +272,7 @@ class _Adapter implements HttpClientAdapter {
               },
         'meta': null,
       }),
-      failure?.$1 ?? 201,
+      failure?.$1 ?? (options.path.endsWith('/verify-otp') ? 200 : 201),
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
       },
