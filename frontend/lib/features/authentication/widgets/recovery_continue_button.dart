@@ -12,11 +12,15 @@ class RecoveryContinueButton extends StatelessWidget {
     required this.onPressed,
     this.isLoading = false,
     this.loadingLabel = AppTexts.requestingRecovery,
+    this.label = AppTexts.continueLabel,
+    this.iconGap = 0,
     super.key,
   });
   final VoidCallback? onPressed;
   final bool isLoading;
   final String loadingLabel;
+  final String label;
+  final double iconGap;
 
   @override
   Widget build(BuildContext context) => FilledButton(
@@ -47,7 +51,8 @@ class RecoveryContinueButton extends StatelessWidget {
         : Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Flexible(child: Text(AppTexts.continueLabel)),
+              Flexible(child: Text(label)),
+              SizedBox(width: iconGap.w),
               Image.asset(
                 AppAssets.arrowRight,
                 width: 30.r,
