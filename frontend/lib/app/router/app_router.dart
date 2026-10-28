@@ -17,7 +17,6 @@ import 'package:keebox/features/authentication/state/recovery_state.dart';
 import 'package:keebox/features/authentication/state/recovery_controller.dart';
 import 'package:keebox/features/authentication/screens/login_pin_screen.dart';
 import 'package:keebox/features/authentication/state/authentication_controller.dart';
-import 'package:keebox/features/authentication/state/authentication_state.dart';
 import 'package:keebox/features/pin/models/pin_setup_mode.dart';
 import 'package:keebox/features/pin/screens/pin_setup_screen.dart';
 import 'package:keebox/features/pin/screens/local_unlock_screen.dart';

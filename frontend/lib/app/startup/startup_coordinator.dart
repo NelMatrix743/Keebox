@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keebox/app/router/app_routes.dart';
 import 'package:keebox/features/authentication/state/authentication_controller.dart';
-import 'package:keebox/features/authentication/state/authentication_state.dart';
 import 'package:keebox/features/onboarding/storage/onboarding_storage.dart';
 import 'package:keebox/features/pin/storage/local_pin_storage.dart';
 
