@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:keebox/main.dart';
+import 'package:keebox/app/app_texts.dart';
 import 'package:keebox/storage/shared_preferences.dart';
 import 'package:keebox/features/onboarding/storage/onboarding_storage.dart';
 
@@ -46,14 +46,14 @@ void main() {
       await tester.ensureVisible(find.text('Register'));
       await tester.tap(find.text('Register'));
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(AppBar, 'Create Account'), findsOneWidget);
+      expect(find.text(AppTexts.registrationIdentityTitle), findsOneWidget);
       await tester.pageBack();
       await tester.pumpAndSettle();
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       await tester.tap(find.text('Get Started'));
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(AppBar, 'Create Account'), findsOneWidget);
+      expect(find.text(AppTexts.registrationIdentityTitle), findsOneWidget);
       await tester.pageBack();
       await tester.pumpAndSettle();
       expect(find.text('Get Started'), findsOneWidget);
