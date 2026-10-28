@@ -7,11 +7,13 @@ class RecoveryResetFeedback extends StatelessWidget {
     this.errorMessage,
     this.onRestart,
     this.onLoginRequired,
+    this.onRetry,
     super.key,
   });
   final String? errorMessage;
   final VoidCallback? onRestart;
   final VoidCallback? onLoginRequired;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -31,6 +33,8 @@ class RecoveryResetFeedback extends StatelessWidget {
           onPressed: onRestart,
           child: const Text(AppTexts.restartRecovery),
         ),
+      if (onRetry != null)
+        TextButton(onPressed: onRetry, child: const Text(AppTexts.retry)),
       if (onLoginRequired != null)
         TextButton(
           onPressed: onLoginRequired,
