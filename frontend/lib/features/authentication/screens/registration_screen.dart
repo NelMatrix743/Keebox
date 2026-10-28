@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:keebox/app/app_texts.dart';
+import 'package:keebox/features/authentication/screens/authentication_success_screen.dart';
+import 'package:keebox/features/authentication/screens/registration_pin_screen.dart';
+import 'package:keebox/features/authentication/state/registration_completion_controller.dart';
 import 'package:keebox/features/authentication/models/registration_identity.dart';
 import 'package:keebox/features/authentication/screens/registration_identity_screen.dart';
 import 'package:keebox/features/authentication/screens/registration_password_screen.dart';
 import 'package:keebox/features/authentication/screens/otp_verification_screen.dart';
-import 'package:keebox/features/pin/screens/pin_setup_screen.dart';
-import 'package:keebox/features/pin/models/pin_setup_mode.dart';
 import 'package:keebox/features/authentication/state/otp_verification_flow.dart';
 import 'package:keebox/features/authentication/state/registration_controller.dart';
 import 'package:keebox/features/authentication/state/registration_field_errors.dart';
@@ -13,8 +15,13 @@ import 'package:keebox/features/authentication/state/registration_state.dart';
 import 'package:keebox/shared/widgets/app_snackbar.dart';
 
 class RegistrationScreen extends ConsumerStatefulWidget {
-  const RegistrationScreen({required this.onSignIn, super.key});
+  const RegistrationScreen({
+    required this.onSignIn,
+    this.onRegistered,
+    super.key,
+  });
   final VoidCallback onSignIn;
+  final VoidCallback? onRegistered;
   @override
   ConsumerState<RegistrationScreen> createState() => _RegistrationScreenState();
 }
@@ -24,6 +31,15 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
   RegistrationIdentity _identity = (firstName: '', lastName: '', email: '');
   bool _password = false;
   void _back() {
+    final completion = ref.read(
+      registrationCompletionControllerProvider(_scope),
+    );
+    if (completion.isSubmitting ||
+        completion.isReady ||
+        ref.read(registrationControllerProvider(_scope)).stage ==
+            RegistrationStage.completed) {
+      return;
+    }
     FocusScope.of(context).unfocus();
     AppSnackBar.dismiss(context);
     final provider = registrationControllerProvider(_scope);
@@ -38,15 +54,28 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
   Widget build(BuildContext context) {
     final provider = registrationControllerProvider(_scope);
     final state = ref.watch(provider);
-    final pin = state.stage == RegistrationStage.pin;
+    final completion = ref.watch(
+      registrationCompletionControllerProvider(_scope),
+    );
+    final pin = state.verified != null;
     final otp = state.challenge != null && !pin;
     return PopScope(
       canPop: !_password && !otp && !pin,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop && (_password || otp || pin)) _back();
       },
-      child: pin
-          ? const PinSetupScreen(mode: PinSetupMode.create, enabled: false)
+      child: completion.isReady
+          ? AuthenticationSuccessScreen(
+              message: AppTexts.registrationCompletedMessage,
+              semanticsLabel: AppTexts.registrationCompletedTitle,
+              onContinue: widget.onRegistered,
+            )
+          : pin
+          ? RegistrationPinScreen(
+              scope: _scope,
+              onRestart: _back,
+              onSignIn: widget.onSignIn,
+            )
           : otp
           ? OtpVerificationScreen(
               flow: OtpVerificationFlow.registration(_scope),
