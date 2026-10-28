@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:keebox/app/startup/startup_coordinator.dart';
@@ -6,9 +5,11 @@ import 'package:keebox/app/startup/startup_coordinator.dart';
 import 'package:keebox/app/router/app_routes.dart';
 import 'package:keebox/features/onboarding/screens/onboarding_screen.dart';
 import 'package:keebox/features/authentication/screens/login_screen.dart';
+import 'package:keebox/features/authentication/screens/registration_screen.dart';
 import 'package:keebox/features/authentication/models/recovery_type.dart';
 import 'package:keebox/features/authentication/screens/recovery_email_screen.dart';
-import 'package:keebox/features/authentication/screens/recovery_otp_screen.dart';
+import 'package:keebox/features/authentication/screens/otp_verification_screen.dart';
+import 'package:keebox/features/authentication/state/otp_verification_flow.dart';
 import 'package:keebox/features/authentication/screens/pin_reset_screen.dart';
 import 'package:keebox/features/authentication/screens/password_reset_screen.dart';
 import 'package:keebox/features/authentication/screens/recovery_success_screen.dart';
@@ -114,11 +115,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: AppRoutes.recoveryOtpName,
         redirect: (context, state) =>
             state.extra is RecoveryScope ? null : AppRoutes.forgotPassword,
-        builder: (context, state) => RecoveryOtpScreen(
-          scope: state.extra! as RecoveryScope,
-          onVerified: (scope) => context.pushReplacementNamed(
+        builder: (context, state) => OtpVerificationScreen(
+          flow: OtpVerificationFlow.recovery(state.extra! as RecoveryScope),
+          onVerified: () => context.pushReplacementNamed(
             AppRoutes.recoveryResetName,
-            extra: scope,
+            extra: state.extra! as RecoveryScope,
           ),
           onRestart: () {
             if (context.canPop()) {
@@ -192,8 +193,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.register,
         name: AppRoutes.registerName,
-        builder: (context, state) =>
-            Scaffold(appBar: AppBar(title: const Text('Create Account'))),
+        builder: (context, state) => RegistrationScreen(
+          onSignIn: () => context.goNamed(AppRoutes.signInName),
+          onRegistered: () => context.goNamed(AppRoutes.homeName),
+        ),
       ),
       GoRoute(
         path: AppRoutes.createPin,

@@ -1,17 +1,13 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:keebox/app/app_texts.dart';
-import 'package:keebox/features/authentication/models/recovery_type.dart';
-import 'package:keebox/features/authentication/models/recovery_response.dart';
 import 'package:keebox/features/authentication/models/recovery_requests.dart';
+import 'package:keebox/features/authentication/models/recovery_response.dart';
+import 'package:keebox/features/authentication/models/recovery_type.dart';
 import 'package:keebox/features/authentication/recovery_api.dart';
-import 'package:keebox/features/authentication/state/recovery_clock.dart';
+import 'package:keebox/features/authentication/state/authentication_controller.dart';
 import 'package:keebox/features/authentication/state/recovery_state.dart';
 import 'package:keebox/network/api_exception.dart';
-
-export 'package:keebox/features/authentication/state/recovery_clock.dart'
-    show recoveryClockProvider;
 
 typedef RecoveryScope = ({Object identity, RecoveryType type});
 
@@ -276,3 +272,20 @@ class RecoveryController extends Notifier<RecoveryState> {
     );
   }
 }
+
+final recoveryClockProvider = Provider<DateTime Function()>(
+  (ref) => DateTime.now,
+);
+
+final recoveryCompletionProvider = FutureProvider.autoDispose
+    .family<void, RecoveryScope>((ref, scope) async {
+      final recovery = ref.watch(recoveryControllerProvider(scope));
+      if (recovery.stage != RecoveryStage.completed ||
+          recovery.completed == null ||
+          recovery.completed!.resetId != recovery.resetId) {
+        throw StateError('Recovery must complete before clearing a session.');
+      }
+      // The backend has already revoked its sessions. Clear only the local session;
+      // cached user data, KBKey and the local verifier remain for the next login.
+      await ref.read(authenticationControllerProvider.notifier).clearSession();
+    });

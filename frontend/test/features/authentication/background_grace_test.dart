@@ -12,7 +12,7 @@ import 'package:keebox/features/authentication/state/authentication_state.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  for (final seconds in [19, 20, 21]) {
+  for (final seconds in [9, 10, 11]) {
     test(
       'resume checks elapsed time even if the background timer did not run: $seconds',
       () async {
@@ -29,14 +29,14 @@ void main() {
         );
         await controller.completeAuthentication(_result);
         controller.setApplicationActive(false);
-        elapsed = const Duration(seconds: 10);
+        elapsed = const Duration(seconds: 5);
         controller.setApplicationActive(false);
         elapsed = Duration(seconds: seconds);
         controller.setApplicationActive(true);
         final state = container
             .read(authenticationControllerProvider)
             .requireValue;
-        expect(state is AuthenticatedLocked, seconds >= 20);
+        expect(state is AuthenticatedLocked, seconds >= 10);
       },
     );
   }
@@ -48,7 +48,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           backgroundTimerProvider.overrideWithValue((delay, callback) {
-            expect(delay, const Duration(seconds: 20));
+            expect(delay, const Duration(seconds: 10));
             final timer = _Timer(callback);
             timers.add(timer);
             return timer;

@@ -10,7 +10,6 @@ import 'package:keebox/app/theme/app_theme.dart';
 import 'package:keebox/assets/app_assets.dart';
 import 'package:keebox/features/authentication/models/recovery_type.dart';
 import 'package:keebox/features/authentication/screens/recovery_success_screen.dart';
-import 'package:keebox/features/authentication/state/recovery_completion.dart';
 import 'package:keebox/features/authentication/state/recovery_controller.dart';
 
 void main() {

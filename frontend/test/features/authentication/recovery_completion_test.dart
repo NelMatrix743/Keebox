@@ -12,7 +12,6 @@ import 'package:keebox/features/authentication/models/recovery_type.dart';
 import 'package:keebox/features/authentication/recovery_api.dart';
 import 'package:keebox/features/authentication/state/authentication_controller.dart';
 import 'package:keebox/features/authentication/state/authentication_state.dart';
-import 'package:keebox/features/authentication/state/recovery_completion.dart';
 import 'package:keebox/features/authentication/state/recovery_controller.dart';
 import 'package:keebox/features/authentication/storage/auth_session_storage.dart';
 import 'package:keebox/features/authentication/storage/user_storage.dart';

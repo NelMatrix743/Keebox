@@ -19,6 +19,7 @@ class PinSetupScreen extends ConsumerStatefulWidget {
     required this.mode,
     this.onPinConfirmed,
     this.enabled = true,
+    this.isSubmitting = false,
     this.showSubmissionError = true,
     this.footer,
     super.key,
@@ -26,6 +27,7 @@ class PinSetupScreen extends ConsumerStatefulWidget {
 
   final PinSetupMode mode;
   final bool enabled;
+  final bool isSubmitting;
   final bool showSubmissionError;
   final Widget? footer;
 
@@ -75,12 +77,18 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                       onDigit: controller.enterDigit,
                       onDelete: controller.deleteDigit,
                       showDelete: state.digits.isNotEmpty,
-                      enabled: state.canEdit && widget.enabled,
+                      enabled:
+                          state.canEdit &&
+                          widget.enabled &&
+                          !widget.isSubmitting,
                     ),
                     SizedBox(height: 40.h),
                     const Spacer(),
                     PinConfirmButton(
-                      onPressed: state.canConfirm && widget.enabled
+                      onPressed:
+                          state.canConfirm &&
+                              widget.enabled &&
+                              !widget.isSubmitting
                           ? () {
                               AppSnackBar.dismiss(context);
                               unawaited(
@@ -96,7 +104,7 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                             }
                           : null,
                       isComplete: state.stage == PinSetupStage.complete,
-                      isSubmitting: state.isSubmitting,
+                      isSubmitting: state.isSubmitting || widget.isSubmitting,
                     ),
                     if (widget.footer != null) ...[
                       SizedBox(height: 8.h),
