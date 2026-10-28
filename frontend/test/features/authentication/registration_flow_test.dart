@@ -163,6 +163,61 @@ void main() {
       expect(server.requests, hasLength(requestsBeforeRestart));
     },
   );
+  testWidgets(
+    'lost account-creation response cannot grant access or replay completion',
+    (tester) async {
+      FlutterSecureStorage.setMockInitialValues({});
+      tester.view.physicalSize = const Size(402, 874);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final server = RegistrationHttpAdapter()..loseCompletionResponse = true;
+      final container = _container(server, AppRoutes.register);
+      addTearDown(container.dispose);
+      await _pumpApp(tester, container);
+      await _submitDetails(tester);
+      await tester.enterText(find.byType(TextField).first, '001234');
+      await tester.pump();
+      await tester.tap(find.text(AppTexts.continueLabel));
+      await tester.pumpAndSettle();
+      await _enterPin(tester);
+      await tester.ensureVisible(find.text(AppTexts.confirm));
+      await tester.tap(find.text(AppTexts.confirm));
+      await tester.pumpAndSettle();
+      expect(find.text(AppTexts.registrationCompletionUncertain), findsWidgets);
+      expect(
+        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        isNull,
+      );
+      expect(container.read(apiSessionProvider).accessToken, isNull);
+      expect(
+        await container.read(authenticationSessionStorageProvider).read(),
+        isNull,
+      );
+      expect(
+        await container.read(localPinStorageProvider).read(registeredUser.id),
+        isNull,
+      );
+      expect(
+        container.read(authenticationControllerProvider).requireValue,
+        isA<Unauthenticated>(),
+      );
+
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text(AppTexts.backToLogin));
+      await tester.tap(find.text(AppTexts.backToLogin));
+      await tester.pumpAndSettle();
+      expect(_path(container), AppRoutes.signIn);
+      container.read(appRouterProvider).goNamed(AppRoutes.homeName);
+      await tester.pumpAndSettle();
+      expect(_path(container), AppRoutes.signIn);
+      expect(server.requests.map((request) => request.path), [
+        APIEndpoints.register,
+        APIEndpoints.registerVerifyOtp,
+        APIEndpoints.registerCreatePin,
+      ]);
+    },
+  );
 }
 
 ProviderContainer _container(RegistrationHttpAdapter server, String route) =>
