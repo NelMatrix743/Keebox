@@ -27,4 +27,17 @@ class RegistrationAPI {
     );
     return response.data;
   }
+
+  Future<RegistrationVerified> verifyOtp(
+    RegistrationVerifyRequest request, {
+    CancelToken? cancelToken,
+  }) async {
+    final response = await client.post<RegistrationVerified>(
+      APIEndpoints.registerVerifyOtp,
+      data: request.toJson(),
+      decode: RegistrationVerified.fromJson,
+      cancelToken: cancelToken,
+    );
+    return response.data;
+  }
 }
