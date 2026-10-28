@@ -13,6 +13,8 @@ import 'package:keebox/features/authentication/models/registration_requests.dart
 import 'package:keebox/features/authentication/models/registration_response.dart';
 import 'package:keebox/features/authentication/registration_api.dart';
 import 'package:keebox/features/authentication/screens/registration_screen.dart';
+import 'package:keebox/features/pin/screens/pin_setup_screen.dart';
+import 'package:keebox/features/pin/models/pin_setup_mode.dart';
 import 'package:keebox/network/api_client.dart';
 import 'package:keebox/network/api_exception.dart';
 
@@ -159,7 +161,7 @@ void main() {
     );
   });
   testWidgets(
-    'valid submission passes all four fields and opens the OTP placeholder',
+    'valid submission passes all four fields and opens shared OTP verification',
     (tester) async {
       await pump(tester);
       await identity(tester);
@@ -171,7 +173,7 @@ void main() {
         'email': 'ada@example.com',
         'password': ' password ',
       });
-      expect(find.text(AppTexts.registrationOtpPlaceholder), findsOneWidget);
+      expect(find.text(AppTexts.recoveryOtpSent), findsOneWidget);
       expect(find.byType(TextFormField), findsNothing);
       await tester.tap(find.byTooltip(AppTexts.back));
       await tester.pumpAndSettle();
@@ -198,7 +200,7 @@ void main() {
       expect(api.requests, hasLength(1));
       api.gate!.complete(api.challenge());
       await tester.pumpAndSettle();
-      expect(find.text(AppTexts.registrationOtpPlaceholder), findsOneWidget);
+      expect(find.text(AppTexts.recoveryOtpSent), findsOneWidget);
     },
   );
   testWidgets(
@@ -284,8 +286,33 @@ void main() {
     await passwords(tester);
     await tester.pumpAndSettle();
     expect(api.requests.last.email, 'new@example.com');
-    expect(find.text(AppTexts.registrationOtpPlaceholder), findsOneWidget);
+    expect(find.text(AppTexts.recoveryOtpSent), findsOneWidget);
   });
+  testWidgets(
+    'shared OTP verification advances registration to the pending PIN step',
+    (tester) async {
+      await pump(tester);
+      await identity(tester);
+      await passwords(tester);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, '001234');
+      await tester.pump();
+      await tester.ensureVisible(find.text(AppTexts.continueLabel));
+      await tester.tap(find.text(AppTexts.continueLabel));
+      await tester.pumpAndSettle();
+      expect(find.byType(PinSetupScreen), findsOneWidget);
+      expect(
+        tester.widget<PinSetupScreen>(find.byType(PinSetupScreen)).mode,
+        PinSetupMode.create,
+      );
+      expect(
+        tester.widget<PinSetupScreen>(find.byType(PinSetupScreen)).enabled,
+        isFalse,
+      );
+      expect(find.text(AppTexts.createPinTitle), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+    },
+  );
   testWidgets('Sign In follows its callback', (tester) async {
     await pump(tester);
     await tester.tap(find.text(AppTexts.signIn));
@@ -300,7 +327,7 @@ void main() {
     await identity(tester);
     await passwords(tester);
     await tester.pumpAndSettle();
-    expect(find.text(AppTexts.registrationOtpPlaceholder), findsOneWidget);
+    expect(find.text(AppTexts.recoveryOtpSent), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
@@ -317,6 +344,14 @@ class _API extends RegistrationAPI {
     otpExpiresAt: DateTime.now().add(const Duration(minutes: 5)),
     resendAvailableAt: DateTime.now().add(const Duration(seconds: 60)),
     message: 'Check your email.',
+  );
+  @override
+  Future<RegistrationVerified> verifyOtp(
+    RegistrationVerifyRequest request, {
+    CancelToken? cancelToken,
+  }) async => RegistrationVerified(
+    registrationId: request.registrationId,
+    message: 'Verified.',
   );
   @override
   Future<RegistrationChallenge> start(
