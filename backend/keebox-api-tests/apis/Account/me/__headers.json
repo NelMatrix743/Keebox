@@ -1,9 +1,0 @@
-[
-  {
-    "id": 1,
-    "key": "Accept",
-    "value": "application/json",
-    "isEnabled": true,
-    "description": "Retrieve the current user's public profile in the standard JSON envelope."
-  }
-]
