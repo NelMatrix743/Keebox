@@ -8,7 +8,6 @@ import 'package:keebox/assets/app_assets.dart';
 import 'package:keebox/features/authentication/models/registration_identity.dart';
 import 'package:keebox/features/authentication/models/registration_requests.dart';
 import 'package:keebox/features/authentication/state/registration_controller.dart';
-import 'package:keebox/features/authentication/state/registration_field_errors.dart';
 import 'package:keebox/features/authentication/state/registration_state.dart';
 import 'package:keebox/features/authentication/widgets/recovery_app_bar.dart';
 import 'package:keebox/features/authentication/widgets/recovery_continue_button.dart';

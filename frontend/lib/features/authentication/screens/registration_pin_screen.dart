@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keebox/app/app_texts.dart';
 import 'package:keebox/features/authentication/state/registration_controller.dart';
-import 'package:keebox/features/authentication/state/registration_completion_controller.dart';
 import 'package:keebox/features/authentication/state/registration_state.dart';
 import 'package:keebox/features/authentication/widgets/recovery_reset_feedback.dart';
 import 'package:keebox/features/pin/models/pin_setup_mode.dart';

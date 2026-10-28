@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keebox/features/authentication/state/recovery_controller.dart';
 import 'package:keebox/features/authentication/state/recovery_state.dart';
-import 'package:keebox/features/authentication/state/registration_clock.dart';
 import 'package:keebox/features/authentication/state/registration_controller.dart';
 import 'package:keebox/features/authentication/state/registration_state.dart';
 

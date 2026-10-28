@@ -3,14 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keebox/app/app_texts.dart';
 import 'package:keebox/features/authentication/screens/authentication_success_screen.dart';
 import 'package:keebox/features/authentication/screens/registration_pin_screen.dart';
-import 'package:keebox/features/authentication/state/registration_completion_controller.dart';
+import 'package:keebox/features/authentication/state/registration_controller.dart';
 import 'package:keebox/features/authentication/models/registration_identity.dart';
 import 'package:keebox/features/authentication/screens/registration_identity_screen.dart';
 import 'package:keebox/features/authentication/screens/registration_password_screen.dart';
 import 'package:keebox/features/authentication/screens/otp_verification_screen.dart';
 import 'package:keebox/features/authentication/state/otp_verification_flow.dart';
-import 'package:keebox/features/authentication/state/registration_controller.dart';
-import 'package:keebox/features/authentication/state/registration_field_errors.dart';
 import 'package:keebox/features/authentication/state/registration_state.dart';
 import 'package:keebox/shared/widgets/app_snackbar.dart';
 
