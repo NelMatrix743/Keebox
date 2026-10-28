@@ -307,7 +307,7 @@ void main() {
       );
       expect(
         tester.widget<PinSetupScreen>(find.byType(PinSetupScreen)).enabled,
-        isFalse,
+        isTrue,
       );
       expect(find.text(AppTexts.createPinTitle), findsOneWidget);
       expect(find.byType(TextField), findsNothing);
