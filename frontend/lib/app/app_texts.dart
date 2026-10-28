@@ -1,4 +1,9 @@
 abstract final class AppTexts {
+  static const registrationCompletedTitle = 'Account setup completed';
+  static const registrationCompletedMessage =
+      'Account setup completed successfully!';
+  static const registrationSessionSaveFailed =
+      'Your account was created, but we could not save it on this device. Retry to finish, or sign in again.';
   static const registrationIdentityTitle = 'Identity';
   static const registrationIdentitySubtitle = 'Setup your account’s identity';
   static const registrationPasswordTitle = 'Password';
