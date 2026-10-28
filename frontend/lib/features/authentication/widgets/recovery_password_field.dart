@@ -17,6 +17,7 @@ class RecoveryPasswordField extends StatefulWidget {
     this.textInputAction = TextInputAction.next,
     this.enabled = true,
     this.errorText,
+    this.prefixGap = 4,
     super.key,
   });
   final TextEditingController controller;
@@ -27,6 +28,7 @@ class RecoveryPasswordField extends StatefulWidget {
   final TextInputAction textInputAction;
   final bool enabled;
   final String? errorText;
+  final double prefixGap;
 
   @override
   State<RecoveryPasswordField> createState() => _RecoveryPasswordFieldState();
@@ -73,11 +75,11 @@ class _RecoveryPasswordFieldState extends State<RecoveryPasswordField> {
         isDense: true,
         contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
         prefixIconConstraints: BoxConstraints(
-          minWidth: 45.w,
+          minWidth: (41 + widget.prefixGap).w,
           minHeight: math.max(55.h, 48),
         ),
         prefixIcon: Padding(
-          padding: EdgeInsets.only(left: 17.w, right: 4.w),
+          padding: EdgeInsets.only(left: 17.w, right: widget.prefixGap.w),
           child: SizedBox(
             width: 24.r,
             child: Center(
