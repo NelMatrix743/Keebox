@@ -1,6 +1,0 @@
-{
-  "dart.flutterSdkPath": ".fvm/flutter_sdk",
-  "dart.flutterRunAdditionalArgs": [
-    "--dart-define=API_BASE_URL=http://192.168.1.76:8000/api"
-  ]
-}
