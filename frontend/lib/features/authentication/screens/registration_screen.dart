@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keebox/features/authentication/models/registration_identity.dart';
 import 'package:keebox/features/authentication/screens/registration_identity_screen.dart';
 import 'package:keebox/features/authentication/screens/registration_password_screen.dart';
-import 'package:keebox/features/authentication/screens/registration_otp_placeholder_screen.dart';
+import 'package:keebox/features/authentication/screens/otp_verification_screen.dart';
+import 'package:keebox/features/pin/screens/pin_setup_screen.dart';
+import 'package:keebox/features/pin/models/pin_setup_mode.dart';
+import 'package:keebox/features/authentication/state/otp_verification_flow.dart';
 import 'package:keebox/features/authentication/state/registration_controller.dart';
 import 'package:keebox/features/authentication/state/registration_field_errors.dart';
 import 'package:keebox/features/authentication/state/registration_state.dart';
@@ -35,14 +38,21 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
   Widget build(BuildContext context) {
     final provider = registrationControllerProvider(_scope);
     final state = ref.watch(provider);
-    final otp = state.stage == RegistrationStage.otp;
+    final pin = state.stage == RegistrationStage.pin;
+    final otp = state.challenge != null && !pin;
     return PopScope(
-      canPop: !_password && !otp,
+      canPop: !_password && !otp && !pin,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && (_password || otp)) _back();
+        if (!didPop && (_password || otp || pin)) _back();
       },
-      child: otp
-          ? RegistrationOtpPlaceholderScreen(scope: _scope, onBack: _back)
+      child: pin
+          ? const PinSetupScreen(mode: PinSetupMode.create, enabled: false)
+          : otp
+          ? OtpVerificationScreen(
+              flow: OtpVerificationFlow.registration(_scope),
+              onBack: _back,
+              onRestart: _back,
+            )
           : _password
           ? RegistrationPasswordScreen(
               scope: _scope,

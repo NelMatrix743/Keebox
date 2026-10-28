@@ -15,9 +15,6 @@ abstract final class AppTexts {
   static const signIn = 'Sign In';
   static const next = 'Next';
   static const registering = 'Creating your registration';
-  static const registrationOtpPlaceholder = 'Verify your email';
-  static const registrationOtpPlaceholderMessage =
-      'Your registration has started. Email verification is the next step.';
   static const registrationDetailsInvalid =
       'Enter your name, email address, and password correctly.';
   static const registrationOtpInvalid =
