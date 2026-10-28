@@ -1,4 +1,23 @@
 abstract final class AppTexts {
+  static const registrationIdentityTitle = 'Identity';
+  static const registrationIdentitySubtitle = 'Setup your account’s identity';
+  static const registrationPasswordTitle = 'Password';
+  static const registrationPasswordSubtitle = 'Setup your account’s password';
+  static const registrationFirstNameHint = 'Your first name';
+  static const registrationLastNameHint = 'Your last name';
+  static const registrationFirstNameRequired = 'Enter your first name.';
+  static const registrationLastNameRequired = 'Enter your last name.';
+  static const registrationNameTooLong = 'Use no more than 150 characters.';
+  static const registrationEmailTooLong = 'Use no more than 254 characters.';
+  static const registrationPasswordRequired = 'Enter your password.';
+  static const registrationConfirmPasswordRequired = 'Confirm your password.';
+  static const registrationHaveAccount = 'Have an account?';
+  static const signIn = 'Sign In';
+  static const next = 'Next';
+  static const registering = 'Creating your registration';
+  static const registrationOtpPlaceholder = 'Verify your email';
+  static const registrationOtpPlaceholderMessage =
+      'Your registration has started. Email verification is the next step.';
   static const registrationDetailsInvalid =
       'Enter your name, email address, and password correctly.';
   static const registrationOtpInvalid =
