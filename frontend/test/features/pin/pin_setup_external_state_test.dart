@@ -8,6 +8,40 @@ import 'package:keebox/features/pin/screens/pin_setup_screen.dart';
 import 'package:keebox/features/pin/widgets/pin_digit_cell.dart';
 
 void main() {
+  testWidgets('external submission renders a spinner and prevents PIN entry', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: ScreenUtilInit(
+          designSize: const Size(402, 874),
+          builder: (_, child) => MaterialApp(
+            home: const PinSetupScreen(
+              mode: PinSetupMode.create,
+              isSubmitting: true,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('pin-key-1')));
+    await tester.pump();
+    expect(
+      tester
+          .widgetList<PinDigitCell>(find.byType(PinDigitCell))
+          .every((cell) => cell.digit == null),
+      isTrue,
+    );
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      isNull,
+    );
+  });
   Future<void> pump(WidgetTester tester, PinSetupScreen screen) async {
     tester.view.physicalSize = const Size(402, 874);
     tester.view.devicePixelRatio = 1;
