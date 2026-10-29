@@ -68,6 +68,8 @@ void main() {
         Colors.white,
       );
       storage.failSave = false;
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Sign In'));
       await tester.pumpAndSettle();
       expect(navigations, 1);
@@ -95,17 +97,17 @@ void main() {
     final storage = _Storage()..readGate = Completer<bool>();
     await _pump(tester, storage);
     expect(
-      tester.widget<OutlinedButton>(find.byType(OutlinedButton)).onPressed,
+      tester.widget<TextButton>(find.byType(TextButton)).onPressed,
       isNull,
     );
     expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      tester.widget<IconButton>(find.byType(IconButton)).onPressed,
       isNull,
     );
     storage.readGate!.complete(false);
     await tester.pumpAndSettle();
     expect(
-      tester.widget<OutlinedButton>(find.byType(OutlinedButton)).onPressed,
+      tester.widget<TextButton>(find.byType(TextButton)).onPressed,
       isNotNull,
     );
   });
@@ -139,6 +141,10 @@ Future<void> _pump(
     ),
   );
   await tester.pumpAndSettle();
+  if (storage.readGate == null) {
+    await tester.tap(find.text(AppTexts.onboardingSkip));
+    await tester.pumpAndSettle();
+  }
 }
 
 class _Storage implements OnboardingStorage {

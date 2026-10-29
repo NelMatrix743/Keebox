@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:keebox/app/theme/app_theme.dart';
+import 'package:keebox/features/onboarding/models/onboarding_step.dart';
 import 'package:keebox/features/onboarding/screens/onboarding_screen.dart';
 import 'package:keebox/features/onboarding/state/onboarding_controller.dart';
 import 'package:keebox/features/onboarding/state/onboarding_state.dart';
@@ -122,5 +123,5 @@ Widget _buildApp({
 class _CompletedController extends OnboardingController {
   @override
   Future<OnboardingState> build() async =>
-      const OnboardingState(isCompleted: true);
+      const OnboardingState(step: OnboardingStep.welcome, isCompleted: true);
 }

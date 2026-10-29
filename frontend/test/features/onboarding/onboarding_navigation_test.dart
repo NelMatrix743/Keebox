@@ -30,6 +30,8 @@ void main() {
         await container.read(onboardingStorageProvider).isCompleted(),
         isFalse,
       );
+      await tester.tap(find.text(AppTexts.onboardingSkip));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Sign In'));
       await tester.pumpAndSettle();
       expect(find.text('Welcome Back!'), findsOneWidget);
