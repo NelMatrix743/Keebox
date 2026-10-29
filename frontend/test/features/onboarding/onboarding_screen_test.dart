@@ -35,69 +35,65 @@ void main() {
     expect(874 - 26 - buttonBottom, greaterThanOrEqualTo(26));
   });
 
-  testWidgets('Sign In and Get Started invoke their respective actions', (
-    tester,
-  ) async {
-    var signInCount = 0;
-    var getStartedCount = 0;
-    await tester.pumpWidget(
-      _buildApp(
-        theme: AppTheme.light,
-        home: OnboardingScreen(
-          onSignIn: () => signInCount++,
-          onGetStarted: () => getStartedCount++,
+  for (final action in ['Sign In', 'Get Started']) {
+    testWidgets('$action invokes its respective action', (tester) async {
+      var signInCount = 0;
+      var getStartedCount = 0;
+      await tester.pumpWidget(
+        _buildApp(
+          theme: AppTheme.light,
+          home: OnboardingScreen(
+            onSignIn: () => signInCount++,
+            onGetStarted: () => getStartedCount++,
+          ),
         ),
-      ),
-    );
+      );
 
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Sign In'));
-    await tester.pumpAndSettle();
-    expect(signInCount, 1);
-    expect(getStartedCount, 0);
-    await tester.tap(find.text('Get Started'));
-    await tester.pumpAndSettle();
-    expect(signInCount, 1);
-    expect(getStartedCount, 1);
-  });
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(action));
+      await tester.pumpAndSettle();
+      expect(signInCount, action == 'Sign In' ? 1 : 0);
+      expect(getStartedCount, action == 'Get Started' ? 1 : 0);
+    });
+  }
 
   for (final size in [const Size(402, 874), const Size(320, 568)]) {
-    testWidgets(
-      'actions remain tappable on a $size screen with enlarged text',
-      (tester) async {
-        tester.view.physicalSize = size;
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-        var signInPressed = false;
-        var getStartedPressed = false;
-        await tester.pumpWidget(
-          _buildApp(
-            theme: AppTheme.light,
-            builder: (context, child) => MediaQuery(
-              data: MediaQuery.of(context).copyWith(
-                padding: const EdgeInsets.only(top: 44, bottom: 34),
-                textScaler: const TextScaler.linear(2),
+    for (final action in ['Sign In', 'Get Started']) {
+      testWidgets(
+        '$action remains tappable on a $size screen with enlarged text',
+        (tester) async {
+          tester.view.physicalSize = size;
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          var signInPressed = false;
+          var getStartedPressed = false;
+          await tester.pumpWidget(
+            _buildApp(
+              theme: AppTheme.light,
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  padding: const EdgeInsets.only(top: 44, bottom: 34),
+                  textScaler: const TextScaler.linear(2),
+                ),
+                child: child!,
               ),
-              child: child!,
+              home: OnboardingScreen(
+                onSignIn: () => signInPressed = true,
+                onGetStarted: () => getStartedPressed = true,
+              ),
             ),
-            home: OnboardingScreen(
-              onSignIn: () => signInPressed = true,
-              onGetStarted: () => getStartedPressed = true,
-            ),
-          ),
-        );
+          );
 
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Sign In'));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Get Started'));
-        await tester.pumpAndSettle();
-        expect(signInPressed, isTrue);
-        expect(getStartedPressed, isTrue);
-        expect(tester.takeException(), isNull);
-      },
-    );
+          await tester.pumpAndSettle();
+          await tester.tap(find.text(action));
+          await tester.pumpAndSettle();
+          expect(signInPressed, action == 'Sign In');
+          expect(getStartedPressed, action == 'Get Started');
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
   }
 }
 

@@ -11,6 +11,42 @@ import 'package:keebox/features/onboarding/screens/onboarding_screen.dart';
 import 'package:keebox/features/onboarding/storage/onboarding_storage.dart';
 
 void main() {
+  testWidgets('only the first destination can leave the welcome state', (
+    tester,
+  ) async {
+    final storage = _Storage();
+    var signIns = 0;
+    var registrations = 0;
+    await _pump(
+      tester,
+      storage,
+      onSignIn: () => signIns++,
+      onGetStarted: () => registrations++,
+    );
+    final signIn = tester
+        .widget<OutlinedButton>(find.byType(OutlinedButton))
+        .onPressed!;
+    final getStarted = tester
+        .widget<FilledButton>(find.byType(FilledButton))
+        .onPressed!;
+    signIn();
+    getStarted();
+    await tester.pumpAndSettle();
+    // A retained callback must also be harmless after the flag was saved.
+    getStarted();
+    await tester.pumpAndSettle();
+    expect(signIns, 1);
+    expect(registrations, 0);
+    expect(storage.writes, 1);
+    expect(
+      tester.widget<OutlinedButton>(find.byType(OutlinedButton)).onPressed,
+      isNull,
+    );
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      isNull,
+    );
+  });
   for (final action in ['Sign In', 'Get Started']) {
     testWidgets(
       '$action waits for saving before navigating and blocks duplicate taps',
