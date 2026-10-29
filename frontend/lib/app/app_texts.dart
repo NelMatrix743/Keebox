@@ -111,6 +111,26 @@ abstract final class AppTexts {
       'Unable to load onboarding progress. Please try again.';
   static const onboardingSaveFailed =
       'Unable to save onboarding progress. Please try again.';
+  static const onboardingNotesTitle = 'Secured Notes';
+  static const onboardingNotesDescription =
+      'Keep your private thoughts and sensitive information securely protected in one place.';
+  static const onboardingCredentialsTitle = 'Secured Credentials';
+  static const onboardingCredentialsDescription =
+      'Safely store and manage passwords, API keys, security keys, and other credentials.';
+  static const onboardingPrivacyTitle = 'Private By Design';
+  static const onboardingPrivacyDescription =
+      'Your sensitive data is encrypted and protected with privacy built into Keebox from the start.';
+  static const onboardingBackupTitle = 'Data Backup';
+  static const onboardingBackupDescription =
+      'Keep encrypted backups of your KBoxes so your data can be restored when you need it.';
+  static const onboardingWelcomeTitle = 'Welcome to Keebox!';
+  static const onboardingWelcomeDescription =
+      'Your Thoughts And Access Secured.';
+  static const onboardingSkip = 'SKIP';
+  static const onboardingNext = 'Next onboarding page';
+  static const getStarted = 'Get Started';
+  static String onboardingProgress(int position, int total) =>
+      'Introduction $position of $total';
 
   static const login = 'Login';
   static const loggingIn = 'Verifying your account';

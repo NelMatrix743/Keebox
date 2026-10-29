@@ -44,8 +44,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.root,
         name: AppRoutes.rootName,
         builder: (context, state) => OnboardingScreen(
-          onSignIn: () => context.pushNamed(AppRoutes.signInName),
-          onGetStarted: () => context.pushNamed(AppRoutes.registerName),
+          onSignIn: () => context.goNamed(AppRoutes.signInName),
+          onGetStarted: () => context.goNamed(AppRoutes.registerName),
         ),
       ),
       GoRoute(

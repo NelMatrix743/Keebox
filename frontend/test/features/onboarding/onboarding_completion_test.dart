@@ -11,6 +11,42 @@ import 'package:keebox/features/onboarding/screens/onboarding_screen.dart';
 import 'package:keebox/features/onboarding/storage/onboarding_storage.dart';
 
 void main() {
+  testWidgets('only the first destination can leave the welcome state', (
+    tester,
+  ) async {
+    final storage = _Storage();
+    var signIns = 0;
+    var registrations = 0;
+    await _pump(
+      tester,
+      storage,
+      onSignIn: () => signIns++,
+      onGetStarted: () => registrations++,
+    );
+    final signIn = tester
+        .widget<OutlinedButton>(find.byType(OutlinedButton))
+        .onPressed!;
+    final getStarted = tester
+        .widget<FilledButton>(find.byType(FilledButton))
+        .onPressed!;
+    signIn();
+    getStarted();
+    await tester.pumpAndSettle();
+    // A retained callback must also be harmless after the flag was saved.
+    getStarted();
+    await tester.pumpAndSettle();
+    expect(signIns, 1);
+    expect(registrations, 0);
+    expect(storage.writes, 1);
+    expect(
+      tester.widget<OutlinedButton>(find.byType(OutlinedButton)).onPressed,
+      isNull,
+    );
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      isNull,
+    );
+  });
   for (final action in ['Sign In', 'Get Started']) {
     testWidgets(
       '$action waits for saving before navigating and blocks duplicate taps',
@@ -68,6 +104,8 @@ void main() {
         Colors.white,
       );
       storage.failSave = false;
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Sign In'));
       await tester.pumpAndSettle();
       expect(navigations, 1);
@@ -95,17 +133,17 @@ void main() {
     final storage = _Storage()..readGate = Completer<bool>();
     await _pump(tester, storage);
     expect(
-      tester.widget<OutlinedButton>(find.byType(OutlinedButton)).onPressed,
+      tester.widget<TextButton>(find.byType(TextButton)).onPressed,
       isNull,
     );
     expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      tester.widget<IconButton>(find.byType(IconButton)).onPressed,
       isNull,
     );
     storage.readGate!.complete(false);
     await tester.pumpAndSettle();
     expect(
-      tester.widget<OutlinedButton>(find.byType(OutlinedButton)).onPressed,
+      tester.widget<TextButton>(find.byType(TextButton)).onPressed,
       isNotNull,
     );
   });
@@ -139,6 +177,10 @@ Future<void> _pump(
     ),
   );
   await tester.pumpAndSettle();
+  if (storage.readGate == null) {
+    await tester.tap(find.text(AppTexts.onboardingSkip));
+    await tester.pumpAndSettle();
+  }
 }
 
 class _Storage implements OnboardingStorage {

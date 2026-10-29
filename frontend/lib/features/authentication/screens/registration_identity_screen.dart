@@ -3,7 +3,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:keebox/app/app_texts.dart';
 import 'package:keebox/assets/app_assets.dart';
 import 'package:keebox/features/authentication/models/registration_identity.dart';
-import 'package:keebox/features/authentication/widgets/recovery_app_bar.dart';
 import 'package:keebox/features/authentication/widgets/recovery_continue_button.dart';
 import 'package:keebox/features/authentication/widgets/registration_header.dart';
 import 'package:keebox/features/authentication/widgets/registration_identity_field.dart';
@@ -59,7 +58,7 @@ class _RegistrationIdentityScreenState
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: const RecoveryAppBar(),
+    appBar: AppBar(automaticallyImplyLeading: false, toolbarHeight: 78.h),
     body: SafeArea(
       top: false,
       child: LayoutBuilder(

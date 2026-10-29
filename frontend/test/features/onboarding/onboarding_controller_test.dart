@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:keebox/app/app_texts.dart';
+import 'package:keebox/features/onboarding/models/onboarding_step.dart';
 import 'package:keebox/features/onboarding/state/onboarding_controller.dart';
 import 'package:keebox/features/onboarding/storage/onboarding_storage.dart';
 
@@ -24,6 +25,7 @@ void main() {
       (await container.read(onboardingControllerProvider.future)).isCompleted,
       isFalse,
     );
+    container.read(onboardingControllerProvider.notifier).skip();
     await container.read(onboardingControllerProvider.notifier).complete();
     container.invalidate(onboardingControllerProvider);
     expect(
@@ -36,6 +38,7 @@ void main() {
     storage.gate = Completer<void>();
     await container.read(onboardingControllerProvider.future);
     final controller = container.read(onboardingControllerProvider.notifier);
+    controller.skip();
     final completion = controller.complete();
     expect(
       container.read(onboardingControllerProvider).requireValue.isSaving,
@@ -59,13 +62,19 @@ void main() {
     storage.failSave = true;
     await container.read(onboardingControllerProvider.future);
     final controller = container.read(onboardingControllerProvider.notifier);
+    controller.skip();
     expect(await controller.complete(), isFalse);
     final failed = container.read(onboardingControllerProvider).requireValue;
     expect(failed.isCompleted, isFalse);
     expect(failed.isSaving, isFalse);
     expect(failed.errorMessage, AppTexts.onboardingSaveFailed);
+    expect(failed.step, OnboardingStep.welcome);
     storage.failSave = false;
     expect(await controller.complete(), isTrue);
+    expect(
+      container.read(onboardingControllerProvider).requireValue.step,
+      OnboardingStep.welcome,
+    );
     expect(
       container.read(onboardingControllerProvider).requireValue.errorMessage,
       isNull,
@@ -78,6 +87,7 @@ void main() {
       storage.failRead = true;
       final initial = await container.read(onboardingControllerProvider.future);
       expect(initial.errorMessage, AppTexts.onboardingLoadFailed);
+      container.read(onboardingControllerProvider.notifier).skip();
       expect(
         await container.read(onboardingControllerProvider.notifier).complete(),
         isTrue,
@@ -102,12 +112,27 @@ void main() {
       overrides: [onboardingStorageProvider.overrideWithValue(storage)],
     );
     await scope.read(onboardingControllerProvider.future);
+    scope.read(onboardingControllerProvider.notifier).skip();
     final completion = scope
         .read(onboardingControllerProvider.notifier)
         .complete();
     scope.dispose();
     storage.gate!.complete();
     expect(await completion, isFalse);
+  });
+
+  test('only the welcome state can record onboarding completion', () async {
+    await container.read(onboardingControllerProvider.future);
+    final controller = container.read(onboardingControllerProvider.notifier);
+    for (var page = 0; page < OnboardingStep.welcome.index; page++) {
+      controller.setPage(page);
+      expect(await controller.complete(), isFalse);
+      expect(storage.writes, 0);
+      expect(storage.completed, isFalse);
+    }
+    controller.skip();
+    expect(await controller.complete(), isTrue);
+    expect(storage.writes, 1);
   });
 }
 
