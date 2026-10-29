@@ -116,17 +116,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           )
                           .reduce(math.max);
                       final headerHeight = math.max(48.0, 87.h);
-                      final stripGap = current.isWelcome
-                          ? 0.0
-                          : (constraints.maxHeight -
-                                    headerHeight -
-                                    width * 440 / 352 -
-                                    28.h -
-                                    messageHeight -
-                                    55.h -
-                                    16.h)
-                                .clamp(0.0, 34.h)
-                                .toDouble();
+                      final stripGap = current.isWelcome ? 0.0 : 34.h;
                       return Column(
                         children: [
                           SizedBox(
