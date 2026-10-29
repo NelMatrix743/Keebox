@@ -31,6 +31,7 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   late final PageController _pages;
+  bool _departing = false;
 
   @override
   void initState() {
@@ -59,11 +60,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _complete(VoidCallback navigate) async {
+    if (!mounted || _departing) return;
+    setState(() => _departing = true);
     AppSnackBar.dismiss(context);
     final completed = await ref
         .read(onboardingControllerProvider.notifier)
         .complete();
-    if (mounted && completed) navigate();
+    if (!mounted) return;
+    if (!completed || ModalRoute.of(context)?.isCurrent == false) {
+      setState(() => _departing = false);
+      return;
+    }
+    navigate();
   }
 
   @override
@@ -71,7 +79,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final progress = ref.watch(onboardingControllerProvider);
     final current = progress.asData?.value ?? const OnboardingState();
     final controller = ref.read(onboardingControllerProvider.notifier);
-    final busy = progress.isLoading || progress.asData?.value.isSaving == true;
+    final busy = _departing || progress.isLoading || current.isSaving;
     ref.listen(onboardingControllerProvider, (previous, next) {
       if (previous?.asData?.value.step != next.asData?.value.step) _syncPage();
       final message = next.asData?.value.errorMessage;
