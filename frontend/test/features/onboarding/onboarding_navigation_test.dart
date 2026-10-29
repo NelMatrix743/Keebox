@@ -127,7 +127,8 @@ void main() {
       await tester.tap(find.text('Register'));
       await tester.pumpAndSettle();
       expect(find.text(AppTexts.registrationIdentityTitle), findsOneWidget);
-      await tester.pageBack();
+      expect(find.byTooltip(AppTexts.back), findsNothing);
+      await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(_path(container), AppRoutes.signIn);
       expect(container.read(appRouterProvider).canPop(), isFalse);

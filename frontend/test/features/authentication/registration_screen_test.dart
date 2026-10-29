@@ -93,6 +93,7 @@ void main() {
     (tester) async {
       await pump(tester);
       expect(find.text(AppTexts.registrationIdentityTitle), findsOneWidget);
+      expect(find.byTooltip(AppTexts.back), findsNothing);
       final image = find.byWidgetPredicate(
         (w) =>
             w is Image &&
@@ -111,6 +112,7 @@ void main() {
       );
       await identity(tester);
       expect(find.text(AppTexts.registrationPasswordTitle), findsOneWidget);
+      expect(find.byTooltip(AppTexts.back), findsOneWidget);
       expect(api.requests, isEmpty);
     },
   );
