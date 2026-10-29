@@ -24,6 +24,42 @@ class OnboardingMessage extends StatelessWidget {
 
   final OnboardingStep step;
 
+  TextStyle get _titleStyle => TextStyle(
+    fontFamily: AppFonts.inter,
+    fontWeight: FontWeight.w700,
+    fontSize: 20.sp,
+    letterSpacing: 0,
+    height: 1.2,
+    color: Colors.black,
+  );
+
+  TextStyle get _descriptionStyle => TextStyle(
+    fontFamily: AppFonts.poppins,
+    fontWeight: FontWeight.w400,
+    fontSize: 15.sp,
+    letterSpacing: 0,
+    height: 1.5,
+    color: Colors.black,
+  );
+
+  /// Reserves room for wrapped, accessibility-scaled text before sizing artwork.
+  double measureHeight(BuildContext context, double width) {
+    double height(String text, TextStyle style) {
+      final painter = TextPainter(
+        text: TextSpan(text: text, style: style),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+      )..layout(maxWidth: width);
+      final result = painter.height;
+      painter.dispose();
+      return result;
+    }
+
+    return height(step.title, _titleStyle) +
+        (step == OnboardingStep.welcome ? 0 : 6.h) +
+        height(step.description, _descriptionStyle);
+  }
+
   @override
   Widget build(BuildContext context) {
     final welcome = step == OnboardingStep.welcome;
@@ -36,30 +72,10 @@ class OnboardingMessage extends StatelessWidget {
       children: [
         Semantics(
           header: true,
-          child: Text(
-            step.title,
-            textAlign: alignment,
-            style: TextStyle(
-              fontFamily: AppFonts.inter,
-              fontWeight: FontWeight.w700,
-              fontSize: 20.sp,
-              height: 1.2,
-              color: Colors.black,
-            ),
-          ),
+          child: Text(step.title, textAlign: alignment, style: _titleStyle),
         ),
         if (!welcome) SizedBox(height: 6.h),
-        Text(
-          step.description,
-          textAlign: alignment,
-          style: TextStyle(
-            fontFamily: AppFonts.poppins,
-            fontWeight: FontWeight.w400,
-            fontSize: 15.sp,
-            height: 1.5,
-            color: Colors.black,
-          ),
-        ),
+        Text(step.description, textAlign: alignment, style: _descriptionStyle),
       ],
     );
   }
