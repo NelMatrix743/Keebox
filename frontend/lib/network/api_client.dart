@@ -15,9 +15,9 @@ class APIClient {
   APIClient({
     Dio? dio,
     this.session,
-    Duration connectTimeout = const Duration(seconds: 20),
-    Duration sendTimeout = const Duration(seconds: 30),
-    Duration receiveTimeout = const Duration(seconds: 30),
+    Duration connectTimeout = const Duration(seconds: 10),
+    Duration sendTimeout = const Duration(seconds: 20),
+    Duration receiveTimeout = const Duration(seconds: 20),
   }) : _dio = dio ?? Dio() {
     _dio.options
       ..connectTimeout = connectTimeout
