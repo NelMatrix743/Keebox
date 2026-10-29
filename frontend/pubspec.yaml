@@ -75,7 +75,6 @@ flutter:
     - assets/icons/recovery_email.png
     - assets/icons/recovery_otp.png
     - assets/icons/password_reset.png
-    - assets/images/onboarding.png
     - assets/images/onboarding_notes.png
     - assets/images/onboarding_credentials.png
     - assets/images/onboarding_privacy.png
