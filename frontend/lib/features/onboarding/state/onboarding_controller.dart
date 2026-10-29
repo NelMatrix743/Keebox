@@ -54,7 +54,7 @@ class OnboardingController extends AsyncNotifier<OnboardingState> {
 
   Future<bool> complete() async {
     final current = state.asData?.value;
-    if (current == null || current.isSaving) return false;
+    if (current == null || current.isSaving || !current.isWelcome) return false;
     if (current.isCompleted) return true;
     state = AsyncData(OnboardingState(step: current.step, isSaving: true));
     try {
