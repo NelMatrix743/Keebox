@@ -95,7 +95,7 @@ void main() {
       expect(storage.completed, isFalse);
       final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
       expect(snackBar.backgroundColor, Colors.red);
-      expect(snackBar.behavior, SnackBarBehavior.fixed);
+      expect(snackBar.behavior, SnackBarBehavior.floating);
       expect(
         tester
             .widget<Text>(find.text(AppTexts.onboardingSaveFailed))

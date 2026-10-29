@@ -165,8 +165,11 @@ void main() {
     expect(find.text(AppTexts.pinConfirmationFailed), findsOneWidget);
     final snackbar = tester.widget<SnackBar>(find.byType(SnackBar));
     expect(snackbar.backgroundColor, Colors.red);
-    expect(snackbar.behavior, SnackBarBehavior.fixed);
-    expect((snackbar.content as Text).style?.color, Colors.white);
+    expect(snackbar.behavior, SnackBarBehavior.floating);
+    expect(
+      tester.widget<Text>(find.text(AppTexts.pinConfirmationFailed)).style?.color,
+      Colors.white,
+    );
     expect(_digits(tester), '12345');
     for (var i = 0; i < 5; i++) {
       expect(_border(tester, i), AppColors.brand);

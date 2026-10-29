@@ -121,7 +121,7 @@ void main() {
         );
         final bar = tester.widget<SnackBar>(find.byType(SnackBar));
         expect(bar.backgroundColor, Colors.red);
-        expect(bar.behavior, SnackBarBehavior.fixed);
+        expect(bar.behavior, SnackBarBehavior.floating);
         expect(
           tester
               .widget<Text>(find.text(AppTexts.localPinIncorrect(remaining)))
@@ -357,7 +357,7 @@ void main() {
       );
       final bar = tester.widget<SnackBar>(find.byType(SnackBar));
       expect(bar.backgroundColor, Colors.red);
-      expect(bar.behavior, SnackBarBehavior.fixed);
+      expect(bar.behavior, SnackBarBehavior.floating);
       expect(
         tester.widget<Text>(find.text('PIN rejected.')).style!.color,
         Colors.white,

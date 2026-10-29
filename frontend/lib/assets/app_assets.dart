@@ -1,4 +1,8 @@
 abstract final class AppAssets {
+  static const snackbarSuccess = 'assets/icons/snackbar_success.png';
+  static const snackbarInfo = 'assets/icons/snackbar_info.png';
+  static const snackbarWarning = 'assets/icons/snackbar_warning.png';
+  static const snackbarError = 'assets/icons/snackbar_error.png';
   static const registrationIdentity = 'assets/icons/registration_identity.png';
   static const user = 'assets/icons/user.png';
   static const successCheck = 'assets/animations/success_check.json';

@@ -68,6 +68,10 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/icons/snackbar_success.png
+    - assets/icons/snackbar_info.png
+    - assets/icons/snackbar_warning.png
+    - assets/icons/snackbar_error.png
     - assets/icons/registration_identity.png
     - assets/icons/user.png
     - assets/animations/success_check.json
