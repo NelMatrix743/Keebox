@@ -53,6 +53,15 @@ void main() {
         tester.getSize(find.byType(OnboardingArtwork)),
         const Size(352, 440),
       );
+      expect(
+        tester.getSize(find.byType(OnboardingMessage)).height,
+        closeTo(
+          OnboardingMessage(
+            step: step,
+          ).measureHeight(tester.element(find.byType(OnboardingMessage)), 352),
+          0.001,
+        ),
+      );
       expect(tester.takeException(), isNull);
     });
   }
