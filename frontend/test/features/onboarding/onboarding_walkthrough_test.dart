@@ -130,6 +130,17 @@ void main() {
             await tester.pumpAndSettle();
             expect(find.text(step.title).hitTestable(), findsOneWidget);
             expect(find.text(step.description).hitTestable(), findsOneWidget);
+            if (step != OnboardingStep.welcome) {
+              final description = tester.getRect(find.text(step.description));
+              final strip = tester.getRect(
+                find.byType(OnboardingDecorativeStrip),
+              );
+              expect(
+                strip.top - description.bottom,
+                greaterThanOrEqualTo(34.h - 0.01),
+                reason: 'The design gap must remain even when artwork shrinks.',
+              );
+            }
             final controls = step == OnboardingStep.welcome
                 ? find.byType(OnboardingWelcomeActions)
                 : find.byType(OnboardingNextButton);
