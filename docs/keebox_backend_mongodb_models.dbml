@@ -1,0 +1,96 @@
+// Keebox — Backend KBox Models (Django ORM / official MongoDB Django Backend)
+// Scope: ONLY the two concrete MongoDB collections for the KBox core.
+// Source: keebox_kbox_core_implementation_spec.md
+//
+// Django defines an abstract model named KBox with exactly six fields:
+//   id, user, payload, nonce, created_at, updated_at.
+// Because KBox.Meta.abstract = True, there is NO third KBox collection.
+//
+// DBML represents logical Django model fields; MongoDB uses BSON documents.
+// - Django UUIDField(primary_key=True) is shown as id uuid (may map to Mongo _id).
+// - Django ForeignKey(User) is shown by stored user_id uuid. The existing
+//   authentication.keebox_users collection is deliberately NOT recreated here.
+// - Django BinaryField maps to BSON Binary (shown as binary).
+// - Django JSONField maps to a JSON/BSON-compatible value (tags).
+// - Field validation is performed in Django and/or Flutter, as appropriate.
+// - DBML does not describe the inner encrypted bytes as separate schema columns.
+// - No backup, synchronization, restoration, or authentication redesign.
+
+Project Keebox_Backend_KBox_Models {
+  Note: 'Logical DBML model diagram for Django ORM and MongoDB BSON collections.'
+}
+
+// 11 stable KCredentialBox.type identifiers. Persisted by Django as CharField,
+// not as a native MongoDB enum; TextChoices/application validation controls them.
+Enum CredentialType {
+  login
+  api_key
+  ssh_key
+  database
+  wifi
+  recovery_codes
+  security_question
+  license_key
+  encryption_key
+  general_code
+  custom
+}
+
+Table knote_boxes {
+  id uuid [pk, not null, note: 'Inherited from abstract KBox; Django UUIDField primary key (Mongo _id representation)']
+  user_id uuid [not null, note: 'Inherited ForeignKey to existing authentication User, with Django CASCADE behavior']
+
+  title varchar(255) [not null, default: '', note: 'Optional searchable plaintext note title; empty string if unused']
+  is_favorite boolean [not null, default: false, note: 'Plaintext boolean for future favorite filtering']
+  tags json [not null, default: '[]', note: 'Plaintext JSON array of strings; Django JSONField(default=list)']
+
+  payload binary [not null, note: 'Inherited BinaryField: encrypted UTF-8 plain-text note and AES-GCM tag']
+  nonce binary [not null, note: 'Inherited BinaryField: fresh unique 12-byte AES-GCM nonce per encryption']
+
+  created_at datetime [not null, note: 'Inherited; original client-side record creation UTC timestamp']
+  updated_at datetime [not null, note: 'Inherited; last client-side content or metadata modification UTC timestamp']
+
+  indexes {
+    (user_id, updated_at) [name: 'idx_notes_user_updated']
+    (user_id, title) [name: 'idx_notes_user_title']
+    (user_id, is_favorite) [name: 'idx_notes_user_favorite']
+  }
+
+  Note: 'Django knoteboxes.KNoteBox(KBox); Meta.db_table = knote_boxes. No plaintext content field. Required note body is validated in Flutter before encryption.'
+}
+
+Table kcredential_boxes {
+  id uuid [pk, not null, note: 'Inherited from abstract KBox; Django UUIDField primary key (Mongo _id representation)']
+  user_id uuid [not null, note: 'Inherited ForeignKey to existing authentication User, with Django CASCADE behavior']
+
+  title varchar(255) [not null, note: 'Required, nonempty searchable plaintext title']
+  type CredentialType [not null, note: 'Conceptual enum; actual Django field is CharField(max_length=50, choices=CredentialType.choices)']
+
+  payload binary [not null, note: 'Inherited BinaryField: encrypted serialized JSON and AES-GCM tag; includes private note and custom_fields']
+  nonce binary [not null, note: 'Inherited BinaryField: fresh unique 12-byte AES-GCM nonce per encryption']
+
+  created_at datetime [not null, note: 'Inherited; original client-side record creation UTC timestamp']
+  updated_at datetime [not null, note: 'Inherited; last client-side content or metadata modification UTC timestamp']
+
+  indexes {
+    (user_id, updated_at) [name: 'idx_creds_user_updated']
+    (user_id, title) [name: 'idx_creds_user_title']
+    (user_id, type) [name: 'idx_creds_user_type']
+  }
+
+  Note: 'Django kcredentialboxes.KCredentialBox(KBox); Meta.db_table = kcredential_boxes. No plaintext note or type-specific credential fields.'
+}
+
+// Deliberately absent: User auth model, abstract KBox collection, plaintext
+// note/credential contents, custom-fields collection, backup/sync models.
+//
+// Crypto and validation implementation rules:
+// * payload stores bytes (ciphertext + authentication tag), NOT plaintext JSON.
+// * nonce stores 12 bytes and must be replaced on re-encryption.
+// * KNoteBox content is required; title optional; tags list; favorite default false.
+// * KCredentialBox title/type required. Internal JSON is type-specific and
+//   validated in Flutter BEFORE encrypting. Shared JSON fields are ONLY
+//   note (string) and custom_fields (array).
+// * External metadata title, type, tags, is_favorite is searchable plaintext.
+// * Never include encryption_version, server_sequence, revision, is_deleted,
+//   deleted_at, or backup/outbox fields in this KBox-core implementation.
