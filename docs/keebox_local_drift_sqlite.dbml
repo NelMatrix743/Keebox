@@ -1,0 +1,78 @@
+// Keebox — Local KBox Database (Flutter / Drift / SQLite)
+// Scope: ONLY KNoteBox and KCredentialBox for current KBox-core implementation.
+// Source: keebox_kbox_core_implementation_spec.md
+// Design proposal: The exact Drift table layout had not previously been approved.
+// These two local tables mirror the agreed content entities; no backup/sync tables.
+//
+// SQLite/Drift mappings:
+// - UUID -> TEXT (canonical UUID string)
+// - AES-256-GCM ciphertext+tag and nonce -> BLOB (Drift blob())
+// - boolean -> INTEGER, 0=false / 1=true (Drift boolean())
+// - tags list -> TEXT containing JSON string array (Drift text() + JSON conversion)
+// - DateTime -> TEXT containing UTC ISO-8601; configure Drift with
+//   drift_dev store_date_time_values_as_text: true.
+//   (Without this setting Drift defaults to INTEGER seconds instead.)
+// - No local User table is defined here: user_id refers to the already-authenticated
+//   account, and keeps local records partitioned by owner.
+// - The KBox abstract class is NOT a table; its shared fields are repeated below.
+// - Note body and credential-specific JSON are encrypted into payload, NOT columns.
+// - Do not add revisions, tombstones, outboxes, or backup/sync machinery.
+
+Project Keebox_Local_KBox_Core {
+  Note: 'Core content only; conceptual DBML for Drift/SQLite implementation.'
+}
+
+Table knote_boxes {
+  id text [pk, not null, note: 'Stable UUID string; generated locally before saving']
+  user_id text [not null, note: 'Authenticated Keebox user UUID; no local auth table in scope']
+
+  title text [not null, default: '', note: 'Optional note title; empty string if unused; externally searchable']
+  is_favorite integer [not null, default: 0, note: 'Boolean in Drift (0=false, 1=true); future feature']
+  tags text [not null, default: '[]', note: 'JSON array of strings; future feature; no separate tags table']
+
+  payload blob [not null, note: 'AES-256-GCM encrypted UTF-8 plain-text note body plus authentication tag; content required']
+  nonce blob [not null, note: '12-byte nonce; fresh on every re-encryption']
+
+  created_at text [not null, note: 'UTC ISO-8601 original creation timestamp']
+  updated_at text [not null, note: 'UTC ISO-8601 latest modification timestamp']
+
+  indexes {
+    (user_id, updated_at) [name: 'idx_local_notes_user_updated']
+    (user_id, title) [name: 'idx_local_notes_user_title']
+    (user_id, is_favorite) [name: 'idx_local_notes_user_favorite']
+  }
+
+  Note: 'Drift KNoteBox. No plaintext content column. title may be empty; decrypted note body must be nonempty (validated before encryption).'
+}
+
+Table kcredential_boxes {
+  id text [pk, not null, note: 'Stable UUID string; generated locally before saving']
+  user_id text [not null, note: 'Authenticated Keebox user UUID; no local auth table in scope']
+
+  title text [not null, note: 'Required nonempty searchable title (max 255 characters enforced in app)']
+  type text [not null, note: 'Fixed string identifier: login, api_key, ssh_key, database, wifi, recovery_codes, security_question, license_key, encryption_key, general_code, custom']
+
+  payload blob [not null, note: 'AES-256-GCM encrypted serialized UTF-8 JSON, including note and custom_fields; authentication tag attached']
+  nonce blob [not null, note: '12-byte nonce; fresh on every re-encryption']
+
+  created_at text [not null, note: 'UTC ISO-8601 original creation timestamp']
+  updated_at text [not null, note: 'UTC ISO-8601 latest modification timestamp']
+
+  indexes {
+    (user_id, updated_at) [name: 'idx_local_creds_user_updated']
+    (user_id, title) [name: 'idx_local_creds_user_title']
+    (user_id, type) [name: 'idx_local_creds_user_type']
+  }
+
+  Note: 'Drift KCredentialBox. Exactly 11 fixed credential types. The encrypted JSON has only note and custom_fields as universal properties; each type adds its already-agreed fields. No plaintext note column.'
+}
+
+// Encryption and content rules (enforced by Flutter code, not by DBML):
+// * Every stored payload is ciphertext+GCM tag. No plaintext body, passwords,
+//   codes, keys, or credential note fields appear in these tables.
+// * KNoteBox payload decrypts to a nonempty plain-text UTF-8 note.
+// * KCredentialBox payload decrypts to JSON validated according to type.
+// * Fresh cryptographically random 12-byte nonce per encryption under same KBKey.
+// * Updating only external metadata can preserve existing payload+nonce.
+// * Optional empty text fields use ""; empty arrays use [].
+// * user_id/record IDs/titles/types/tags/favorites are intentionally plaintext metadata.
